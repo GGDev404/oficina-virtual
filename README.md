@@ -102,7 +102,9 @@ se reintenta con las sesiones sin ligar.
 
 **Vista general.** La oficina en pixel art ocupa la pantalla y debajo van cuatro tarjetas de un solo ítem:
 Te necesitan · Hoy (o «Al día») · Para ti · Próximo corte (daily 9:00, seguimientos 9:35/13:35/17:35,
-integración a develop 13:00 y 18:00). Cada sesión es un personaje con su nombre real y su cuarto es su estado:
+integración a develop 13:00 y 18:00). Cada tarjeta abre solo lo suyo (Hoy y el corte, tu agenda; Para ti, los
+comentarios); la oficina completa se abre desde «Tú · entrar». En las ventanas de dos columnas, lo que queda debajo
+de la columna lateral (el cuadro para escribir, los próximos días) usa todo el ancho. Cada sesión es un personaje con su nombre real y su cuarto es su estado:
 
 | Cuarto | Estados | Cómo se ve |
 |---|---|---|

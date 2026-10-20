@@ -154,6 +154,26 @@
   .cuerpo { flex: 1; min-height: 0; overflow: auto; padding: var(--s4) var(--s5) var(--s5); }
   .dos-col { display: grid; gap: var(--s5); grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; }
   @media (max-width: 860px) { .dos-col { grid-template-columns: minmax(0, 1fr); } .ventana > header, .cuerpo { padding-inline: var(--s4); } }
+  /* Lo de abajo ocupa todo el ancho cuando la columna lateral ya terminó: la sección se deshace en filas de la rejilla
+     (display: contents) y la columna lateral solo acompaña a la primera parte. */
+  .dos-col > .partir { display: contents; }
+  .dos-col:has(> .partir) { grid-template-rows: auto 1fr; } /* lo que sobra de la columna lateral va a la segunda fila */
+  .dos-col > .partir > * { grid-column: 1; min-width: 0; }
+  .dos-col > .partir > .ancho { grid-column: 1 / -1; }
+  .dos-col > .lateral { grid-column: 2; grid-row: 1 / span 2; }
+  #v-agente .dos-col { row-gap: 0; column-gap: var(--s5); }
+  #v-agente .dos-col > .lateral { margin-bottom: var(--s3); }
+  #v-oficina .dos-col { row-gap: var(--s3); }
+  @media (max-width: 860px) {
+    .dos-col > .partir > *, .dos-col > .partir > .ancho, .dos-col > .lateral { grid-column: 1; grid-row: auto; }
+    #v-agente .dos-col > .lateral { order: 1; margin-top: var(--s4); }
+    .ventana > header { flex-wrap: wrap; }
+    .ventana > header .titulos { flex-basis: calc(100% - 52px); }
+  }
+  /* Abierta desde una tarjeta: solo esa sección, a todo el ancho. */
+  #v-oficina.solo .dos-col { grid-template-columns: minmax(0, 1fr); }
+  #v-oficina.solo .dos-col > .lateral { grid-column: 1; grid-row: auto; }
+  #v-oficina [hidden] { display: none !important; }
 
   /* Ficha del agente */
   .conversacion { display: flex; flex-direction: column; gap: var(--s2); max-height: 52svh; overflow: auto; padding-right: var(--s1); }
@@ -234,7 +254,7 @@
   .hoy li:first-child { border-top: 0; }
   .hora { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13px; padding-top: 1px; }
   .hora.vencida { color: var(--rojo); }
-  .dias { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .dias { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
   .dia { border: 1px solid var(--borde); border-radius: 12px; padding: var(--s3); display: grid; gap: var(--s2); align-content: start; }
   .dia h4 { margin: 0; font-size: 13px; display: flex; justify-content: space-between; text-transform: capitalize; }
   .dia details { border-top: 1px solid var(--borde); padding-top: var(--s2); }
@@ -281,10 +301,10 @@
     <div class="acciones" id="va-acciones"></div>
     <button class="cerrar" type="button" data-cerrar aria-label="Cerrar ventana"></button></header>
   <div class="cuerpo"><div class="dos-col">
-    <section aria-label="Conversación">
+    <section class="partir" aria-label="Conversación">
       <div id="va-aviso"></div>
       <div class="conversacion" id="va-conversacion"><p class="vacio">Cargando…</p></div>
-      <form class="redactar" id="va-form">
+      <form class="redactar ancho" id="va-form">
         <label class="meta" for="va-texto">Escríbele o pregúntale algo. Le llega como mensaje tuyo desde la oficina (Ctrl+Enter envía; pega o arrastra imágenes aquí).</label>
         <textarea id="va-texto" rows="3" maxlength="4000" placeholder="Por ejemplo: ¿ya terminaron las pruebas? Cuando acabes, deja el diff listo para revisar."></textarea>
         <div class="adjuntos" id="va-adjuntos"></div>
@@ -294,7 +314,7 @@
           <span class="meta" id="va-estado" role="status"></span></div>
       </form>
     </section>
-    <aside class="contexto" id="va-contexto" aria-label="Contexto"></aside>
+    <aside class="contexto lateral" id="va-contexto" aria-label="Contexto"></aside>
   </div></div>
 </dialog>
 
@@ -302,14 +322,14 @@
   <header><div class="titulos"><h2 id="vo-titulo">Tu oficina</h2><div class="fila" id="vo-sub"></div></div>
     <button class="cerrar" type="button" data-cerrar aria-label="Cerrar"></button></header>
   <div class="cuerpo"><div class="dos-col">
-    <section aria-labelledby="vo-agenda-t" id="vo-agenda">
-      <h3 id="vo-agenda-t" style="margin-top:0">Hoy</h3>
+    <section class="partir" aria-labelledby="vo-agenda-t" id="vo-agenda">
+      <h3 id="vo-agenda-t" style="margin:0">Hoy</h3>
       <ul class="hoy" id="vo-hoy"></ul>
-      <h3>Próximos días</h3>
-      <div class="dias" id="vo-dias"></div>
-      <div id="vo-despues"></div>
+      <h3 class="ancho" style="margin:var(--s2) 0 0">Próximos días</h3>
+      <div class="dias ancho" id="vo-dias"></div>
+      <div class="ancho" id="vo-despues"></div>
     </section>
-    <div class="contexto">
+    <div class="contexto lateral" id="vo-lateral">
       <section class="bloque" aria-labelledby="vo-parati-t" id="vo-parati">
         <div class="fila"><h4 id="vo-parati-t" style="margin-right:auto">Para ti</h4>
           <label class="meta"><input type="checkbox" id="vo-todos"> Todos los comentarios</label></div>
@@ -1357,10 +1377,16 @@ document.getElementById('va-texto').addEventListener('keydown', (ev) => {
 // ── Tu oficina: veredicto, agenda por día, para ti y turno nocturno ──
 let noche = null;
 const agendaAbierta = new Set(); // tareas desplegadas: sobreviven a las actualizaciones en vivo
+// Sin sección, la oficina completa («Tú · entrar»); con sección, solo esa (las tarjetas, la bandeja y el calendario).
+const SECCIONES_OFICINA = { 'vo-agenda': 'Tu agenda', 'vo-parati': 'Para ti' };
 async function abrirOficina(seccion) {
+  vOficina.classList.toggle('solo', !!seccion);
+  document.getElementById('vo-titulo').textContent = SECCIONES_OFICINA[seccion] ?? 'Tu oficina';
+  for (const id of ['vo-agenda', 'vo-parati', 'vo-noche']) document.getElementById(id).hidden = !!seccion && id !== seccion;
+  document.getElementById('vo-lateral').hidden = !!seccion && seccion === 'vo-agenda';
   renderOficina();
   if (!vOficina.open) vOficina.showModal();
-  if (seccion) document.getElementById(seccion).scrollIntoView({ block: 'start' });
+  vOficina.querySelector('.cuerpo').scrollTop = 0;
   try { noche = await (await fetch('/api/noche')).json(); } catch { noche = { fecha: null }; }
   renderNoche();
 }
