@@ -150,8 +150,15 @@ misma carpeta (y tarea, si tiene) y el último mensaje del agente como indicaci�
 
 **Permisos.** El hook `PermissionRequest` solo informa (no decide): la ficha y «Te necesitan» muestran qué herramienta
 pide permiso y con qué (p. ej. `Write` y la ruta). Si `claude agents` dice que la sesión espera (`waiting`), se queda en
-Tu puerta aunque su transcript cambie. Un permiso se aprueba en su terminal o en la app; un mensaje desde la oficina
-no lo aprueba (queda en cola). Para las de segundo plano hay **Abrir su terminal para aprobar**.
+Tu puerta aunque su transcript cambie.
+
+**Aprobar o rechazar desde la oficina.** `hooks/permiso.sh` (hook `PermissionRequest`, timeout 130 s) manda la petición
+a `POST /api/permisos`, que queda abierta hasta **2 minutos**. En la ficha y en «Te necesitan» ves la herramienta y sus
+datos (comando, archivo, contenido…) con una cuenta regresiva y los botones **Aprobar** / **Rechazar** (con motivo
+opcional, que recibe el agente). Si no decides a tiempo, o si el servidor no responde, el hook sale sin respuesta y el
+diálogo aparece en su terminal como siempre. La página solo aprueba o rechaza: nunca cambia la entrada de la
+herramienta. Ojo: cualquier programa de tu equipo que hable con 127.0.0.1:4777 podría aprobar; los sitios web no
+(Host exacto y `application/json`). Un mensaje desde la oficina no aprueba permisos: queda en cola.
 
 **Cerrar sesión** (ficha del agente, con confirmación): las de segundo plano con `claude stop <id>`; las interactivas
 (terminal o app) con SIGTERM a su proceso, solo si el pid sigue siendo de Claude Code. La conversación queda guardada

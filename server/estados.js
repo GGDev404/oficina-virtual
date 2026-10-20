@@ -119,7 +119,7 @@ export function aplicar(db, { evento, ts, payload: p }, { rama = () => null } = 
   return nuevo ? cambiarEstado(db, sid, nuevo, t) : [];
 }
 
-function cambiarEstado(db, sid, nuevo, t) {
+export function cambiarEstado(db, sid, nuevo, t) {
   const { estado } = db.prepare('SELECT estado FROM sesiones WHERE id = ?').get(sid);
   if (estado === nuevo) return [];
   db.prepare('UPDATE sesiones SET estado = ?, estado_desde_ts = ? WHERE id = ?').run(nuevo, t, sid);

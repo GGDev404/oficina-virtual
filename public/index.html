@@ -208,6 +208,11 @@
   .campo select { width: 100%; }
   .acciones { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
   button.peligro { color: var(--rojo); background: var(--rojo-bg); border-color: transparent; }
+  button.aprobar { background: #1f7a43; color: #fff; border-color: transparent; font-weight: 600; }
+  .permiso-campo { display: grid; gap: 2px; }
+  .permiso-campo > span { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; opacity: .8; }
+  .permiso-campo pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12.5px; max-height: 12em; overflow: auto;
+    background: rgba(0, 0, 0, .12); border-radius: 6px; padding: 6px 8px; }
 
   /* Tu oficina */
   .veredicto { font-size: 13.5px; font-weight: 600; }
@@ -998,7 +1003,7 @@ function renderAgente() {
 
   // Acciones y avisos solo se repintan si cambian: así un clic no cae en un botón que se acaba de reemplazar.
   const nivel = nivelContexto(d.contexto?.[s.id]);
-  const claveAvisos = [s.id, viva?.tipo, !!viva, viva?.ocupada, confirmandoCierre, s.estado, espera, nivel?.clase, s.permiso_json].join('|');
+  const claveAvisos = [s.id, viva?.tipo, !!viva, viva?.ocupada, confirmandoCierre, s.estado, espera, nivel?.clase, s.permiso_json, permisoPendiente(s.id)?.id].join('|');
   if (vAgente.dataset.avisos !== claveAvisos) { vAgente.dataset.avisos = claveAvisos; pintarAvisos(s, viva, tareas, espera, nivel); }
 
 
@@ -1048,7 +1053,31 @@ function renderAgente() {
     el('p', { class: 'meta', style: 'margin:0' }, `Última actividad ${hace(s.ultimo_evento_ts)} · sesión ${s.id.slice(0, 8)}`));
 }
 // Qué permiso pide y dónde se aprueba: en su terminal (o la app). Un mensaje desde la oficina no lo aprueba.
+const permisoPendiente = (sid) => (datos?.permisos ?? []).filter((p) => p.sid === sid).at(-1) ?? null;
+const ETIQUETAS_CAMPO = { command: 'Comando', file_path: 'Archivo', url: 'URL', pattern: 'Patrón', path: 'Ruta', description: 'Para qué',
+  old_string: 'Texto actual', new_string: 'Texto nuevo', content: 'Contenido', prompt: 'Indicación' };
+async function decidirPermiso(id, decision, motivo, estado) {
+  try { await post(`/api/permisos/${id}`, { decision, motivo }); if (estado) estado.textContent = decision === 'allow' ? 'Aprobado.' : 'Rechazado.'; }
+  catch (err) { if (estado) estado.textContent = err.message; else alert(err.message); }
+}
+// Petición pendiente: qué herramienta, con qué datos, cuánto falta para que pase a su terminal, y aprobar o rechazar.
+function decisionPermiso(p, { compacto = false } = {}) {
+  const estado = el('span', { class: 'meta', role: 'status' });
+  const motivo = el('input', { type: 'text', placeholder: 'Motivo del rechazo (opcional; se lo dice al agente)', 'aria-label': 'Motivo del rechazo' });
+  const campos = compacto ? p.campos.slice(0, 2) : p.campos;
+  return el('div', { style: 'display:grid;gap:8px' },
+    el('p', { style: 'margin:0' }, el('b', {}, `Pide permiso para ${p.herramienta}. `),
+      'Decide aquí en ', el('b', { 'data-vence': p.vence }, ''), '; si no, aparece en su terminal.'),
+    campos.map(([k, v]) => el('div', { class: 'permiso-campo' }, el('span', {}, ETIQUETAS_CAMPO[k] ?? k), el('pre', {}, v))),
+    !compacto && motivo,
+    el('div', { class: 'acciones' },
+      el('button', { type: 'button', class: 'aprobar', onclick: () => decidirPermiso(p.id, 'allow', undefined, estado) }, icono('listo'), 'Aprobar'),
+      el('button', { type: 'button', class: 'peligro', onclick: () => decidirPermiso(p.id, 'deny', motivo.value.trim() || undefined, estado) }, 'Rechazar'),
+      estado));
+}
 function avisoPermiso(s, viva) {
+  const pendiente = permisoPendiente(s.id);
+  if (pendiente) return el('div', { class: 'aviso-caja rojo' }, decisionPermiso(pendiente));
   let permiso = null;
   try { permiso = JSON.parse(s.permiso_json ?? 'null'); } catch {}
   return el('div', { class: 'aviso-caja rojo' },
@@ -1310,12 +1339,17 @@ function renderNecesitan() {
   const d = datos;
   const tareas = tareaPorId(d);
   const cola = d.sesiones.filter((s) => s.estado in URGENCIA).sort((a, b) => URGENCIA[a.estado] - URGENCIA[b.estado] || a.estado_desde_ts - b.estado_desde_ts);
+  const clave = JSON.stringify(cola.map((s) => [s.id, s.estado, s.ultimo_mensaje, permisoPendiente(s.id)?.id]));
+  if (vNecesitan.dataset.clave === clave) return;
+  vNecesitan.dataset.clave = clave;
   reemplazar(document.getElementById('vn-lista'), cola.length ? cola.map((s) => el('li', { class: 'comentario' },
     el('div', { class: 'fila' }, chipEstado(s.estado), el('b', {}, nombreSesion(s, tareas)), el('span', { class: 'meta' }, `lleva ${hace(s.estado_desde_ts).replace('hace ', '')}`)),
     s.tarea_id && s.nombre && el('div', { class: 'meta corto' }, tareas[s.tarea_id]?.nombre ?? s.tarea_id),
     s.ultimo_mensaje && el('div', { class: 'mensaje corto3' }, plano(s.ultimo_mensaje)),
     el('div', { class: 'fila' },
-      s.estado === 'necesita_permiso'
+      s.estado === 'necesita_permiso' && permisoPendiente(s.id)
+        ? decisionPermiso(permisoPendiente(s.id), { compacto: true })
+        : s.estado === 'necesita_permiso'
         ? (d.vivas?.[s.id]?.tipo === 'background'
           ? el('button', { class: 'primario boton-chico', type: 'button', onclick: () => postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/terminal`) }, icono('terminal'), 'Abrir su terminal para aprobar')
           : el('span', { class: 'aviso-caja rojo', style: 'margin:0;padding:2px 8px' }, `Apruébalo en su terminal o en la app · ${carpeta(s.cwd)}`))
@@ -1374,6 +1408,13 @@ function render() {
 }
 document.getElementById('sincronizar').addEventListener('click', () => postSeguro('/api/sincronizar'));
 setInterval(render, 30_000); // refresca los "hace X min"
+// Cuenta regresiva de los permisos pendientes.
+setInterval(() => {
+  for (const n of document.querySelectorAll('[data-vence]')) {
+    const faltan = Math.max(0, Math.round((Number(n.dataset.vence) - Date.now()) / 1000));
+    n.textContent = faltan ? `${Math.floor(faltan / 60)}:${String(faltan % 60).padStart(2, '0')}` : 'su terminal';
+  }
+}, 1000);
 
 escalar();
 requestAnimationFrame(cuadro);

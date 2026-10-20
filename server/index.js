@@ -5,7 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { abrir, estado } from './db.js';
-import { aplicar, revisar } from './estados.js';
+import { aplicar, revisar, cambiarEstado } from './estados.js';
+import { crearPermisos } from './permisos.js';
 import { crearCliente, sincronizar } from './clickup.js';
 import { ligar, religarTodas, FORMATO_ID } from './tarea-link.js';
 import { crearNotificador, ESTADOS_AVISO } from './notificar.js';
@@ -71,6 +72,7 @@ async function actualizarVivas() {
   }
 }
 
+const permisos = crearPermisos({ alCambiar: () => avisar() });
 const mensajero = crearMensajero({ dir: path.join(DATOS, 'mensajero'), firma: process.env.OFICINA_NOMBRE || 'el usuario', alCambiar: () => avisar() });
 
 function leerNoche() {
@@ -97,7 +99,7 @@ function actualizarContextos() {
   if (JSON.stringify(nuevos) !== JSON.stringify(contextos)) { contextos = nuevos; avisar(); }
 }
 
-const estadoCompleto = () => ({ ...estado(db), sync, vivas: Object.fromEntries(vivas), mensajes: mensajero.mensajes(), contexto: contextos });
+const estadoCompleto = () => ({ ...estado(db), sync, vivas: Object.fromEntries(vivas), mensajes: mensajero.mensajes(), contexto: contextos, permisos: permisos.lista() });
 
 // Notificación de escritorio cuando una sesión pasa a pedirte algo o llega una corrección de ficha.
 const notificar = crearNotificador();
@@ -192,6 +194,18 @@ const servidor = http.createServer(async (req, res) => {
       return json(res, 204);
     }
     if (req.method === 'GET' && url.pathname === '/api/estado') return json(res, 200, estadoCompleto());
+    // hooks/permiso.sh: la respuesta se queda abierta hasta que decides en la página o pasan 2 min.
+    if (req.method === 'POST' && url.pathname === '/api/permisos') {
+      const ev = await leerJson(req);
+      if (ev?.evento !== 'PermissionRequest' || typeof ev.payload?.session_id !== 'string') return json(res, 400, { error: 'se espera un PermissionRequest' });
+      recibir({ ts: Date.now(), ...ev });
+      const id = permisos.pedir(ev.payload, (cuerpo) => {
+        if (res.writableEnded) return;
+        if (cuerpo) json(res, 200, cuerpo); else { res.writeHead(204); res.end(); }
+      });
+      res.on('close', () => permisos.abandonar(id)); // si el hook se cortó, se quita de la página
+      return;
+    }
     if (req.method === 'GET' && url.pathname === '/api/siguiente') {
       const n = Math.min(Math.max(Number.parseInt(url.searchParams.get('n') ?? '15', 10) || 15, 1), 50);
       res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -225,6 +239,17 @@ const servidor = http.createServer(async (req, res) => {
         .run(tarea_id, tarea_id ? 'manual' : null, m[1]);
       if (!r.changes) return json(res, 404, { error: 'sesión no existe' });
       if (!tarea_id) ligar(db, m[1]);
+      avisar();
+      return json(res, 204);
+    }
+    if (req.method === 'POST' && (m = url.pathname.match(/^\/api\/permisos\/([0-9]+)$/))) {
+      const { decision, motivo } = await leerJson(req);
+      if (decision !== 'allow' && decision !== 'deny') return json(res, 400, { error: 'decision debe ser allow o deny' });
+      const sid = permisos.sesionDe(m[1]);
+      if (!sid || !permisos.decidir(m[1], decision, typeof motivo === 'string' ? motivo.slice(0, 500) : undefined)) {
+        return json(res, 404, { error: 'ese permiso ya no está pendiente (se respondió o ya está en su terminal)' });
+      }
+      cambiarEstado(db, sid, 'trabajando', Date.now()); // con la decisión, el agente sigue
       avisar();
       return json(res, 204);
     }
