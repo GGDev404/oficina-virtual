@@ -73,6 +73,8 @@ async function actualizarVivas() {
 }
 
 const permisos = crearPermisos({ alCambiar: () => avisar() });
+// Preguntas con opciones (AskUserQuestion): esperan tu respuesta hasta 15 min; después salen en su terminal.
+const preguntas = crearPermisos({ alCambiar: () => avisar(), espera: 15 * 60_000 });
 const mensajero = crearMensajero({ dir: path.join(DATOS, 'mensajero'), firma: process.env.OFICINA_NOMBRE || 'el usuario', alCambiar: () => avisar() });
 
 function leerNoche() {
@@ -128,7 +130,7 @@ function transcriptCambio(sid, ruta) {
   if (c && JSON.stringify(c) !== JSON.stringify(contextos[sid])) { contextos = { ...contextos, [sid]: c }; avisar(); }
 }
 
-const estadoCompleto = () => ({ ...estado(db), sync, vivas: Object.fromEntries(vivas), mensajes: mensajero.mensajes(), contexto: contextos, permisos: permisos.lista() });
+const estadoCompleto = () => ({ ...estado(db), sync, vivas: Object.fromEntries(vivas), mensajes: mensajero.mensajes(), contexto: contextos, permisos: permisos.lista(), preguntas: preguntas.lista() });
 
 // Notificación de escritorio cuando una sesión pasa a pedirte algo o llega una corrección de ficha.
 const notificar = crearNotificador();
@@ -236,6 +238,22 @@ const servidor = http.createServer(async (req, res) => {
       res.on('close', () => permisos.abandonar(id)); // si el hook se cortó, se quita de la página
       return;
     }
+    // hooks/pregunta.sh (PreToolUse de AskUserQuestion): igual que un permiso, pero se contesta con opciones.
+    if (req.method === 'POST' && url.pathname === '/api/preguntas') {
+      const ev = await leerJson(req);
+      if (ev?.evento !== 'PreToolUse' || ev.payload?.tool_name !== 'AskUserQuestion' || typeof ev.payload?.session_id !== 'string'
+        || !Array.isArray(ev.payload.tool_input?.questions)) return json(res, 400, { error: 'se espera un AskUserQuestion' });
+      recibir({ ts: Date.now(), ...ev, evento: 'Pregunta' }); // no es un subagente: solo registra la sesión
+      const primera = ev.payload.tool_input.questions[0]?.question;
+      db.prepare('UPDATE sesiones SET ultimo_mensaje = ? WHERE id = ?').run(`Te pregunta: ${String(primera ?? '').slice(0, 300)}`, ev.payload.session_id);
+      avisarCambios(cambiarEstado(db, ev.payload.session_id, 'duda', Date.now()));
+      const id = preguntas.pedir(ev.payload, (cuerpo) => {
+        if (res.writableEnded) return;
+        if (cuerpo) json(res, 200, cuerpo); else { res.writeHead(204); res.end(); }
+      });
+      res.on('close', () => preguntas.abandonar(id));
+      return;
+    }
     if (req.method === 'GET' && url.pathname === '/api/siguiente') {
       const n = Math.min(Math.max(Number.parseInt(url.searchParams.get('n') ?? '15', 10) || 15, 1), 50);
       res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -280,6 +298,15 @@ const servidor = http.createServer(async (req, res) => {
         return json(res, 404, { error: 'ese permiso ya no está pendiente (se respondió o ya está en su terminal)' });
       }
       cambiarEstado(db, sid, 'trabajando', Date.now()); // con la decisión, el agente sigue
+      avisar();
+      return json(res, 204);
+    }
+    if (req.method === 'POST' && (m = url.pathname.match(/^\/api\/preguntas\/([0-9]+)$/))) {
+      const { respuestas } = await leerJson(req);
+      const sid = preguntas.sesionDe(m[1]);
+      if (!sid) return json(res, 404, { error: 'esa pregunta ya no está pendiente (se respondió o ya está en su terminal)' });
+      if (!preguntas.contestar(m[1], respuestas)) return json(res, 400, { error: 'responde todas las preguntas' });
+      cambiarEstado(db, sid, 'trabajando', Date.now());
       avisar();
       return json(res, 204);
     }

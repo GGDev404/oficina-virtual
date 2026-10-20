@@ -41,7 +41,7 @@ export function intercambios(lineas, max = 14) {
     const texto = textoDe(contenido).trim();
     if (!texto) continue;
     const peer = texto.match(ENTRE_SESIONES);
-    if (peer) salida.push({ rol: 'mensaje', texto: peer[1].trim(), ts });
+    if (peer) salida.push({ rol: 'mensaje', texto: peer[1].trim().replace(/^Mensaje de .+ desde la oficina virtual:\n/, ''), ts });
     else if (texto.startsWith('[Request interrupted')) salida.push({ rol: 'sistema', texto: 'Interrumpido (permiso rechazado o Esc).', ts });
     else if (SISTEMA.test(texto)) continue;
     else salida.push({ rol: 'tu', texto, ts });

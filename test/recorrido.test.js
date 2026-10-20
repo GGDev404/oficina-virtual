@@ -79,11 +79,13 @@ test('conversación: tus prompts, cada texto del agente, mensajes entre sesiones
     l({ type: 'user', isMeta: true, message: { content: 'meta' } }),
     l({ type: 'user', message: { content: '<task-notification>fin</task-notification>' } }),
     l({ type: 'user', message: { content: '<cross-session-message from="x">Mensaje de Dev: ¿ya?</cross-session-message>' } }),
+    l({ type: 'user', message: { content: '<cross-session-message from="y">\nMensaje de Geovany desde la oficina virtual:\nya lo reinicie\n</cross-session-message>' } }),
     l({ type: 'user', isSidechain: true, message: { content: 'de un subagente' } }),
     '{roto',
   ];
   assert.deepEqual(intercambios(lineas).map((m) => [m.rol, m.texto]), [
     ['tu', 'arregla el filtro'], ['agente', 'Reviso el filtro.'], ['agente', 'Listo.'], ['mensaje', 'Mensaje de Dev: ¿ya?'],
+    ['mensaje', 'ya lo reinicie'],
   ]);
   assert.equal(rutaValida(`${os.homedir()}/.claude/projects/x/a.jsonl`), true);
   assert.equal(rutaValida(`${os.homedir()}/.claude/projects/../../.ssh/id_rsa.jsonl`), false);

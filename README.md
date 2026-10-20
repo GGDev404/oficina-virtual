@@ -170,6 +170,15 @@ diálogo aparece en su terminal como siempre. La página solo aprueba o rechaza:
 herramienta. Ojo: cualquier programa de tu equipo que hable con 127.0.0.1:4777 podría aprobar; los sitios web no
 (Host exacto y `application/json`). Un mensaje desde la oficina no aprueba permisos: queda en cola.
 
+**Preguntas con opciones.** Cuando un agente usa `AskUserQuestion`, `hooks/pregunta.sh` (hook `PreToolUse` con matcher
+`AskUserQuestion`, timeout 910 s) la manda a `POST /api/preguntas`, que espera hasta **15 minutos**. La sesión pasa a
+«Duda» y en su ficha ves cada pregunta con sus opciones como en la app (una o varias, más «Otra respuesta»). Al
+responder, el hook devuelve `allow` + `updatedInput.answers` y el agente sigue sin diálogo en la terminal. Si no
+respondes a tiempo o el servidor no está, la pregunta sale en su terminal como siempre.
+
+**Orden de la conversación.** Tus mensajes y las respuestas van en una sola línea de tiempo por hora, como en un chat.
+Un mensaje entregado se ve aparte («Entregado · lo lee entre pasos») solo hasta que aparece en el transcript.
+
 **Cerrar sesión** (ficha del agente, con confirmación): las de segundo plano con `claude stop <id>`; las interactivas
 (terminal o app) con SIGTERM a su proceso, solo si el pid sigue siendo de Claude Code. La conversación queda guardada
 (`claude --resume <id>`). Las de segundo plano tienen además **Abrir en terminal** (`xdg-terminal-exec claude attach <id>`).

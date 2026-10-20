@@ -1,7 +1,7 @@
 // Permisos desde la oficina: la petición espera la decisión; sin decisión a tiempo no se responde nada.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { crearPermisos, resumenEntrada, decisionHook } from '../server/permisos.js';
+import { crearPermisos, resumenEntrada, decisionHook, resumenPreguntas } from '../server/permisos.js';
 
 const relojFalso = () => {
   const pendientes = new Map(); let n = 0;
@@ -13,7 +13,7 @@ test('aprobar: el hook recibe allow y el permiso sale de la lista', () => {
   const respuestas = [];
   const p = crearPermisos({ reloj: relojFalso() });
   const id = p.pedir(pedido, (c) => respuestas.push(c), 1000);
-  assert.deepEqual(p.lista()[0], { id, sid: 's1', herramienta: 'Write', campos: [['file_path', '/x/plan.md'], ['content', 'hola']], creado: 1000, vence: 121000 });
+  assert.deepEqual(p.lista()[0], { id, sid: 's1', herramienta: 'Write', campos: [['file_path', '/x/plan.md'], ['content', 'hola']], preguntas: null, creado: 1000, vence: 121000 });
   assert.equal(p.decidir(id, 'allow'), true);
   assert.deepEqual(respuestas, [{ hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: { behavior: 'allow' } } }]);
   assert.deepEqual(p.lista(), []);
@@ -49,4 +49,24 @@ test('resumen de la entrada: campos que importan, recortados', () => {
   const r = resumenEntrada({ command: 'rm -rf build', description: 'limpia', otro: 1, content: largo });
   assert.deepEqual(r.map(([k]) => k), ['command', 'description', 'content']);
   assert.equal(r[2][1].length, 1501);
+});
+
+test('preguntas: eliges opciones y el hook recibe la entrada original con answers', () => {
+  const respuestas = [];
+  const questions = [
+    { question: '¿Qué carril?', header: 'Carril', multiSelect: false, options: [{ label: 'Ágil', description: 'por defecto' }, { label: 'Completo' }] },
+    { question: '¿Qué pruebas?', header: 'Pruebas', multiSelect: true, options: [{ label: 'Unitarias' }, { label: 'e2e' }] },
+  ];
+  const p = crearPermisos({ reloj: relojFalso() });
+  const id = p.pedir({ session_id: 's1', tool_name: 'AskUserQuestion', tool_input: { questions } }, (c) => respuestas.push(c));
+  assert.deepEqual(p.lista()[0].preguntas[0], { pregunta: '¿Qué carril?', titulo: 'Carril', multiple: false,
+    opciones: [{ etiqueta: 'Ágil', descripcion: 'por defecto' }, { etiqueta: 'Completo', descripcion: '' }] });
+  assert.equal('entrada' in p.lista()[0], false);
+  assert.equal(p.contestar(id, { '¿Qué carril?': 'Ágil' }), false); // falta una respuesta
+  assert.equal(p.contestar(id, { '¿Qué carril?': 'Ágil', '¿Qué pruebas?': '  ' }), false);
+  assert.equal(p.contestar(id, { '¿Qué carril?': 'Ágil', '¿Qué pruebas?': 'Unitarias, e2e', otra: 'x' }), true);
+  assert.deepEqual(respuestas[0].hookSpecificOutput, { hookEventName: 'PreToolUse', permissionDecision: 'allow',
+    permissionDecisionReason: 'Respondido desde la oficina virtual.',
+    updatedInput: { questions, answers: { '¿Qué carril?': 'Ágil', '¿Qué pruebas?': 'Unitarias, e2e' } } });
+  assert.equal(resumenPreguntas({ command: 'ls' }), null);
 });

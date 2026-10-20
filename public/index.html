@@ -219,6 +219,11 @@
   button.peligro { color: var(--rojo); background: var(--rojo-bg); border-color: transparent; }
   button.aprobar { background: #1f7a43; color: #fff; border-color: transparent; font-weight: 600; }
   .permiso-campo { display: grid; gap: 2px; }
+  fieldset.pregunta { border: 1px solid var(--borde); border-radius: 10px; margin: 0; padding: var(--s2) var(--s3); display: grid; gap: 6px; }
+  fieldset.pregunta legend { font-weight: 600; padding: 0 4px; }
+  .opcion-pregunta { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--borde); cursor: pointer; }
+  .opcion-pregunta:has(input:checked) { border-color: var(--acento); background: var(--acento-suave); }
+  .opcion-pregunta > span { display: grid; gap: 2px; }
   .permiso-campo > span { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; opacity: .8; }
   .permiso-campo pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12.5px; max-height: 12em; overflow: auto;
     background: rgba(0, 0, 0, .12); border-radius: 6px; padding: 6px 8px; }
@@ -1037,18 +1042,23 @@ function renderAgente() {
 
   // Acciones y avisos solo se repintan si cambian: así un clic no cae en un botón que se acaba de reemplazar.
   const nivel = nivelContexto(d.contexto?.[s.id]);
-  const claveAvisos = [s.id, viva?.tipo, !!viva, viva?.ocupada, confirmandoCierre, s.estado, espera, nivel?.clase, s.permiso_json, permisoPendiente(s.id)?.id].join('|');
+  const claveAvisos = [s.id, viva?.tipo, !!viva, viva?.ocupada, confirmandoCierre, s.estado, espera, nivel?.clase, s.permiso_json, permisoPendiente(s.id)?.id, preguntaPendiente(s.id)?.id].join('|');
   if (vAgente.dataset.avisos !== claveAvisos) { vAgente.dataset.avisos = claveAvisos; pintarAvisos(s, viva, tareas, espera, nivel); }
 
 
-  const mensajes = (d.mensajes?.[s.id] ?? []).filter((m) => m.estado !== 'enviado' || Date.now() - m.ts < 90_000);
-  const globos = conversacion.map((m) => el('div', { class: `globo rol-${m.rol}` },
-    m.rol !== 'sistema' && el('span', { class: 'quien' }, { tu: 'Tú', agente: 'Agente', mensaje: 'Tu mensaje desde la oficina' }[m.rol], m.ts ? ` · ${horaDe(m.ts)}` : ''),
-    m.rol === 'agente' ? md(m.texto) : el('div', {}, m.texto)));
-  for (const m of mensajes) {
-    globos.push(el('div', { class: 'globo rol-mensaje' }, el('span', { class: 'quien' },
-      m.estado === 'enviando' ? 'Enviando…' : m.estado === 'error' ? `No se envió: ${m.detalle}` : 'Entregado'), el('div', {}, m.texto)));
-  }
+  // Una sola línea de tiempo, como un chat: tus mensajes y las respuestas por hora. Un mensaje entregado deja de
+  // mostrarse aparte en cuanto aparece en el transcript (si el agente está ocupado, lo lee entre pasos).
+  const recibidos = conversacion.filter((m) => m.rol === 'mensaje').map((m) => m.texto);
+  const mensajes = (d.mensajes?.[s.id] ?? []).filter((m) => m.estado !== 'enviado'
+    || (Date.now() - m.ts < 600_000 && !recibidos.some((t) => t.includes(m.texto.trim()))));
+  const globos = [
+    ...conversacion.map((m) => ({ ts: m.ts ?? 0, nodo: el('div', { class: `globo rol-${m.rol}` },
+      m.rol !== 'sistema' && el('span', { class: 'quien' }, { tu: 'Tú', agente: 'Agente', mensaje: 'Tu mensaje desde la oficina' }[m.rol], m.ts ? ` · ${horaDe(m.ts)}` : ''),
+      m.rol === 'agente' ? md(m.texto) : el('div', {}, m.texto)) })),
+    ...mensajes.map((m) => ({ ts: m.ts, nodo: el('div', { class: 'globo rol-mensaje' }, el('span', { class: 'quien' },
+      m.estado === 'enviando' ? 'Enviando…' : m.estado === 'error' ? `No se envió: ${m.detalle}` : `Entregado · ${horaDe(m.ts)} · lo lee entre pasos`),
+      el('div', {}, m.texto)) })),
+  ].sort((x, y) => x.ts - y.ts).map((g) => g.nodo);
   const lista = document.getElementById('va-conversacion');
   const alFondo = lista.scrollHeight - lista.scrollTop - lista.clientHeight < 60 || lista.querySelector('.vacio');
   if (globos.length || conversacionTs) reemplazar(lista, globos.length ? globos : el('p', { class: 'vacio' }, 'Todavía no hay conversación que mostrar.'));
@@ -1110,6 +1120,36 @@ function decisionPermiso(p, { compacto = false } = {}) {
       el('button', { type: 'button', class: 'peligro', onclick: () => decidirPermiso(p.id, 'deny', motivo.value.trim() || undefined, estado) }, 'Rechazar'),
       estado));
 }
+// Pregunta con opciones (AskUserQuestion): eliges como en la app y la respuesta le llega al agente sin pasar por su terminal.
+const preguntaPendiente = (sid) => (datos?.preguntas ?? []).filter((p) => p.sid === sid).at(-1) ?? null;
+function formularioPregunta(p) {
+  const estado = el('span', { class: 'meta', role: 'status' });
+  const bloques = p.preguntas.map((q, i) => {
+    const otra = el('input', { type: 'text', placeholder: 'Otra respuesta (opcional)', 'aria-label': `Otra respuesta: ${q.pregunta}` });
+    const opciones = q.opciones.map((o) => el('label', { class: 'opcion-pregunta' },
+      el('input', { type: q.multiple ? 'checkbox' : 'radio', name: `pregunta-${p.id}-${i}`, value: o.etiqueta }),
+      el('span', {}, el('b', {}, o.etiqueta), o.descripcion && el('span', { class: 'meta' }, o.descripcion))));
+    const nodo = el('fieldset', { class: 'pregunta' }, el('legend', {}, q.titulo && chip(q.titulo), ' ', q.pregunta),
+      q.multiple && el('span', { class: 'meta' }, 'Puedes elegir varias.'), opciones, otra);
+    const valor = () => {
+      const elegidas = [...nodo.querySelectorAll('input:checked')].map((x) => x.value);
+      if (otra.value.trim()) elegidas[q.multiple ? elegidas.length : 0] = otra.value.trim();
+      return elegidas.join(', ');
+    };
+    return { q, nodo, valor };
+  });
+  const responder = async () => {
+    const respuestas = Object.fromEntries(bloques.map((b) => [b.q.pregunta, b.valor()]));
+    if (Object.values(respuestas).some((v) => !v)) { estado.textContent = 'Responde todas las preguntas.'; return; }
+    try { await post(`/api/preguntas/${p.id}`, { respuestas }); estado.textContent = 'Enviado.'; }
+    catch (err) { estado.textContent = err.message; }
+  };
+  return el('div', { class: 'aviso-caja', style: 'display:grid;gap:10px' },
+    el('p', { style: 'margin:0' }, el('b', {}, 'Te pregunta. '), 'Responde aquí en ', el('b', { 'data-vence': p.vence }, ''),
+      '; si no, la pregunta aparece en su terminal.'),
+    bloques.map((b) => b.nodo),
+    el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'primario', onclick: responder }, icono('enviar'), 'Responder'), estado));
+}
 function avisoPermiso(s, viva) {
   const pendiente = permisoPendiente(s.id);
   if (pendiente) return el('div', { class: 'aviso-caja rojo' }, decisionPermiso(pendiente));
@@ -1147,6 +1187,7 @@ function pintarAvisos(s, viva, tareas, espera, nivel) {
         } }, 'Sí, cerrar'),
         el('button', { type: 'button', onclick: () => { confirmandoCierre = false; renderAgente(); } }, 'Cancelar'))),
     s.estado === 'necesita_permiso' && avisoPermiso(s, viva),
+    preguntaPendiente(s.id) && formularioPregunta(preguntaPendiente(s.id)),
     s.estado === 'bloqueado' && el('p', { class: 'aviso-caja rojo' }, el('b', {}, 'Está bloqueado. '), 'Su último mensaje dice qué le falta.'),
     espera && el('p', { class: 'aviso-caja' }, el('b', {}, 'Espera sus procesos. '), 'Cuando terminen, sigue solo; si le escribes ahora, lee tu mensaje y responde.'),
     nivel?.clase && viva && el('div', { class: `aviso-caja ${nivel.clase === 'lleno' ? 'rojo' : ''}` },
