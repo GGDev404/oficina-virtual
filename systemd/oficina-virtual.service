@@ -1,0 +1,12 @@
+[Unit]
+Description=Oficina virtual: sesiones de Claude Code y tareas de ClickUp (127.0.0.1:4777)
+
+[Service]
+WorkingDirectory=%h/Proyectos/Oficina-virtual
+# Node de mise por ruta directa ("22" sigue a la última 22.x); evita que el shim instale versiones al arrancar.
+ExecStart=%h/.local/share/mise/installs/node/22/bin/node --disable-warning=ExperimentalWarning server/index.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

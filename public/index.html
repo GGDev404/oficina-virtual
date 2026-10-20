@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oficina virtual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&display=swap">
+<style>
+  :root {
+    --fondo: #f4f3ef; --panel: #ffffff; --hundido: #f0eee9; --borde: #e2e0d9; --borde-fuerte: #c9c6bd;
+    --texto: #1c1b19; --suave: #615f59; --acento: #2d5bd0; --acento-suave: #e6ecfb; --acento-texto: #ffffff;
+    --rojo: #b8321f; --rojo-bg: #fbe8e4; --naranja: #9a4f00; --naranja-bg: #fdefdc;
+    --amarillo: #7a6000; --amarillo-bg: #faf3d2; --verde: #1d6e3e; --verde-bg: #e2f2e8;
+    --gris: #615f59; --gris-bg: #eeece7; --resalte: #fff4bf;
+    --escenario: #d8d3c6; --sombra: 0 12px 32px rgba(28, 27, 25, .18), 0 2px 6px rgba(28, 27, 25, .12);
+    --pixel: 'Pixelify Sans', ui-monospace, monospace;
+    --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+    --cabecera: 52px;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fondo: #121211; --panel: #1b1b19; --hundido: #151514; --borde: #2e2d2a; --borde-fuerte: #45433f;
+      --texto: #ecebe6; --suave: #a8a69f; --acento: #93b2ff; --acento-suave: #1e2a47; --acento-texto: #10172b;
+      --rojo: #ff8a75; --rojo-bg: #3a1a15; --naranja: #ffb066; --naranja-bg: #36260f;
+      --amarillo: #ead068; --amarillo-bg: #312b10; --verde: #74d69d; --verde-bg: #143022;
+      --gris: #a8a69f; --gris-bg: #262523; --resalte: #39330f;
+      --escenario: #16151d; --sombra: 0 14px 36px rgba(0, 0, 0, .55), 0 2px 6px rgba(0, 0, 0, .4);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scrollbar-color: var(--borde-fuerte) transparent; accent-color: var(--acento); }
+  body { margin: 0; background: var(--fondo); color: var(--texto); font: 14px/1.5 system-ui, sans-serif; }
+  ::selection { background: var(--acento-suave); color: var(--texto); }
+  a { color: var(--acento); text-underline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; border-radius: 4px; }
+  svg.icono { width: 16px; height: 16px; flex: none; vertical-align: -3px; }
+  button { font: inherit; color: inherit; background: var(--gris-bg); border: 1px solid var(--borde); border-radius: 8px;
+    padding: var(--s1) var(--s3); cursor: pointer; min-height: 32px; display: inline-flex; gap: 6px; align-items: center; }
+  button:hover { border-color: var(--borde-fuerte); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.primario { background: var(--acento); color: var(--acento-texto); border-color: transparent; font-weight: 600; }
+  select, textarea { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--borde); border-radius: 8px;
+    padding: var(--s1) var(--s2); min-height: 32px; max-width: 100%; }
+  textarea { width: 100%; resize: vertical; padding: var(--s2) var(--s3); line-height: 1.45; }
+  .chip { display: inline-block; font-size: 12px; line-height: 1.6; padding: 0 var(--s2); border-radius: 99px; white-space: nowrap;
+    background: var(--gris-bg); color: var(--gris); }
+  .rojo { background: var(--rojo-bg); color: var(--rojo); }
+  .naranja { background: var(--naranja-bg); color: var(--naranja); }
+  .amarillo { background: var(--amarillo-bg); color: var(--amarillo); }
+  .verde { background: var(--verde-bg); color: var(--verde); }
+  .meta { color: var(--suave); font-size: 12.5px; }
+  .fila { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); align-items: center; min-width: 0; }
+  .mensaje { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--suave); font-size: 13px; }
+  .corto { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .corto3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  details > summary { cursor: pointer; color: var(--suave); font-size: 12.5px; }
+  .vacio { color: var(--suave); padding: var(--s3) 0; margin: 0; }
+  .enlace { background: none; border: 0; padding: 0; min-height: 0; color: var(--acento); text-decoration: underline;
+    text-underline-offset: 2px; cursor: pointer; text-align: left; font-weight: 600; display: inline-flex; }
+  .boton-chico { min-height: 28px; padding: 2px var(--s2); font-size: 12.5px; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  h3 { font-size: 12px; margin: var(--s5) 0 var(--s2); color: var(--suave); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+
+  /* Barra superior */
+  .barra { position: sticky; top: 0; z-index: 10; background: var(--panel); border-bottom: 1px solid var(--borde);
+    padding: var(--s2) var(--s5); display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); align-items: center; }
+  .barra h1 { font-size: 16px; margin: 0; letter-spacing: -0.01em; margin-right: auto; }
+  .sync { color: var(--suave); display: flex; gap: var(--s2); align-items: center; font-size: 13px; }
+
+  /* Escenario: la oficina a todo el ancho, ajustada para caber debajo de la barra */
+  .escenario { background: var(--escenario); display: flex; justify-content: center; }
+  .escena { position: relative; overflow: hidden; width: min(100%, calc((100svh - var(--cabecera) - 96px) * 480 / 272)); }
+  @media (max-width: 700px) {
+    .escenario { overflow-x: auto; justify-content: flex-start; overscroll-behavior-x: contain; }
+    .escena { width: 680px; flex: none; }
+  }
+  .escena canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+  .capa { position: absolute; inset: 0; pointer-events: none; }
+  .fijo { position: absolute; left: 0; top: 0; }
+  .cuarto { font: 700 13px/1 var(--pixel); letter-spacing: .06em; color: #fff; background: rgba(12, 11, 18, .62);
+    padding: 4px 8px 5px; border-radius: 4px; text-transform: uppercase; white-space: nowrap; margin: 4px 0 0 8px; }
+  .cuarto.lleno { background: #b4590f; }
+  .agente { position: absolute; left: 0; top: 0; width: 0; height: 0; padding: 0; border: 0; background: none; min-height: 0;
+    pointer-events: auto; cursor: pointer; }
+  .agente .caja { position: absolute; left: calc(var(--e) * -9px); top: calc(var(--e) * -19px);
+    width: calc(var(--e) * 18px); height: calc(var(--e) * 21px); border-radius: 6px; }
+  .agente:focus-visible { outline: none; }
+  .agente:hover .caja { outline: 2px dashed rgba(255, 216, 74, .8); }
+  .agente:focus-visible .caja { outline: 2px solid #ffd84a; outline-offset: 1px; }
+  .burbuja { position: absolute; left: 0; bottom: calc(var(--e) * 19px); transform: translateX(-50%);
+    font: 700 15px/1 var(--pixel); background: #fffdf5; color: #1a1922; border: 2px solid #1a1922; border-radius: 4px;
+    padding: 2px 6px 3px; white-space: nowrap; display: flex; gap: 3px; align-items: center; box-shadow: 0 3px 0 rgba(0, 0, 0, .3); }
+  .burbuja::after { content: ''; position: absolute; left: 50%; bottom: -8px; margin-left: -4px;
+    border: 4px solid transparent; border-top-color: #1a1922; }
+  .burbuja.rojo { background: #ff6b57; color: #fff; }
+  .burbuja.naranja { background: #ffb347; color: #1a1922; }
+  .burbuja.amarillo { background: #ffe066; color: #1a1922; }
+  .burbuja.gris { background: #d4d0e4; color: #1a1922; }
+  .burbuja.azul { background: #9fd3ff; color: #1a1922; }
+  .burbuja:empty { display: none; }
+  .burbuja svg.icono { width: 14px; height: 14px; stroke-width: 2.5; }
+  .etiqueta { position: absolute; left: 0; top: calc(var(--e) * 1px); transform: translateX(-50%);
+    font: 500 12.5px/1.2 var(--pixel); color: #fff; background: rgba(12, 11, 18, .82);
+    padding: 2px 6px 3px; border-radius: 4px; white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+  .objeto { pointer-events: auto; padding: 0; border: 0; background: none; min-height: 0; cursor: pointer; }
+  .insignia { display: inline-flex; gap: 4px; align-items: center; font: 700 12.5px/1 var(--pixel); color: #fff; background: #d8433f;
+    border: 2px solid #1a1922; border-radius: 99px; padding: 3px 8px 4px; box-shadow: 0 2px 0 rgba(0, 0, 0, .3); white-space: nowrap; }
+  .insignia.bien { background: #3f8f5a; }
+  .insignia.neutra { background: #2d2b3a; }
+  .insignia svg.icono { width: 13px; height: 13px; }
+  .objeto:focus-visible { outline: none; }
+  .objeto:focus-visible .insignia, .objeto:hover .insignia { outline: 2px solid #ffd84a; outline-offset: 2px; }
+  .aviso-vacio { font: 500 14px/1.3 var(--pixel); color: #fff; background: rgba(12, 11, 18, .62); padding: 6px 10px; border-radius: 6px; white-space: nowrap; }
+
+  /* Tarjetas de resumen debajo de la escena: un ítem cada una */
+  .tarjetas { max-width: 1920px; margin: 0 auto; padding: var(--s3) var(--s5) var(--s5); display: grid; gap: var(--s3);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+  .tarjeta { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--s1) var(--s3); align-items: center; text-align: left;
+    background: var(--panel); border: 1px solid var(--borde); border-radius: 12px; padding: var(--s3) var(--s4); min-height: 68px; }
+  .tarjeta:hover { border-color: var(--borde-fuerte); background: var(--panel); }
+  .tarjeta .icono-t { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--gris-bg); color: var(--suave); }
+  .tarjeta .icono-t svg { width: 18px; height: 18px; }
+  .tarjeta.alerta .icono-t { background: var(--rojo-bg); color: var(--rojo); }
+  .tarjeta.aviso .icono-t { background: var(--naranja-bg); color: var(--naranja); }
+  .tarjeta.bien .icono-t { background: var(--verde-bg); color: var(--verde); }
+  .tarjeta b { display: block; font-size: 14px; }
+  .tarjeta .detalle { color: var(--suave); font-size: 12.5px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tarjeta > svg.icono { color: var(--suave); }
+
+  /* Ventanas grandes */
+  dialog.ventana { width: min(1180px, 96vw); max-height: 92svh; padding: 0; border: 1px solid var(--borde); border-radius: 16px;
+    background: var(--panel); color: var(--texto); box-shadow: var(--sombra); overflow: hidden; }
+  dialog.ventana[open] { display: flex; flex-direction: column; animation: abre .18s cubic-bezier(.16, 1, .3, 1); }
+  dialog.ventana::backdrop { background: rgba(10, 10, 14, .55); }
+  @keyframes abre { from { transform: translateY(10px) scale(.985); } } /* sin opacidad: si la animación no corre, la ventana igual se ve */
+  @media (prefers-reduced-motion: reduce) { dialog.ventana[open] { animation: none; } }
+  .ventana > header { display: flex; gap: var(--s3); align-items: flex-start; padding: var(--s4) var(--s5); border-bottom: 1px solid var(--borde); }
+  .ventana > header .titulos { flex: 1; min-width: 0; display: grid; gap: var(--s1); }
+  .ventana > header h2 { margin: 0; font-size: 18px; line-height: 1.3; text-wrap: balance; }
+  .ventana .cerrar { width: 36px; padding: 0; justify-content: center; flex: none; }
+  .cuerpo { flex: 1; min-height: 0; overflow: auto; padding: var(--s4) var(--s5) var(--s5); }
+  .dos-col { display: grid; gap: var(--s5); grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; }
+  @media (max-width: 860px) { .dos-col { grid-template-columns: minmax(0, 1fr); } .ventana > header, .cuerpo { padding-inline: var(--s4); } }
+
+  /* Ficha del agente */
+  .conversacion { display: flex; flex-direction: column; gap: var(--s2); max-height: 52svh; overflow: auto; padding-right: var(--s1); }
+  .globo { max-width: 92%; padding: var(--s2) var(--s3); border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; }
+  .globo.rol-agente { background: var(--hundido); border: 1px solid var(--borde); align-self: flex-start; border-bottom-left-radius: 4px; }
+  .globo.rol-tu { background: var(--acento-suave); align-self: flex-end; border-bottom-right-radius: 4px; }
+  .globo.rol-mensaje { background: var(--verde-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
+  .globo.rol-sistema { align-self: center; background: none; color: var(--suave); font-size: 12.5px; padding: 0; }
+  .globo .quien { display: block; font-size: 11.5px; color: var(--suave); margin-bottom: 2px; }
+  .redactar { display: grid; gap: var(--s2); margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--borde); }
+  .aviso-caja { background: var(--naranja-bg); color: var(--naranja); border-radius: 10px; padding: var(--s2) var(--s3); font-size: 13px; margin: 0 0 var(--s3); }
+  .aviso-caja.rojo { background: var(--rojo-bg); color: var(--rojo); }
+  .contexto { display: grid; gap: var(--s3); align-content: start; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+  .bloque select { width: 100%; }
+  .dos-col > * { min-width: 0; }
+  .bloque { border: 1px solid var(--borde); border-radius: 12px; padding: var(--s3) var(--s4); display: grid; gap: var(--s2); min-width: 0; }
+  .bloque h4 { margin: 0; font-size: 12px; color: var(--suave); text-transform: uppercase; letter-spacing: .05em; }
+  .lista-simple li { padding: var(--s1) 0; border-top: 1px solid var(--borde); overflow-wrap: anywhere; }
+  .lista-simple li:first-child { border-top: 0; }
+  .ficha-tarea { font-size: 12.5px; }
+  .ficha-tarea b { color: var(--naranja); font-weight: 600; }
+
+  /* Tu oficina */
+  .veredicto { font-size: 13.5px; font-weight: 600; }
+  .hoy li { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--s3); padding: var(--s3) 0; border-top: 1px solid var(--borde); }
+  .hoy li:first-child { border-top: 0; }
+  .hora { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13px; padding-top: 1px; }
+  .hora.vencida { color: var(--rojo); }
+  .dias { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .dia { border: 1px solid var(--borde); border-radius: 12px; padding: var(--s3); display: grid; gap: var(--s2); align-content: start; }
+  .dia h4 { margin: 0; font-size: 13px; display: flex; justify-content: space-between; text-transform: capitalize; }
+  .dia details { border-top: 1px solid var(--borde); padding-top: var(--s2); }
+  .dia details:first-of-type { border-top: 0; padding-top: 0; }
+  .dia summary { color: var(--texto); font-size: 13px; list-style: none; display: grid; gap: 2px; }
+  .dia summary::-webkit-details-marker { display: none; }
+  .dia summary .hora { font-size: 12px; color: var(--suave); }
+  .comentario { padding: var(--s3) 0; border-top: 1px solid var(--borde); display: grid; gap: var(--s1); }
+  .comentario:first-child { border-top: 0; }
+  .comentario.correccion { background: var(--resalte); border-radius: 10px; padding: var(--s3); border-top-color: transparent; margin: var(--s1) 0; }
+  .anoche { font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 22em; overflow: auto; background: var(--hundido); border-radius: 10px; padding: var(--s3); }
+
+  @media (max-width: 760px) {
+    .barra { padding: var(--s2) var(--s4); }
+    .tarjetas { padding: var(--s3) var(--s4) var(--s4); }
+  }
+</style>
+</head>
+<body>
+<header class="barra" id="barra">
+  <h1>Oficina virtual</h1>
+  <div class="sync"><span id="sync-texto">Sin sincronizar</span>
+    <button id="sincronizar" type="button">Sincronizar ahora</button>
+    <span id="conexion" class="chip">conectando…</span></div>
+</header>
+<main>
+  <div class="escenario">
+    <div class="escena" id="escena" role="region" aria-label="Oficina: cada agente está en el cuarto de su estado">
+      <canvas id="lienzo" width="480" height="272" aria-hidden="true"></canvas>
+      <div class="capa" id="capa"></div>
+    </div>
+  </div>
+  <nav class="tarjetas" aria-label="Resumen">
+    <button class="tarjeta" id="t-necesitan" type="button" aria-haspopup="dialog"></button>
+    <button class="tarjeta" id="t-hoy" type="button" aria-haspopup="dialog"></button>
+    <button class="tarjeta" id="t-parati" type="button" aria-haspopup="dialog"></button>
+    <button class="tarjeta" id="t-corte" type="button" aria-haspopup="dialog"></button>
+  </nav>
+</main>
+
+<dialog class="ventana" id="v-agente" aria-labelledby="va-titulo">
+  <header><div class="titulos"><h2 id="va-titulo"></h2><div class="fila" id="va-sub"></div></div>
+    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar"></button></header>
+  <div class="cuerpo"><div class="dos-col">
+    <section aria-label="Conversación">
+      <div id="va-aviso"></div>
+      <div class="conversacion" id="va-conversacion"><p class="vacio">Cargando…</p></div>
+      <form class="redactar" id="va-form">
+        <label class="meta" for="va-texto">Escríbele o pregúntale algo. Le llega como mensaje tuyo desde la oficina (Ctrl+Enter envía).</label>
+        <textarea id="va-texto" rows="3" maxlength="4000" placeholder="Por ejemplo: ¿ya terminaron las pruebas? Cuando acabes, deja el diff listo para revisar."></textarea>
+        <div class="fila"><button class="primario" type="submit" id="va-enviar"></button><span class="meta" id="va-estado" role="status"></span></div>
+      </form>
+    </section>
+    <aside class="contexto" id="va-contexto" aria-label="Contexto"></aside>
+  </div></div>
+</dialog>
+
+<dialog class="ventana" id="v-oficina" aria-labelledby="vo-titulo">
+  <header><div class="titulos"><h2 id="vo-titulo">Tu oficina</h2><div class="fila" id="vo-sub"></div></div>
+    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar"></button></header>
+  <div class="cuerpo"><div class="dos-col">
+    <section aria-labelledby="vo-agenda-t" id="vo-agenda">
+      <h3 id="vo-agenda-t" style="margin-top:0">Hoy</h3>
+      <ul class="hoy" id="vo-hoy"></ul>
+      <h3>Próximos días</h3>
+      <div class="dias" id="vo-dias"></div>
+      <div id="vo-despues"></div>
+    </section>
+    <div class="contexto">
+      <section class="bloque" aria-labelledby="vo-parati-t" id="vo-parati">
+        <div class="fila"><h4 id="vo-parati-t" style="margin-right:auto">Para ti</h4>
+          <label class="meta"><input type="checkbox" id="vo-todos"> Todos los comentarios</label></div>
+        <div id="vo-comentarios"></div>
+      </section>
+      <section class="bloque" aria-labelledby="vo-noche-t" id="vo-noche">
+        <h4 id="vo-noche-t">Turno nocturno</h4>
+        <div id="vo-noche-texto"><p class="vacio">Cargando…</p></div>
+      </section>
+    </div>
+  </div></div>
+</dialog>
+
+<dialog class="ventana" id="v-necesitan" aria-labelledby="vn-titulo">
+  <header><div class="titulos"><h2 id="vn-titulo">Te necesitan</h2><div class="meta">Agentes que esperan algo de ti, el más urgente primero.</div></div>
+    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar"></button></header>
+  <div class="cuerpo"><ul id="vn-lista"></ul></div>
+</dialog>
+
+<script>
+// ════════════════════════ Datos y utilidades ════════════════════════
+const ESTADOS = {
+  necesita_permiso: ['Necesita permiso', 'rojo'], bloqueado: ['Bloqueado', 'rojo'],
+  duda: ['Duda', 'naranja'], te_espera: ['Te espera', 'naranja'],
+  listo_para_revisar: ['Listo para revisar', 'amarillo'], trabajando: ['Trabajando', 'verde'],
+  sin_señal: ['Sin señal', ''], cerrada: ['Cerrada', ''], terminado: ['Terminado', ''],
+};
+const PRIORIDAD = { urgent: ['Urgente', 'rojo'], high: ['Alta', 'naranja'], normal: ['Normal', ''], low: ['Baja', ''] };
+const URGENCIA = { necesita_permiso: 0, bloqueado: 1, duda: 2, te_espera: 3 };
+const MAX_ACTIVOS = 3; // regla del sprint: máximo 3 agentes vivos
+// Cortes del día (plan del Sprint 02): daily, seguimientos de ClickUp e integración a develop.
+const CORTES = [['09:00', 'Daily'], ['09:35', 'Seguimiento de ClickUp'], ['13:00', 'Integración a develop'],
+  ['13:35', 'Seguimiento de ClickUp'], ['17:35', 'Seguimiento de ClickUp'], ['18:00', 'Integración a develop']];
+let datos = null;
+let abierta = null; // sesión de la ficha abierta
+
+// Los textos vienen de agentes y comentarios: siempre como texto, nunca como HTML.
+function el(tag, attrs = {}, ...hijos) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') n.className = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v === true ? '' : v);
+  }
+  for (const h of hijos.flat()) if (h != null && h !== false) n.append(h instanceof Node ? h : String(h));
+  return n;
+}
+const reemplazar = (nodo, ...hijos) => nodo.replaceChildren(...hijos.flat().filter((h) => h != null && h !== false));
+// Íconos de trazo (formas de Lucide, ISC) dibujados aquí mismo: nada de emoji ni glifos.
+const TRAZOS = {
+  cerrar: ['M18 6 6 18', 'm6 6 12 12'],
+  correo: ['M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'm22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7'],
+  robot: ['M12 8V4H8', 'M6 8h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z', 'M2 14h2', 'M20 14h2', 'M15 13v2', 'M9 13v2'],
+  rama: ['M6 3v12', 'M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M18 9a9 9 0 0 1-9 9'],
+  carpeta: ['M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z'],
+  alto: ['M7.86 2h8.28L22 7.86v8.28L16.14 22H7.86L2 16.14V7.86z', 'm15 9-6 6', 'm9 9 6 6'],
+  listo: ['M20 6 9 17l-5-5'],
+  calendario: ['M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M16 2v4', 'M8 2v4', 'M3 10h18'],
+  externo: ['M15 3h6v6', 'M10 14 21 3', 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'],
+  reloj: ['M5 22h14', 'M5 2h14', 'M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22', 'M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2'],
+  enviar: ['m22 2-7 20-4-9-9-4Z', 'M22 2 11 13'],
+  terminal: ['m4 17 6-6-6-6', 'M12 19h8'],
+  flecha: ['m9 18 6-6-6-6'],
+  arroba: ['M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', 'M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8'],
+  campana: ['M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9', 'M10.3 21a1.94 1.94 0 0 0 3.4 0'],
+  hora: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 6v6l4 2'],
+};
+function icono(nombre) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const s = document.createElementNS(ns, 'svg');
+  s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor');
+  s.setAttribute('stroke-width', '2'); s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round');
+  s.setAttribute('aria-hidden', 'true'); s.setAttribute('class', 'icono');
+  for (const d of TRAZOS[nombre]) { const p = document.createElementNS(ns, 'path'); p.setAttribute('d', d); s.append(p); }
+  return s;
+}
+const chip = (texto, color = '') => el('span', { class: `chip ${color}` }, texto);
+const chipEstado = (e) => chip(...(ESTADOS[e] ?? [e, '']));
+function hace(ts) {
+  if (!ts) return '';
+  const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+  if (s < 60) return 'hace un momento';
+  const m = Math.round(s / 60);
+  if (m < 60) return `hace ${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `hace ${h} h ${m % 60 ? `${m % 60} min` : ''}`.trim();
+  return `hace ${Math.floor(h / 24)} d`;
+}
+const horaDe = (ts) => new Date(ts).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+const fecha = (ts) => new Date(ts).toLocaleString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const diaLargo = (ts) => new Date(ts).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short' });
+const carpeta = (cwd) => (cwd ?? '').split('/').filter(Boolean).slice(-2).join('/');
+const base = (cwd) => (cwd ?? '').split('/').filter(Boolean).at(-1) ?? '';
+const inicioDia = (ts) => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return +d; };
+const DIA = 86400000;
+const tareaPorId = (d) => Object.fromEntries(d.tareas.map((t) => [t.id, t]));
+const pendientesParaMi = (d) => d.comentarios.filter((c) => !c.es_mio && c.para_mi && !c.respondido && !c.visto_local);
+const procesosDe = (s) => { try { return JSON.parse(s.procesos_json ?? 'null') ?? []; } catch { return []; } };
+const nombreSesion = (s, tareas) => s.nombre ?? tareas[s.tarea_id]?.nombre ?? (carpeta(s.cwd) || s.id.slice(0, 8));
+function enlaceTarea(t, id) {
+  if (!t) return id ? el('span', {}, id) : null;
+  return el('a', { href: t.url, target: '_blank', rel: 'noopener' }, t.nombre);
+}
+async function post(url, cuerpo) {
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo ?? {}) });
+  if (!r.ok && r.status !== 202) throw new Error((await r.json().catch(() => ({}))).error ?? `Error ${r.status}`);
+  return r.status === 204 ? null : r.json().catch(() => null);
+}
+const postSeguro = (url, cuerpo) => post(url, cuerpo).catch((e) => alert(e.message));
+// Esperando procesos: trabajando, con shells o subagentes en fondo y la sesión libre (su turno ya terminó).
+const esperaProcesos = (s, d) => s.estado === 'trabajando' && procesosDe(s).length > 0 && d.vivas?.[s.id]?.ocupada !== true;
+
+// ════════════════════════ Escena pixel art ════════════════════════
+// Mundo lógico de 480×272 px que el CSS escala con image-rendering: pixelated.
+const W = 480, H = 272;
+const lienzo = document.getElementById('lienzo');
+const escena = document.getElementById('escena');
+const capa = document.getElementById('capa');
+const reducido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let ctx = lienzo.getContext('2d'); // contexto donde pintan r() y los sprites
+const r = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); };
+function en(c, fn) { const previo = ctx; ctx = c; fn(); ctx = previo; }
+
+const PAL = {
+  pasillo: ['#bdb7a8', '#b2ac9c'], muro: '#47415f', muroAlto: '#2c2940', zocalo: '#24212f', borde: '#1c1a26',
+  marco: '#6b5236', oscuro: '#1e1b26', pantalon: '#30364a', zapato: '#1b1a22',
+};
+// Cada cuarto tiene una sola puerta hacia el pasillo horizontal (y 128–160): por ahí caminan los agentes.
+const SALAS = {
+  taller: { titulo: 'Taller', x: 0, y: 0, w: 272, h: 128, piso: ['#a8754a', '#9d6c44'], puerta: 248, abajo: true },
+  puerta: { titulo: 'Tu puerta', x: 304, y: 0, w: 176, h: 128, piso: ['#6e4f80', '#674a78'], puerta: 392, abajo: true },
+  bloqueados: { titulo: 'Bloqueados', x: 0, y: 160, w: 112, h: 112, piso: ['#71757f', '#696d77'], puerta: 56, abajo: false },
+  descanso: { titulo: 'Descanso', x: 112, y: 160, w: 160, h: 112, piso: ['#d2ab72', '#c8a16a'], puerta: 196, abajo: false },
+  oficina: { titulo: 'Tu oficina', x: 304, y: 160, w: 176, h: 112, piso: ['#4f7d5c', '#4a7657'], puerta: 392, abajo: false },
+};
+const ESCRITORIOS = [26, 72].flatMap((dy) => [14, 72, 130, 188].map((dx) => ({ dx, dy })));
+const MESA_YO = { dx: SALAS.oficina.x + 104, dy: SALAS.oficina.y + 50 };
+const ROL = {
+  trabajando: { sala: 'taller', pose: 'teclea' },
+  necesita_permiso: { sala: 'puerta', pose: 'mano', burbuja: ['!', 'rojo'], prio: 0 },
+  duda: { sala: 'puerta', pose: 'mano', burbuja: ['?', 'naranja'], prio: 1 },
+  te_espera: { sala: 'puerta', pose: 'parado', burbuja: ['•••', 'naranja'], prio: 2 },
+  bloqueado: { sala: 'bloqueados', pose: 'triste', burbuja: [{ icono: 'alto' }, 'rojo'] },
+  listo_para_revisar: { sala: 'descanso', pose: 'cafe', burbuja: [{ icono: 'listo' }, 'amarillo'] },
+  sin_señal: { sala: 'descanso', pose: 'duerme', burbuja: ['zZ', 'gris'] },
+};
+function lugar(sala, i) {
+  if (sala === 'taller') {
+    if (i < ESCRITORIOS.length) { const e = ESCRITORIOS[i]; return { x: e.dx + 15, y: e.dy + 24, escritorio: i }; }
+    return { x: 14 + ((i - ESCRITORIOS.length) % 10) * 22, y: 122, pose: 'parado' };
+  }
+  if (sala === 'puerta') { // fila frente a tu puerta: el más urgente queda junto a ella
+    const xs = [370, 414, 326, 458];
+    return { x: xs[i % 4], y: [112, 74, 38][Math.floor(i / 4) % 3] };
+  }
+  const s = SALAS[sala];
+  const cols = Math.floor((s.w - 16) / 32);
+  return { x: s.x + 22 + (i % cols) * 32, y: s.y + 58 + (Math.floor(i / cols) % 2) * 36 };
+}
+const entrada = (sala) => { const s = SALAS[sala]; return { x: s.puerta, y: s.abajo ? s.y + s.h - 6 : s.y + 26 }; };
+const enPasillo = (sala) => ({ x: SALAS[sala].puerta, y: 146 });
+
+// Aspecto estable por sesión (pelo, piel y camisa salen del id).
+function hash(t) { let h = 2166136261; for (const c of t) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; }
+const PELOS = ['#2b1d14', '#5a3a1e', '#c99a3e', '#161616', '#8a3b2a', '#d8d2c4', '#3b2a4a'];
+const CAMISAS = [['#3a7bd5', '#2c5fa8'], ['#d5573a', '#a8432c'], ['#3aa66b', '#2b8053'], ['#9b59b6', '#7a4590'],
+  ['#e0a526', '#b78516'], ['#2bb3b3', '#1f8a8a'], ['#e05f8f', '#b54670'], ['#6c7a89', '#55606c']];
+const PIELES = ['#f1c7a3', '#dcae84', '#b07a52', '#7d5135'];
+function aspecto(id) {
+  const h = hash(id);
+  const [camisa, sombra] = CAMISAS[h % CAMISAS.length];
+  return { pelo: PELOS[(h >>> 3) % PELOS.length], piel: PIELES[(h >>> 7) % PIELES.length], camisa, sombra };
+}
+const YO = { pelo: '#161616', piel: '#c99572', camisa: '#1f9e8f', sombra: '#177a6e' };
+
+// Personaje de 12×16 px; (x, y) son los pies. f = cuadro de animación.
+function personaje(x, y, a, pose, f, vista = 'frente') {
+  const ox = Math.round(x) - 6, oy = Math.round(y) - 16;
+  const p = (cx, cy, w, h, c) => r(ox + cx, oy + cy, w, h, c);
+  if (vista === 'espalda') { // sentado frente a su monitor; quieto si espera un proceso
+    const t = reducido || pose === 'espera' ? 0 : f % 2;
+    p(4, 0, 4, 1, a.pelo); p(3, 1, 6, 4, a.pelo); p(4, 5, 4, 1, a.piel);
+    p(2, 6, 8, 6, a.camisa); p(2, 11, 8, 1, a.sombra);
+    p(2, 3 + t, 1, 3, a.camisa); p(2, 2 + t, 1, 1, a.piel);
+    p(9, 4 - t, 1, 3, a.camisa); p(9, 3 - t, 1, 1, a.piel);
+    p(1, 9, 10, 6, '#323a4c'); p(1, 9, 10, 1, '#46516b'); p(2, 15, 1, 1, PAL.oscuro); p(9, 15, 1, 1, PAL.oscuro); // silla
+    return;
+  }
+  r(ox + 2, oy + 15, 8, 2, 'rgba(0,0,0,.28)');
+  const b = !reducido && pose === 'mano' && f % 2 ? -1 : 0; // la mano levantada se agita
+  const q = (cx, cy, w, h, c) => p(cx, cy + b, w, h, c);
+  q(4, 0, 4, 1, a.pelo); q(3, 1, 6, 1, a.pelo); q(3, 2, 1, 1, a.pelo); q(8, 2, 1, 1, a.pelo);
+  q(4, 2, 4, 1, a.piel); q(3, 3, 6, 2, a.piel); q(4, 5, 4, 1, a.piel);
+  if (pose === 'duerme') { q(4, 4, 1, 1, '#5b3b2a'); q(7, 4, 1, 1, '#5b3b2a'); }
+  else { q(4, 3, 1, 1, PAL.oscuro); q(7, 3, 1, 1, PAL.oscuro); }
+  if (pose === 'triste') q(5, 5, 2, 1, '#8b5a44');
+  q(3, 6, 6, 5, a.camisa); q(3, 10, 6, 1, a.sombra); q(2, 7, 1, 3, a.camisa); q(2, 10, 1, 1, a.piel);
+  if (pose === 'mano') { q(9, 3, 1, 4, a.camisa); q(9, 2, 1, 1, a.piel); q(9, 7, 1, 1, a.camisa); }
+  else if (pose === 'cafe') {
+    q(9, 7, 1, 2, a.camisa); q(9, 9, 1, 1, a.piel); q(10, 7, 2, 3, '#f4f1ea'); q(10, 7, 2, 1, '#6b3e1f');
+    if (!reducido) p(10 + (f % 2), 5 - (f % 3), 1, 1, 'rgba(255,255,255,.75)'); // vapor
+  } else { q(9, 7, 1, 3, a.camisa); q(9, 10, 1, 1, a.piel); }
+  p(3, 11, 6, 1, PAL.pantalon);
+  if (pose === 'camina' && !reducido) {
+    const t = f % 2;
+    p(4, 12, 2, t ? 2 : 1, PAL.pantalon); p(4, t ? 14 : 13, 2, 1, PAL.zapato);
+    p(6, 12, 2, t ? 1 : 2, PAL.pantalon); p(6, t ? 13 : 14, 2, 1, PAL.zapato);
+  } else {
+    p(4, 12, 2, 2, PAL.pantalon); p(6, 12, 2, 2, PAL.pantalon); p(4, 14, 2, 1, PAL.zapato); p(6, 14, 2, 1, PAL.zapato);
+  }
+}
+
+// Subagente: robot de 8×10 px que flota a un lado de su agente.
+function robot(x, y, f, k) {
+  const ox = Math.round(x) - 4, oy = Math.round(y) - 10 - (reducido ? 0 : (f + k) % 2);
+  const p = (cx, cy, w, h, c) => r(ox + cx, oy + cy, w, h, c);
+  r(ox + 1, Math.round(y) - 1, 6, 1, 'rgba(0,0,0,.25)');
+  p(4, 0, 1, 1, (f + k) % 4 < 2 ? '#7dffa8' : '#ff6b57'); p(4, 1, 1, 1, '#9aa3ad');
+  p(1, 2, 7, 4, '#c3ccd6'); p(1, 5, 7, 1, '#9aa3ad');
+  const ojo = (f + k * 3) % 12 === 0 ? '#9aa3ad' : '#3ee0ff';
+  p(2, 3, 1, 1, ojo); p(6, 3, 1, 1, ojo);
+  p(2, 6, 5, 3, '#7d8794'); p(3, 7, 3, 1, '#ffd84a');
+  p(2, 9, 1, 1, '#4a4f58'); p(6, 9, 1, 1, '#4a4f58');
+}
+
+// Muebles
+function escritorio(dx, dy) {
+  r(dx, dy + 2, 30, 9, '#c88d55'); r(dx, dy + 2, 30, 1, '#dba06a'); r(dx, dy + 11, 30, 3, '#8a5a33');
+  r(dx + 1, dy + 14, 2, 2, '#6e4626'); r(dx + 27, dy + 14, 2, 2, '#6e4626');
+  r(dx + 7, dy - 9, 16, 11, '#2b2b33'); r(dx + 14, dy + 2, 2, 2, '#2b2b33');
+  r(dx + 8, dy - 8, 14, 8, '#11131a');
+  r(dx + 9, dy + 6, 12, 3, '#d9d6cf'); r(dx + 9, dy + 8, 12, 1, '#b7b3aa');
+  r(dx + 24, dy + 4, 3, 3, '#f4f1ea'); r(dx + 24, dy + 4, 3, 1, '#6b3e1f');
+}
+// Pantalla: código que corre si teclea; barra de progreso si espera un proceso.
+function pantalla(dx, dy, t, espera) {
+  r(dx + 8, dy - 8, 14, 8, '#0f2740');
+  if (espera) {
+    r(dx + 10, dy - 5, 10, 2, '#1d3a5c');
+    r(dx + 10, dy - 5, 1 + ((reducido ? 5 : t) % 10), 2, '#ffd84a');
+    return;
+  }
+  for (let k = 0; k < 4; k++) {
+    const w = 3 + ((k * 7 + (reducido ? 0 : t)) % 9);
+    r(dx + 9 + (k % 2) * 2, dy - 7 + k * 2, Math.min(w, 11), 1, k % 2 ? '#5fd3ff' : '#7dffa8');
+  }
+}
+function planta(x, y) {
+  r(x + 2, y + 8, 8, 6, '#a0522d'); r(x + 2, y + 8, 8, 1, '#c0703f');
+  r(x + 3, y + 1, 6, 7, '#3f9b4f'); r(x + 1, y + 3, 3, 4, '#2f7a3c'); r(x + 8, y + 3, 3, 4, '#2f7a3c'); r(x + 5, y, 2, 2, '#58b866');
+}
+
+// Fondo estático (pisos, muros, puertas y muebles): se pinta una vez en otro lienzo.
+const fondo = document.createElement('canvas');
+fondo.width = W; fondo.height = H;
+en(fondo.getContext('2d'), () => {
+  for (let y = 0; y < H; y += 16) for (let x = 0; x < W; x += 16) r(x, y, 16, 16, PAL.pasillo[((x + y) / 16) % 2]);
+  r(0, 145, W, 2, '#cfc9b9'); r(287, 0, 2, H, '#cfc9b9');
+  for (const s of Object.values(SALAS)) {
+    for (let y = s.y + 14; y < s.y + s.h; y += 8) for (let x = s.x; x < s.x + s.w; x += 8) {
+      r(x, y, 8, 8, s.piso[((x - s.x) / 8 + (y - s.y - 14) / 8) % 2]);
+    }
+    r(s.x, s.y, s.w, 2, PAL.muroAlto); r(s.x, s.y + 2, s.w, 10, PAL.muro); r(s.x, s.y + 12, s.w, 2, PAL.zocalo);
+    r(s.x, s.y, 2, s.h, PAL.borde); r(s.x + s.w - 2, s.y, 2, s.h, PAL.borde); r(s.x, s.y + s.h - 2, s.w, 2, PAL.borde);
+    const px = s.puerta - 12;
+    if (s.abajo) { r(px, s.y + s.h - 2, 24, 2, s.piso[0]); r(px - 2, s.y + s.h - 5, 2, 5, PAL.marco); r(px + 24, s.y + s.h - 5, 2, 5, PAL.marco); }
+    else { r(px, s.y, 24, 14, PAL.pasillo[0]); r(px - 2, s.y, 2, 14, PAL.marco); r(px + 24, s.y, 2, 14, PAL.marco); }
+  }
+  r(78, 3, 52, 9, '#f2f2ee'); r(78, 3, 52, 1, '#9a9a96'); r(81, 5, 18, 1, '#3a7bd5'); r(81, 7, 26, 1, '#d5573a'); r(81, 9, 14, 1, '#3aa66b');
+  r(140, 4, 9, 7, '#e9d9a6'); r(152, 5, 9, 6, '#a6d9e9'); r(164, 4, 9, 7, '#f0b7ca');
+  for (const e of ESCRITORIOS) escritorio(e.dx, e.dy);
+  planta(4, 104); planta(224, 18);
+  const p = SALAS.puerta;
+  r(p.x + 12, p.y + 16, 50, 6, '#8a5a33'); r(p.x + 12, p.y + 22, 50, 2, '#6e4626');
+  r(p.puerta - 16, p.y + p.h - 18, 32, 12, '#a8323f'); r(p.puerta - 14, p.y + p.h - 16, 28, 8, '#c64656');
+  planta(p.x + p.w - 18, p.y + 16);
+  const b = SALAS.bloqueados;
+  r(b.x + 84, b.y + 86, 16, 14, '#8a6a42'); r(b.x + 84, b.y + 86, 16, 2, '#a9845a'); r(b.x + 6, b.y + 90, 12, 10, '#8a6a42'); r(b.x + 6, b.y + 90, 12, 2, '#a9845a');
+  const d = SALAS.descanso;
+  r(d.x + 8, d.y + 16, 56, 14, '#b5523b'); r(d.x + 8, d.y + 16, 56, 4, '#cf6a50'); r(d.x + 6, d.y + 18, 4, 12, '#8f3f2d'); r(d.x + 62, d.y + 18, 4, 12, '#8f3f2d');
+  r(d.x + 128, d.y + 15, 16, 20, '#4a4a52'); r(d.x + 131, d.y + 18, 10, 6, '#22222a'); r(d.x + 133, d.y + 27, 6, 5, '#f4f1ea');
+  r(d.x + 104, d.y + 18, 14, 10, '#8a5a33'); r(d.x + 107, d.y + 16, 4, 3, '#f4f1ea');
+  planta(d.x + d.w - 18, d.y + d.h - 22);
+  const o = SALAS.oficina;
+  r(o.x + 10, o.y + 2, 30, 12, '#6e4626');
+  ['#d5573a', '#3a7bd5', '#e0a526', '#3aa66b', '#9b59b6', '#f4f1ea'].forEach((c, k) => r(o.x + 12 + k * 4, o.y + 4, 3, 8, c));
+  r(o.x + 140, o.y + 2, 18, 11, '#f4f1ea'); r(o.x + 140, o.y + 2, 18, 3, '#d5573a');
+  for (let k = 0; k < 8; k++) r(o.x + 142 + (k % 4) * 4, o.y + 6 + Math.floor(k / 4) * 3, 2, 2, '#9a9a96');
+  r(MESA_YO.dx - 10, MESA_YO.dy - 18, 60, 44, '#3e6b4b'); r(MESA_YO.dx - 8, MESA_YO.dy - 16, 56, 40, '#457656');
+  planta(o.x + 6, o.y + o.h - 22);
+});
+
+// ── Actores: un personaje por sesión viva ──
+const actores = new Map(); // sesión → { x, y, ruta, sala, lugar, aspecto, boton }
+let primeraCarga = true; // al abrir la página cada quien aparece en su lugar; después caminan al cambiar de estado
+let e = 1; // escala: px de pantalla por px lógico
+function crearBoton(id) {
+  const b = el('button', { class: 'agente', type: 'button', 'aria-haspopup': 'dialog', onclick: () => abrirAgente(id) },
+    el('span', { class: 'burbuja' }), el('span', { class: 'caja' }), el('span', { class: 'etiqueta' }));
+  capa.append(b);
+  return b;
+}
+function actualizarActores(d) {
+  const tareas = tareaPorId(d);
+  const vivas = d.sesiones.filter((s) => ROL[s.estado]);
+  const porSala = {};
+  for (const s of vivas) (porSala[ROL[s.estado].sala] ??= []).push(s);
+  for (const [sala, lista] of Object.entries(porSala)) {
+    lista.sort((a, b) => (ROL[a.estado].prio ?? 0) - (ROL[b.estado].prio ?? 0) || a.iniciada_ts - b.iniciada_ts || (a.id < b.id ? -1 : 1));
+    lista.forEach((s, i) => {
+      let a = actores.get(s.id);
+      if (!a) {
+        a = { x: -8, y: 146, ruta: [], sala: null, aspecto: aspecto(s.id), boton: crearBoton(s.id) };
+        actores.set(s.id, a);
+      }
+      const destino = lugar(sala, i);
+      if (a.destinoClave !== `${sala}:${i}`) {
+        a.destinoClave = `${sala}:${i}`;
+        if (reducido || primeraCarga) { a.x = destino.x; a.y = destino.y; a.ruta = []; }
+        else if (a.sala === sala) a.ruta = [destino];
+        else a.ruta = [...(a.sala ? [entrada(a.sala), enPasillo(a.sala)] : []), enPasillo(sala), entrada(sala), destino];
+        a.sala = sala;
+      }
+      a.lugar = destino;
+      a.s = s;
+      a.espera = esperaProcesos(s, d);
+      const n = procesosDe(s).length;
+      const [contenido, color] = a.espera ? [{ icono: 'reloj', texto: String(n) }, 'azul'] : ROL[s.estado].burbuja ?? ['', ''];
+      const burbuja = a.boton.querySelector('.burbuja');
+      const clave = `${typeof contenido === 'string' ? contenido : `${contenido.icono}${contenido.texto ?? ''}`}|${color}`;
+      if (burbuja.dataset.clave !== clave) {
+        burbuja.dataset.clave = clave;
+        reemplazar(burbuja, typeof contenido === 'string' ? contenido : [icono(contenido.icono), contenido.texto]);
+        burbuja.className = `burbuja ${color}`;
+      }
+      const nombre = s.nombre ?? s.tarea_id ?? base(s.cwd);
+      const etiqueta = a.boton.querySelector('.etiqueta');
+      if (etiqueta.textContent !== nombre) { etiqueta.textContent = nombre; a.anchoEtiqueta = null; }
+      // Ancho máximo según el espacio entre lugares del cuarto; el nombre completo va en el título y en la ficha.
+      const maximo = { taller: 56, puerta: 42 }[sala] ?? 30;
+      if (a.maximo !== maximo) { a.maximo = maximo; etiqueta.style.maxWidth = `calc(var(--e) * ${maximo}px)`; a.anchoEtiqueta = null; }
+      const estadoTexto = a.espera ? `esperando ${n} proceso${n > 1 ? 's' : ''}` : ESTADOS[s.estado]?.[0] ?? s.estado;
+      a.boton.setAttribute('aria-label', `${nombreSesion(s, tareas)}: ${estadoTexto}`);
+      a.boton.title = `${nombreSesion(s, tareas)} · ${estadoTexto}`;
+    });
+  }
+  for (const [id, a] of actores) if (!vivas.some((s) => s.id === id)) { a.boton.remove(); actores.delete(id); }
+  primeraCarga = false;
+  const activos = (porSala.taller ?? []).length + (porSala.puerta ?? []).length + (porSala.bloqueados ?? []).length;
+  for (const s of Object.keys(SALAS)) {
+    const n = (porSala[s] ?? []).length;
+    fijos[`sala-${s}`].el.textContent = s === 'oficina' ? SALAS[s].titulo
+      : s === 'taller' ? `Taller · activos ${activos}/${MAX_ACTIVOS}` : `${SALAS[s].titulo} · ${n}`;
+  }
+  fijos['sala-taller'].el.classList.toggle('lleno', activos > MAX_ACTIVOS);
+  fijos.vacio.el.hidden = vivas.length > 0;
+}
+
+// Elementos HTML fijos sobre la escena (letreros de cuartos, tu escritorio, bandeja, calendario).
+const fijos = {};
+function fijo(clave, x, y, nodo, centro = '') { nodo.classList.add('fijo'); capa.append(nodo); fijos[clave] = { el: nodo, x, y, centro }; return nodo; }
+for (const [k, s] of Object.entries(SALAS)) fijo(`sala-${k}`, s.x, s.y, el('span', { class: 'cuarto' }, s.titulo));
+fijo('yo', MESA_YO.dx + 14, MESA_YO.dy + 21, el('button', { class: 'objeto', type: 'button', 'aria-haspopup': 'dialog', onclick: () => abrirOficina() },
+  el('span', { class: 'insignia neutra' }, 'Tú · entrar')), ' translate(-50%, -50%)');
+fijo('bandeja', MESA_YO.dx + 6, MESA_YO.dy - 4, el('button', { class: 'objeto', type: 'button', 'aria-haspopup': 'dialog', onclick: () => abrirOficina('vo-parati') },
+  el('span', { class: 'insignia' }, icono('correo'), el('span', {}))), ' translate(-50%, -50%)');
+fijo('calendario', SALAS.oficina.x + 149, SALAS.oficina.y + 24, el('button', { class: 'objeto', type: 'button', 'aria-haspopup': 'dialog', onclick: () => abrirOficina('vo-agenda') },
+  el('span', { class: 'insignia' }, icono('calendario'), el('span', {}))), ' translate(-50%, -50%)');
+fijo('vacio', 136, 64, el('span', { class: 'aviso-vacio' }, 'Sin agentes de Claude Code activos'), ' translate(-50%, -50%)');
+
+function escalar() {
+  e = lienzo.clientWidth / W;
+  escena.style.setProperty('--e', e);
+  for (const f of Object.values(fijos)) f.el.style.transform = `translate(${f.x * e}px, ${f.y * e}px)${f.centro}`;
+}
+new ResizeObserver(escalar).observe(lienzo);
+const barra = document.getElementById('barra');
+new ResizeObserver(() => document.documentElement.style.setProperty('--cabecera', `${barra.offsetHeight}px`)).observe(barra);
+
+// ── Bucle de animación ──
+const VELOCIDAD = 55; // px lógicos por segundo
+let reloj = 0, previo = performance.now();
+function cuadro(ahora) {
+  const dt = Math.min(0.1, (ahora - previo) / 1000);
+  previo = ahora; reloj += dt;
+  for (const a of actores.values()) {
+    let avance = VELOCIDAD * dt;
+    while (avance > 0 && a.ruta.length) {
+      const [o] = a.ruta, dx = o.x - a.x, dy = o.y - a.y, dist = Math.hypot(dx, dy);
+      if (dist <= avance) { a.x = o.x; a.y = o.y; a.ruta.shift(); avance -= dist; }
+      else { a.x += (dx / dist) * avance; a.y += (dy / dist) * avance; avance = 0; }
+    }
+  }
+  dibujar(Math.floor(reloj * 4), Math.floor(reloj * 8));
+  const ancho = W * e;
+  for (const a of actores.values()) {
+    const x = a.x * e;
+    a.boton.style.transform = `translate(${x}px, ${a.y * e}px)`;
+    const etiqueta = a.boton.lastChild; // se recorre para no salirse por los bordes de la escena
+    a.anchoEtiqueta ??= etiqueta.offsetWidth;
+    const mitad = a.anchoEtiqueta / 2 + 2;
+    etiqueta.style.marginLeft = `${Math.min(Math.max(x, mitad), ancho - mitad) - x}px`;
+  }
+  requestAnimationFrame(cuadro);
+}
+function dibujar(f, fCamina) {
+  ctx.drawImage(fondo, 0, 0);
+  const lista = [...actores.values()].sort((a, b) => a.y - b.y);
+  const sentado = (a) => !a.ruta.length && a.lugar?.escritorio != null && a.s.estado === 'trabajando';
+  for (const a of lista) if (sentado(a)) { const d = ESCRITORIOS[a.lugar.escritorio]; pantalla(d.dx, d.dy, f + a.lugar.escritorio * 3, a.espera); }
+  if (lista.some((a) => a.s.estado === 'bloqueado' && !a.ruta.length)) {
+    const b = SALAS.bloqueados; r(b.x + 90, b.y + 3, 10, 6, f % 2 ? '#ff4d3d' : '#7a1e18'); r(b.x + 92, b.y + 9, 6, 2, '#2b2b33');
+  }
+  for (const a of lista) {
+    if (sentado(a)) personaje(a.x, a.y, a.aspecto, a.espera ? 'espera' : 'teclea', f, 'espalda');
+    else personaje(a.x, a.y, a.aspecto, a.ruta.length ? 'camina' : (a.lugar.pose ?? ROL[a.s.estado].pose), a.ruta.length ? fCamina : f);
+    const subs = (datos?.subagentes ?? []).filter((x) => x.sesion_id === a.s.id && x.estado === 'trabajando').slice(0, 3);
+    subs.forEach((_, k) => robot(a.x + (sentado(a) ? 23 : 13) + k * 10, a.y - (sentado(a) ? 6 : 0) - (k % 2) * 3, f, k));
+  }
+  const m = MESA_YO;
+  personaje(m.dx + 14, m.dy + 6, YO, 'parado', f);
+  r(m.dx, m.dy, 40, 10, '#c88d55'); r(m.dx, m.dy, 40, 1, '#dba06a'); r(m.dx, m.dy + 10, 40, 6, '#8a5a33');
+  r(m.dx + 25, m.dy - 9, 12, 10, '#2b2b33'); r(m.dx + 30, m.dy + 1, 2, 2, '#2b2b33');
+  const n = datos ? pendientesParaMi(datos).length : 0;
+  r(m.dx + 2, m.dy + 2, 9, 6, '#6e4626');
+  for (let k = 0; k < Math.min(n, 6); k++) r(m.dx + 3, m.dy + 5 - k, 7, 1, k % 2 ? '#e8e4da' : '#ffffff');
+}
+
+// ════════════════════════ Ventanas ════════════════════════
+const vAgente = document.getElementById('v-agente');
+const vOficina = document.getElementById('v-oficina');
+const vNecesitan = document.getElementById('v-necesitan');
+for (const v of [vAgente, vOficina, vNecesitan]) {
+  v.querySelector('[data-cerrar]').append(icono('cerrar'));
+  v.querySelector('[data-cerrar]').addEventListener('click', () => v.close());
+  v.addEventListener('click', (ev) => { if (ev.target === v) v.close(); }); // clic en el fondo cierra
+}
+vAgente.addEventListener('close', () => { abierta = null; });
+
+// ── Ficha del agente: conversación + mensaje + contexto ──
+let conversacion = [];
+let conversacionTs = 0;
+async function cargarConversacion(id) {
+  try {
+    const r = await fetch(`/api/sesiones/${encodeURIComponent(id)}/conversacion`);
+    conversacion = r.ok ? await r.json() : [];
+  } catch { conversacion = []; }
+  if (abierta === id) renderAgente();
+}
+function abrirAgente(id, { escribir = false } = {}) {
+  abierta = id;
+  conversacion = []; conversacionTs = 0;
+  document.getElementById('va-texto').value = '';
+  document.getElementById('va-estado').textContent = '';
+  document.getElementById('va-conversacion').replaceChildren(el('p', { class: 'vacio' }, 'Cargando…'));
+  renderAgente();
+  if (!vAgente.open) vAgente.showModal();
+  if (escribir && !document.getElementById('va-texto').disabled) document.getElementById('va-texto').focus();
+  cargarConversacion(id);
+}
+function renderAgente() {
+  const d = datos;
+  const s = d?.sesiones.find((x) => x.id === abierta);
+  if (!s) { if (vAgente.open) vAgente.close(); return; }
+  const tareas = tareaPorId(d);
+  const t = tareas[s.tarea_id];
+  const viva = d.vivas?.[s.id];
+  const procesos = procesosDe(s);
+  const espera = esperaProcesos(s, d);
+  // Si llegaron eventos nuevos de esta sesión, se vuelve a leer su conversación.
+  if (conversacionTs && s.ultimo_evento_ts !== conversacionTs) cargarConversacion(s.id);
+  conversacionTs = s.ultimo_evento_ts;
+
+  document.getElementById('va-titulo').textContent = nombreSesion(s, tareas);
+  reemplazar(document.getElementById('va-sub'),
+    espera ? chip(`Esperando ${procesos.length} proceso${procesos.length > 1 ? 's' : ''}`, 'naranja') : chipEstado(s.estado),
+    el('span', { class: 'meta' }, `desde ${hace(s.estado_desde_ts)}`),
+    el('span', { class: 'meta' }, viva ? (viva.ocupada ? '· ocupada ahora' : '· libre ahora') : '· sesión cerrada'));
+
+  reemplazar(document.getElementById('va-aviso'),
+    s.estado === 'necesita_permiso' && el('p', { class: 'aviso-caja rojo' }, el('b', {}, 'Pide permiso. '),
+      `Apruébalo en su terminal (${carpeta(s.cwd)}): un mensaje desde aquí no puede aprobar permisos.`),
+    s.estado === 'bloqueado' && el('p', { class: 'aviso-caja rojo' }, el('b', {}, 'Está bloqueado. '), 'Su último mensaje dice qué le falta.'),
+    espera && el('p', { class: 'aviso-caja' }, el('b', {}, 'Espera sus procesos. '), 'Cuando terminen, sigue solo; si le escribes ahora, lee tu mensaje y responde.'));
+
+  const mensajes = (d.mensajes?.[s.id] ?? []).filter((m) => m.estado !== 'enviado' || Date.now() - m.ts < 90_000);
+  const globos = conversacion.map((m) => el('div', { class: `globo rol-${m.rol}` },
+    m.rol !== 'sistema' && el('span', { class: 'quien' }, { tu: 'Tú', agente: 'Agente', mensaje: 'Tu mensaje desde la oficina' }[m.rol], m.ts ? ` · ${horaDe(m.ts)}` : ''),
+    el('div', {}, m.texto)));
+  for (const m of mensajes) {
+    globos.push(el('div', { class: 'globo rol-mensaje' }, el('span', { class: 'quien' },
+      m.estado === 'enviando' ? 'Enviando…' : m.estado === 'error' ? `No se envió: ${m.detalle}` : 'Entregado'), el('div', {}, m.texto)));
+  }
+  const lista = document.getElementById('va-conversacion');
+  const alFondo = lista.scrollHeight - lista.scrollTop - lista.clientHeight < 60 || lista.querySelector('.vacio');
+  if (globos.length || conversacionTs) reemplazar(lista, globos.length ? globos : el('p', { class: 'vacio' }, 'Todavía no hay conversación que mostrar.'));
+  if (alFondo) lista.scrollTop = lista.scrollHeight;
+
+  const puede = viva?.bandeja && viva?.nombre;
+  const boton = document.getElementById('va-enviar');
+  reemplazar(boton, icono('enviar'), viva?.ocupada ? 'Enviar (lo lee entre pasos)' : 'Enviar');
+  boton.disabled = !puede;
+  document.getElementById('va-texto').disabled = !puede;
+  if (!puede) document.getElementById('va-estado').textContent = !viva ? 'La sesión está cerrada.' : 'Esta sesión no tiene bandeja de mensajes; ábrela de nuevo para activarla.';
+
+  const contexto = document.getElementById('va-contexto');
+  if (contexto.contains(document.activeElement) && document.activeElement.tagName === 'SELECT') return; // no se cierra el select en uso
+  const subs = d.subagentes.filter((a) => a.sesion_id === s.id);
+  const vivos = subs.filter((a) => a.estado === 'trabajando');
+  reemplazar(contexto,
+    el('section', { class: 'bloque' }, el('h4', {}, 'Tarea'),
+      s.tarea_id
+        ? [el('div', {}, enlaceTarea(t, s.tarea_id)),
+          t?.due_ts && el('div', { class: 'meta' }, `Vence ${fecha(t.due_ts)} · ${t.estado ?? ''}`),
+          t?.horario && el('div', { class: 'ficha-tarea' }, el('b', {}, 'Horario: '), t.horario),
+          t?.choque && el('div', { class: 'ficha-tarea' }, el('b', {}, 'Choque: '), t.choque),
+          el('div', { class: 'fila' }, el('span', { class: 'meta' }, `ligada por ${s.tarea_origen}`),
+            el('button', { class: 'boton-chico', type: 'button', onclick: () => postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/tarea`, { tarea_id: null }) }, 'Desligar'))]
+        : el('select', { 'aria-label': 'Asignar tarea a la sesión',
+          onchange: (ev) => ev.target.value && postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/tarea`, { tarea_id: ev.target.value }) },
+          el('option', { value: '' }, 'Sin tarea · asignar…'), d.tareas.map((x) => el('option', { value: x.id }, `${x.id} · ${x.nombre}`)))),
+    el('section', { class: 'bloque' }, el('h4', {}, 'Dónde trabaja'),
+      s.rama_git && el('div', { class: 'fila' }, icono('rama'), s.rama_git),
+      el('div', { class: 'fila', style: 'overflow-wrap:anywhere' }, icono('carpeta'), s.cwd ?? '')),
+    procesos.length > 0 && el('section', { class: 'bloque' }, el('h4', {}, `En segundo plano · ${procesos.length}`),
+      el('ul', { class: 'lista-simple' }, procesos.map((p) => el('li', { class: 'fila' }, icono(p.tipo === 'shell' ? 'terminal' : 'robot'),
+        el('span', { style: 'min-width:0' }, p.descripcion || (p.tipo === 'shell' ? 'comando' : 'subagente')))))),
+    subs.length > 0 && el('section', { class: 'bloque' }, el('h4', {}, `Subagentes · ${vivos.length} trabajando`),
+      el('ul', { class: 'lista-simple' }, [...vivos, ...subs.filter((a) => a.estado !== 'trabajando').reverse().slice(0, 4)].map((a) =>
+        el('li', { class: 'fila' }, icono('robot'), el('b', {}, a.tipo ?? 'subagente'), el('span', {}, a.descripcion ?? ''),
+          a.estado === 'trabajando' ? chip('trabajando', 'verde') : el('span', { class: 'meta' }, hace(a.fin_ts ?? a.inicio_ts)))))),
+    el('p', { class: 'meta', style: 'margin:0' }, `Última actividad ${hace(s.ultimo_evento_ts)} · sesión ${s.id.slice(0, 8)}`));
+}
+document.getElementById('va-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const caja = document.getElementById('va-texto');
+  const texto = caja.value.trim();
+  if (!texto || !abierta) return;
+  const estado = document.getElementById('va-estado');
+  try {
+    await post(`/api/sesiones/${encodeURIComponent(abierta)}/mensaje`, { texto });
+    caja.value = '';
+    estado.textContent = 'En camino; tarda unos segundos.';
+  } catch (err) { estado.textContent = err.message; }
+});
+document.getElementById('va-texto').addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) document.getElementById('va-form').requestSubmit();
+});
+
+// ── Tu oficina: veredicto, agenda por día, para ti y turno nocturno ──
+let noche = null;
+const agendaAbierta = new Set(); // tareas desplegadas: sobreviven a las actualizaciones en vivo
+async function abrirOficina(seccion) {
+  renderOficina();
+  if (!vOficina.open) vOficina.showModal();
+  if (seccion) document.getElementById(seccion).scrollIntoView({ block: 'start' });
+  try { noche = await (await fetch('/api/noche')).json(); } catch { noche = { fecha: null }; }
+  renderNoche();
+}
+function veredicto(d) {
+  const ahora = Date.now(), finHoy = inicioDia(ahora) + DIA;
+  const vencidas = d.tareas.filter((t) => t.due_ts != null && t.due_ts < ahora).sort((a, b) => a.due_ts - b.due_ts);
+  const hoy = d.tareas.filter((t) => t.due_ts != null && t.due_ts >= ahora && t.due_ts < finHoy).sort((a, b) => a.due_ts - b.due_ts);
+  if (vencidas.length) return { texto: `${vencidas.length} vencida${vencidas.length > 1 ? 's' : ''}`, color: 'rojo', vencidas, hoy };
+  if (hoy.length) return { texto: `${hoy.length} vence${hoy.length > 1 ? 'n' : ''} hoy, la primera a las ${horaDe(hoy[0].due_ts)}`, color: 'naranja', vencidas, hoy };
+  return { texto: 'Al día: nada vence hoy', color: 'verde', vencidas, hoy };
+}
+function proximoCorte(ahora = new Date()) {
+  const dia = ahora.getDay();
+  if (dia === 0 || dia === 6) return null; // fin de semana
+  const minutos = ahora.getHours() * 60 + ahora.getMinutes();
+  for (const [hora, nombre] of CORTES) {
+    const [h, m] = hora.split(':').map(Number);
+    if (h * 60 + m > minutos) return { hora, nombre, faltan: h * 60 + m - minutos };
+  }
+  return null;
+}
+function filaTarea(t, d, { conHora = true } = {}) {
+  const ses = d.sesiones.filter((s) => s.tarea_id === t.id && ROL[s.estado]);
+  const nCom = d.comentarios.filter((c) => c.tarea_id === t.id && !c.es_mio && c.para_mi && !c.respondido && !c.visto_local).length;
+  return [
+    el('a', { href: t.url, target: '_blank', rel: 'noopener', style: 'font-weight:600' }, t.nombre),
+    el('div', { class: 'fila meta' }, chip(t.estado ?? '—'), t.prioridad && chip(...PRIORIDAD[t.prioridad] ?? [t.prioridad]),
+      conHora && t.due_ts && el('span', {}, fecha(t.due_ts)),
+      ses.map((s) => el('button', { class: 'enlace', type: 'button', style: 'gap:4px', onclick: () => { vOficina.close(); abrirAgente(s.id); } },
+        icono('robot'), esperaProcesos(s, d) ? 'esperando proceso' : ESTADOS[s.estado]?.[0])),
+      nCom > 0 && chip(`${nCom} para ti`, 'naranja')),
+    t.horario && el('div', { class: 'ficha-tarea' }, el('b', {}, 'Horario: '), t.horario),
+    t.choque && el('div', { class: 'ficha-tarea' }, el('b', {}, 'Choque: '), t.choque),
+  ];
+}
+function renderOficina() {
+  const d = datos;
+  if (!d) return;
+  const v = veredicto(d);
+  const corte = proximoCorte();
+  reemplazar(document.getElementById('vo-sub'), el('span', { class: `chip ${v.color} veredicto` }, v.texto),
+    corte && el('span', { class: 'meta fila', style: 'gap:4px' }, icono('hora'), `${corte.nombre} a las ${corte.hora}`));
+  const ahora = Date.now();
+  const hoy = [...v.vencidas, ...v.hoy];
+  reemplazar(document.getElementById('vo-hoy'), hoy.length ? hoy.map((t) => el('li', {},
+    el('span', { class: `hora ${t.due_ts < ahora ? 'vencida' : ''}` }, t.due_ts < ahora ? 'Vencida' : horaDe(t.due_ts)),
+    el('div', { style: 'display:grid;gap:4px;min-width:0' }, filaTarea(t, d, { conHora: t.due_ts < ahora }))))
+    : el('li', { class: 'vacio', style: 'display:block' }, 'Nada vence hoy.'));
+  // Próximos 6 días, uno por columna; cada tarea se despliega con su detalle.
+  const desde = inicioDia(ahora) + DIA;
+  const dias = [];
+  for (let k = 0; k < 6; k++) {
+    const ini = desde + k * DIA;
+    const ts = d.tareas.filter((t) => t.due_ts >= ini && t.due_ts < ini + DIA).sort((a, b) => a.due_ts - b.due_ts);
+    if (!ts.length) continue;
+    dias.push(el('section', { class: 'dia' }, el('h4', {}, el('span', {}, k === 0 ? 'Mañana' : diaLargo(ini)), el('span', { class: 'meta' }, String(ts.length))),
+      ts.map((t) => {
+        const det = el('details', { open: agendaAbierta.has(t.id) }, el('summary', {}, el('span', { class: 'hora' }, horaDe(t.due_ts)), el('span', { class: 'corto' }, t.nombre)),
+          el('div', { style: 'display:grid;gap:4px;margin-top:6px' }, filaTarea(t, d, { conHora: false })));
+        det.addEventListener('toggle', () => (det.open ? agendaAbierta.add(t.id) : agendaAbierta.delete(t.id)));
+        return det;
+      })));
+  }
+  reemplazar(document.getElementById('vo-dias'), dias.length ? dias : el('p', { class: 'vacio' }, 'Nada vence en los próximos días.'));
+  const despues = d.tareas.filter((t) => t.due_ts == null || t.due_ts >= desde + 6 * DIA);
+  const plegado = document.querySelector('#vo-despues details')?.open ?? false;
+  reemplazar(document.getElementById('vo-despues'), despues.length > 0 && el('details', { style: 'margin-top:12px', open: plegado },
+    el('summary', {}, `Más adelante · ${despues.length} tareas`),
+    el('ul', { class: 'lista-simple', style: 'margin-top:8px' }, despues.map((t) => el('li', { class: 'fila' },
+      el('span', { class: 'meta' }, t.due_ts ? fecha(t.due_ts) : 'sin fecha'), el('a', { href: t.url, target: '_blank', rel: 'noopener' }, t.nombre))))));
+  renderParaTi();
+}
+function renderParaTi() {
+  const d = datos;
+  const tareas = tareaPorId(d);
+  const todos = document.getElementById('vo-todos').checked;
+  const lista = d.comentarios.filter((c) => !c.es_mio && (todos || (c.para_mi && !c.respondido && !c.visto_local)));
+  reemplazar(document.getElementById('vo-comentarios'), lista.length ? el('div', {}, lista.map((c) => el('div', { class: `comentario ${c.tipo === 'correccion' && !c.visto_local ? 'correccion' : ''}` },
+    el('div', { class: 'fila' }, el('b', {}, c.autor), c.tipo === 'correccion' && chip('Corrección', 'naranja'), el('span', { class: 'meta' }, hace(c.ts)),
+      c.respondido ? chip('respondido', 'verde') : null, c.visto_local ? chip('visto') : null),
+    tareas[c.tarea_id] && el('div', { class: 'meta corto' }, tareas[c.tarea_id].nombre),
+    el('div', { class: 'mensaje corto3' }, c.texto),
+    el('div', { class: 'fila' },
+      !c.visto_local && el('button', { class: 'boton-chico', type: 'button', onclick: () => postSeguro(`/api/comentarios/${encodeURIComponent(c.id)}/visto`) }, 'Marcar visto'),
+      tareas[c.tarea_id] && el('a', { class: 'fila', href: `${tareas[c.tarea_id].url}?comment=${encodeURIComponent(c.id)}`, target: '_blank', rel: 'noopener', style: 'font-size:12.5px;gap:4px' },
+        'Abrir en ClickUp', icono('externo'))))))
+    : el('p', { class: 'vacio' }, todos ? 'No hay comentarios de otras personas.' : 'Nada dirigido a ti sin responder.'));
+}
+document.getElementById('vo-todos').addEventListener('change', () => datos && renderParaTi());
+function renderNoche() {
+  const caja = document.getElementById('vo-noche-texto');
+  if (!noche?.fecha) return reemplazar(caja, el('p', { class: 'vacio' }, 'No hay resumen del turno nocturno.'));
+  const deHoy = noche.fecha === new Date().toLocaleDateString('sv');
+  const texto = el('div', { class: 'anoche' }, noche.texto.replace(/^#+\s*/gm, '').replace(/\*\*/g, '').replace(/`/g, ''));
+  reemplazar(caja, deHoy && new Date().getHours() < 12 ? [el('p', { class: 'meta', style: 'margin:0 0 8px' }, `Resumen de anoche (${noche.fecha})`), texto]
+    : el('details', {}, el('summary', {}, `Resumen del turno del ${noche.fecha}`), texto));
+}
+
+// ── Te necesitan: cola de agentes que esperan algo de ti ──
+function renderNecesitan() {
+  const d = datos;
+  const tareas = tareaPorId(d);
+  const cola = d.sesiones.filter((s) => s.estado in URGENCIA).sort((a, b) => URGENCIA[a.estado] - URGENCIA[b.estado] || a.estado_desde_ts - b.estado_desde_ts);
+  reemplazar(document.getElementById('vn-lista'), cola.length ? cola.map((s) => el('li', { class: 'comentario' },
+    el('div', { class: 'fila' }, chipEstado(s.estado), el('b', {}, nombreSesion(s, tareas)), el('span', { class: 'meta' }, `lleva ${hace(s.estado_desde_ts).replace('hace ', '')}`)),
+    s.tarea_id && s.nombre && el('div', { class: 'meta corto' }, tareas[s.tarea_id]?.nombre ?? s.tarea_id),
+    s.ultimo_mensaje && el('div', { class: 'mensaje corto3' }, s.ultimo_mensaje),
+    el('div', { class: 'fila' },
+      s.estado === 'necesita_permiso'
+        ? el('span', { class: 'aviso-caja rojo', style: 'margin:0;padding:2px 8px' }, `Apruébalo en su terminal · ${carpeta(s.cwd)}`)
+        : el('button', { class: 'primario boton-chico', type: 'button', onclick: () => { vNecesitan.close(); abrirAgente(s.id, { escribir: true }); } }, 'Responder'),
+      el('button', { class: 'boton-chico', type: 'button', onclick: () => { vNecesitan.close(); abrirAgente(s.id); } }, 'Ver ficha'))))
+    : el('li', { class: 'vacio' }, 'Ningún agente te espera.'));
+}
+
+// ── Tarjetas de resumen debajo de la escena ──
+function tarjeta(id, { icon, tono, titulo, detalle, accion }) {
+  const b = document.getElementById(id);
+  b.className = `tarjeta ${tono ?? ''}`;
+  b.onclick = accion;
+  reemplazar(b, el('span', { class: 'icono-t' }, icono(icon)), el('span', { style: 'min-width:0' }, el('b', {}, titulo), el('span', { class: 'detalle' }, detalle)), icono('flecha'));
+}
+function renderTarjetas(d) {
+  const tareas = tareaPorId(d);
+  const cola = d.sesiones.filter((s) => s.estado in URGENCIA).sort((a, b) => URGENCIA[a.estado] - URGENCIA[b.estado] || a.estado_desde_ts - b.estado_desde_ts);
+  tarjeta('t-necesitan', {
+    icon: 'campana', tono: cola.some((s) => s.estado === 'necesita_permiso' || s.estado === 'bloqueado') ? 'alerta' : cola.length ? 'aviso' : 'bien',
+    titulo: cola.length ? `Te necesitan · ${cola.length}` : 'Nadie te espera',
+    detalle: cola.length ? `${nombreSesion(cola[0], tareas)}: ${ESTADOS[cola[0].estado][0].toLowerCase()}` : 'Los agentes siguen trabajando solos',
+    accion: () => { renderNecesitan(); vNecesitan.showModal(); },
+  });
+  const v = veredicto(d);
+  tarjeta('t-hoy', { icon: 'calendario', tono: { rojo: 'alerta', naranja: 'aviso', verde: 'bien' }[v.color],
+    titulo: v.vencidas.length || v.hoy.length ? `Hoy · ${v.texto}` : 'Al día',
+    detalle: v.vencidas[0]?.nombre ?? v.hoy[0]?.nombre ?? 'Nada vence hoy; abre tu agenda para lo que sigue', accion: () => abrirOficina('vo-agenda') });
+  const paraMi = pendientesParaMi(d).sort((a, b) => b.ts - a.ts);
+  tarjeta('t-parati', { icon: 'arroba', tono: paraMi.some((c) => c.tipo === 'correccion') ? 'aviso' : '', titulo: paraMi.length ? `Para ti · ${paraMi.length}` : 'Nada para ti',
+    detalle: paraMi[0] ? `${paraMi[0].autor.split(' ')[0]}: ${paraMi[0].texto.split('\n')[0]}` : 'Sin comentarios dirigidos a ti', accion: () => abrirOficina('vo-parati') });
+  const c = proximoCorte();
+  tarjeta('t-corte', { icon: 'hora', titulo: c ? `${c.nombre} · ${c.hora}` : 'Sin cortes por hoy',
+    detalle: c ? `En ${c.faltan >= 60 ? `${Math.floor(c.faltan / 60)} h ` : ''}${c.faltan % 60} min` : 'La daily es a las 09:00', accion: () => abrirOficina('vo-agenda') });
+  fijos.bandeja.el.querySelector('.insignia span').textContent = String(paraMi.length);
+  fijos.bandeja.el.firstChild.classList.toggle('bien', paraMi.length === 0);
+  fijos.bandeja.el.setAttribute('aria-label', `Bandeja: ${paraMi.length} comentarios para ti`);
+  fijos.calendario.el.querySelector('.insignia span').textContent = v.vencidas.length ? `${v.vencidas.length} vencidas` : v.hoy.length ? `${v.hoy.length} hoy` : 'al día';
+  fijos.calendario.el.firstChild.classList.toggle('bien', !v.vencidas.length && !v.hoy.length);
+  fijos.calendario.el.setAttribute('aria-label', `Calendario: ${v.texto}`);
+  const sy = d.sync;
+  document.getElementById('sync-texto').textContent = sy.corriendo ? 'Sincronizando ClickUp…'
+    : sy.error ? `ClickUp: ${sy.error}` : sy.ultima_ts ? `ClickUp ${hace(sy.ultima_ts)}` : 'Sin sincronizar';
+  document.getElementById('sincronizar').disabled = sy.corriendo;
+}
+
+function render() {
+  const d = datos;
+  if (!d) return;
+  actualizarActores(d);
+  renderTarjetas(d);
+  if (vAgente.open) renderAgente();
+  if (vOficina.open) renderOficina();
+  if (vNecesitan.open) renderNecesitan();
+}
+document.getElementById('sincronizar').addEventListener('click', () => postSeguro('/api/sincronizar'));
+setInterval(render, 30_000); // refresca los "hace X min"
+
+escalar();
+requestAnimationFrame(cuadro);
+const conexion = document.getElementById('conexion');
+const fuente = new EventSource('/api/stream');
+fuente.addEventListener('estado', (ev) => { datos = JSON.parse(ev.data); render(); });
+fuente.onopen = () => { conexion.textContent = 'en vivo'; conexion.className = 'chip verde'; };
+fuente.onerror = () => { conexion.textContent = 'desconectado'; conexion.className = 'chip rojo'; };
+</script>
+</body>
+</html>
