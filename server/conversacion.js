@@ -77,8 +77,12 @@ export function leerConversacion(ruta, max) {
   }
 }
 
+// Modelos con ventana de 1 M de fábrica (docs de Claude Code: Fable, Sonnet 5+, Haiku 5.5, Opus 4.7+).
+// Los demás tienen 200 mil salvo que la sesión ya los haya pasado (se lanzó con `[1m]`).
+export const VENTANA_1M = /^claude-(fable|(opus|sonnet|haiku)-[5-9])|^claude-opus-4-([7-9]|\d\d)/;
+
 // Uso de la ventana de contexto: lo que ocupó la última respuesta del agente principal
-// (entrada + caché leída + caché creada + salida). Si pasa de 200 mil, la sesión es de 1 M.
+// (entrada + caché leída + caché creada + salida).
 export function usoContexto(lineas) {
   for (let i = lineas.length - 1; i >= 0; i--) {
     let e;
@@ -86,7 +90,7 @@ export function usoContexto(lineas) {
     const u = e.type === 'assistant' && !e.isSidechain ? e.message?.usage : null;
     if (!u) continue;
     const tokens = (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.output_tokens ?? 0);
-    const limite = tokens > 200_000 ? 1_000_000 : 200_000;
+    const limite = tokens > 200_000 || VENTANA_1M.test(e.message?.model ?? '') ? 1_000_000 : 200_000;
     return { tokens, limite, modelo: e.message?.model ?? null, ts: Date.parse(e.timestamp) || null };
   }
   return null;

@@ -118,10 +118,14 @@ test('para ti: mención, asignado, tu nombre o corrección', () => {
   assert.equal(esParaMi({ comment_text: 'Se movió del sprint 2 al 3' }, yo), false);
 });
 
-test('uso de contexto: última respuesta del agente principal; más de 200 mil es ventana de 1 M', () => {
-  const linea = (u, extra = {}) => JSON.stringify({ type: 'assistant', timestamp: '2026-10-20T18:00:00Z', message: { model: 'claude-opus-5-5', usage: u }, ...extra });
+test('uso de contexto: última respuesta del agente principal; 1 M según el modelo o al pasar de 200 mil', () => {
+  const linea = (u, extra = {}, model = 'claude-sonnet-4-5') => JSON.stringify({ type: 'assistant', timestamp: '2026-10-20T18:00:00Z', message: { model, usage: u }, ...extra });
   assert.deepEqual(usoContexto([linea({ input_tokens: 2, cache_read_input_tokens: 150_000, cache_creation_input_tokens: 1000, output_tokens: 500 })]),
-    { tokens: 151_502, limite: 200_000, modelo: 'claude-opus-5-5', ts: Date.parse('2026-10-20T18:00:00Z') });
+    { tokens: 151_502, limite: 200_000, modelo: 'claude-sonnet-4-5', ts: Date.parse('2026-10-20T18:00:00Z') });
+  for (const m of ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-fable-5-1', 'claude-haiku-5-5', 'claude-opus-4-7']) {
+    assert.equal(usoContexto([linea({ input_tokens: 70_000 }, {}, m)]).limite, 1_000_000, m);
+  }
+  assert.equal(usoContexto([linea({ input_tokens: 70_000 }, {}, 'claude-opus-4-6')]).limite, 200_000);
   const grande = usoContexto([linea({ input_tokens: 2, cache_read_input_tokens: 780_000 }), linea({ input_tokens: 9 }, { isSidechain: true }), '{roto']);
   assert.equal(grande.limite, 1_000_000);
   assert.equal(grande.tokens, 780_002);

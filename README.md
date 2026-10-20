@@ -113,8 +113,9 @@ integración a develop 13:00 y 18:00). Cada sesión es un personaje con su nombr
 | Tu oficina | — | tú («Tú · entrar»), bandeja = comentarios para ti, calendario = vencimientos |
 
 Cada agente lleva una etiqueta del color de su camisa con una barra de **uso de contexto** debajo (verde; ámbar desde
-80 %; roja desde 95 %). El uso sale de la última respuesta en su transcript (entrada + caché + salida); si pasa de
-200 mil tokens la ventana se toma como de 1 M.
+80 %; roja desde 95 %). El uso sale de la última respuesta en su transcript (entrada + caché + salida).
+La ventana depende del modelo: 1 M para los que la traen de fábrica (Opus 4.7+, Sonnet 5+, Fable, Haiku 5.5) o si ya
+pasó de 200 mil; 200 mil para los demás.
 
 **Ficha del agente** (clic en el personaje): conversación reciente leída de su transcript (las respuestas del agente
 con su formato: listas, tablas, código, negritas y enlaces, armado con nodos y nunca como HTML), cuadro para
