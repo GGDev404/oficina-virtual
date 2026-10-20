@@ -7,6 +7,7 @@ WorkingDirectory=%h/Proyectos/Oficina-virtual
 ExecStart=%h/.local/share/mise/installs/node/22/bin/node --disable-warning=ExperimentalWarning server/index.js
 Restart=on-failure
 RestartSec=5
+KillMode=process
 
 [Install]
 WantedBy=default.target
