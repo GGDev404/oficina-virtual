@@ -112,8 +112,19 @@ integración a develop 13:00 y 18:00). Cada sesión es un personaje con su nombr
 | Descanso | listo para revisar, sin señal | con café o dormido |
 | Tu oficina | — | tú («Tú · entrar»), bandeja = comentarios para ti, calendario = vencimientos |
 
-**Ficha del agente** (clic en el personaje): conversación reciente leída de su transcript, cuadro para escribirle
-y contexto (tarea con horario y choque, rama y carpeta, procesos en segundo plano, subagentes).
+Cada agente lleva una etiqueta del color de su camisa con una barra de **uso de contexto** debajo (verde; ámbar desde
+80 %; roja desde 95 %). El uso sale de la última respuesta en su transcript (entrada + caché + salida); si pasa de
+200 mil tokens la ventana se toma como de 1 M.
+
+**Ficha del agente** (clic en el personaje): conversación reciente leída de su transcript (las respuestas del agente
+con su formato: listas, tablas, código, negritas y enlaces, armado con nodos y nunca como HTML), cuadro para
+escribirle y contexto (tarea con horario y choque, rama y carpeta, procesos en segundo plano, subagentes). Con el
+contexto alto avisa que conviene `/compact` (escríbelo en su terminal: un mensaje no ejecuta comandos); casi lleno,
+ofrece **Pedir resumen de traspaso** para seguir en una sesión nueva.
+
+**Mensajero**: cada mensaje que mandas lo lleva un personaje de gorra roja que sale de tu oficina, camina hasta el
+agente, se queda con el sobre hasta que la entrega se confirma (una X si falla) y regresa. Es solo visual: el
+mensajero real es un `claude -p` corto que no aparece como agente.
 
 **Mensajes a los agentes.** `server/mensajero.js` lanza `claude -p --model haiku` con solo `ListAgents` y
 `SendMessage` (sin tus hooks ni plugins: `--setting-sources project`) que entrega tu texto con la mensajería entre

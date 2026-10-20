@@ -3,6 +3,7 @@
 import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
+import path from 'node:path';
 
 const RAIZ_SOCKETS = [`/run/user/${process.getuid?.() ?? 1000}/cc-socks`, `/tmp/cc-socks-${process.getuid?.() ?? 1000}`];
 // Sesiones que no son agentes de trabajo: observadoras de claude-mem y el mensajero de la propia oficina.
@@ -15,6 +16,13 @@ export function leerVivas({ claude = 'claude' } = {}) {
       try { ok(JSON.parse(salida)); } catch (err) { falla(err); }
     });
   });
+}
+
+// Ruta del transcript de una sesión: ~/.claude/projects/<cwd con todo lo que no es letra o número como «-»>/<id>.jsonl
+export function rutaTranscript(cwd, sessionId) {
+  if (!cwd) return null;
+  const ruta = path.join(os.homedir(), '.claude', 'projects', cwd.replace(/[^a-zA-Z0-9]/g, '-'), `${sessionId}.jsonl`);
+  return fs.existsSync(ruta) ? ruta : null;
 }
 
 export function tieneBandeja(pid) {
@@ -34,11 +42,12 @@ export function aplicarVivas(db, lista, ahora = Date.now(), { bandeja = tieneBan
       // Abierta antes de los hooks o sin eventos todavía: entra con lo que dice `claude agents`.
       const estado = v.status === 'busy' ? 'trabajando' : 'listo_para_revisar';
       const desde = v.startedAt ?? ahora;
-      db.prepare(`INSERT INTO sesiones (id, cwd, nombre, estado, estado_desde_ts, ultimo_evento_ts, iniciada_ts)
-                  VALUES (?, ?, ?, ?, ?, ?, ?)`).run(v.sessionId, v.cwd ?? null, v.name ?? null, estado, ahora, desde, desde);
+      db.prepare(`INSERT INTO sesiones (id, cwd, nombre, transcript_path, estado, estado_desde_ts, ultimo_evento_ts, iniciada_ts)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(v.sessionId, v.cwd ?? null, v.name ?? null, rutaTranscript(v.cwd, v.sessionId), estado, ahora, desde, desde);
       cambios.push({ sesion_id: v.sessionId, antes: null, estado });
     } else {
-      db.prepare('UPDATE sesiones SET nombre = COALESCE(?, nombre) WHERE id = ?').run(v.name ?? null, v.sessionId);
+      db.prepare('UPDATE sesiones SET nombre = COALESCE(?, nombre), transcript_path = COALESCE(transcript_path, ?) WHERE id = ?')
+        .run(v.name ?? null, rutaTranscript(v.cwd, v.sessionId), v.sessionId);
       if (s.estado === 'cerrada') { // se reanudó una sesión que habíamos dado por cerrada
         db.prepare(`UPDATE sesiones SET estado = 'listo_para_revisar', estado_desde_ts = ?, terminada_ts = NULL WHERE id = ?`).run(ahora, v.sessionId);
         cambios.push({ sesion_id: v.sessionId, antes: 'cerrada', estado: 'listo_para_revisar' });

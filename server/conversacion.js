@@ -76,3 +76,36 @@ export function leerConversacion(ruta, max) {
     if (fd !== undefined) fs.closeSync(fd);
   }
 }
+
+// Uso de la ventana de contexto: lo que ocupó la última respuesta del agente principal
+// (entrada + caché leída + caché creada + salida). Si pasa de 200 mil, la sesión es de 1 M.
+export function usoContexto(lineas) {
+  for (let i = lineas.length - 1; i >= 0; i--) {
+    let e;
+    try { e = JSON.parse(lineas[i]); } catch { continue; }
+    const u = e.type === 'assistant' && !e.isSidechain ? e.message?.usage : null;
+    if (!u) continue;
+    const tokens = (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.output_tokens ?? 0);
+    const limite = tokens > 200_000 ? 1_000_000 : 200_000;
+    return { tokens, limite, modelo: e.message?.model ?? null, ts: Date.parse(e.timestamp) || null };
+  }
+  return null;
+}
+
+export function leerContexto(ruta) {
+  if (!rutaValida(ruta)) return null;
+  let fd;
+  try {
+    fd = fs.openSync(ruta, 'r');
+    const { size } = fs.fstatSync(fd);
+    for (const cola of [512 * 1024, 4 * 1024 * 1024]) { // las líneas con imágenes pueden tapar la última respuesta
+      const uso = usoContexto(leerCola(fd, size, Math.min(size, cola)));
+      if (uso || cola >= size) return uso;
+    }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
+}

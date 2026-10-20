@@ -11,7 +11,7 @@ import { ligar, religarTodas, FORMATO_ID } from './tarea-link.js';
 import { crearNotificador, ESTADOS_AVISO } from './notificar.js';
 import { siguiente } from './siguiente.js';
 import { leerVivas, aplicarVivas } from './vivas.js';
-import { leerConversacion } from './conversacion.js';
+import { leerConversacion, leerContexto } from './conversacion.js';
 import { crearMensajero, MAX_TEXTO } from './mensajero.js';
 import { PERMISOS, carpetaValida, carpetasConocidas, nuevaSesion, cerrarSesion, abrirTerminal } from './control.js';
 
@@ -85,7 +85,18 @@ function leerNoche() {
   return { fecha: null };
 }
 
-const estadoCompleto = () => ({ ...estado(db), sync, vivas: Object.fromEntries(vivas), mensajes: mensajero.mensajes() });
+// Uso de contexto de las sesiones vivas, leído del final de su transcript cada 20 s.
+let contextos = {};
+function actualizarContextos() {
+  const nuevos = {};
+  for (const s of db.prepare(`SELECT id, transcript_path FROM sesiones WHERE estado <> 'cerrada' AND transcript_path IS NOT NULL`).all()) {
+    const c = leerContexto(s.transcript_path);
+    if (c) nuevos[s.id] = c;
+  }
+  if (JSON.stringify(nuevos) !== JSON.stringify(contextos)) { contextos = nuevos; avisar(); }
+}
+
+const estadoCompleto = () => ({ ...estado(db), sync, vivas: Object.fromEntries(vivas), mensajes: mensajero.mensajes(), contexto: contextos });
 
 // Notificación de escritorio cuando una sesión pasa a pedirte algo o llega una corrección de ficha.
 const notificar = crearNotificador();
@@ -283,6 +294,8 @@ setInterval(() => {
   actualizarVivas();
 }, 5000);
 actualizarVivas();
+actualizarContextos();
+setInterval(actualizarContextos, 20_000);
 sincronizarClickup();
 setInterval(sincronizarClickup, 5 * 60_000);
 servidor.listen(PUERTO, '127.0.0.1', () => console.log(`oficina en http://127.0.0.1:${PUERTO}`));

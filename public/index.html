@@ -103,13 +103,21 @@
   .burbuja:empty { display: none; }
   .burbuja svg.icono { width: 14px; height: 14px; stroke-width: 2.5; }
   .etiqueta { position: absolute; left: 0; top: calc(var(--e) * 1px); transform: translateX(-50%);
-    font: 500 12.5px/1.2 var(--pixel); color: #fff; background: rgba(12, 11, 18, .82);
-    padding: 2px 6px 3px; border-radius: 4px; white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+    font: 500 12.5px/1.2 var(--pixel); color: #fff; background: rgba(12, 11, 18, .82); border: 2px solid #1a1922;
+    padding: 1px 6px 2px; border-radius: 4px; white-space: nowrap; max-width: 150px; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+  .etiqueta .txt { display: block; overflow: hidden; text-overflow: ellipsis; }
+  /* Barra de contexto bajo el nombre: verde, ámbar desde 80 %, roja desde 95 % */
+  .etiqueta .ctx { display: block; height: 3px; margin: 2px -2px 0; background: rgba(0, 0, 0, .4); border-radius: 2px; overflow: hidden; }
+  .etiqueta .ctx:empty { display: none; }
+  .etiqueta .ctx i { display: block; height: 100%; background: #6fe39a; }
+  .etiqueta .ctx i.medio { background: #ffc24a; }
+  .etiqueta .ctx i.lleno { background: #ff6b57; }
   .objeto { pointer-events: auto; padding: 0; border: 0; background: none; min-height: 0; cursor: pointer; }
   .insignia { display: inline-flex; gap: 4px; align-items: center; font: 700 12.5px/1 var(--pixel); color: #fff; background: #d8433f;
     border: 2px solid #1a1922; border-radius: 99px; padding: 3px 8px 4px; box-shadow: 0 2px 0 rgba(0, 0, 0, .3); white-space: nowrap; }
   .insignia.bien { background: #3f8f5a; }
   .insignia.neutra { background: #2d2b3a; }
+  .insignia.entrar { background: #f4f1ea; color: #1a1922; }
   .insignia svg.icono { width: 13px; height: 13px; }
   .objeto:focus-visible { outline: none; }
   .objeto:focus-visible .insignia, .objeto:hover .insignia { outline: 2px solid #ffd84a; outline-offset: 2px; }
@@ -153,6 +161,20 @@
   .globo.rol-mensaje { background: var(--verde-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
   .globo.rol-sistema { align-self: center; background: none; color: var(--suave); font-size: 12.5px; padding: 0; }
   .globo .quien { display: block; font-size: 11.5px; color: var(--suave); margin-bottom: 2px; }
+  .globo.rol-agente { white-space: normal; }
+  /* Markdown de los agentes, armado con nodos (nunca HTML del texto) */
+  .md { display: grid; gap: 6px; }
+  .md p { margin: 0; white-space: pre-line; }
+  .md .md-titulo { font-weight: 700; margin-top: 2px; }
+  .md ul, .md ol { margin: 0; padding-left: 1.3em; list-style: revert; display: grid; gap: 2px; }
+  .md code { font-family: ui-monospace, monospace; font-size: .9em; background: var(--gris-bg); border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere; }
+  .md pre { margin: 0; background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 8px 10px; overflow: auto; max-height: 16em; }
+  .md pre code { background: none; padding: 0; white-space: pre; }
+  .md .md-tabla { overflow-x: auto; }
+  .md table { border-collapse: collapse; font-size: 12.5px; }
+  .md th, .md td { border: 1px solid var(--borde); padding: 3px 8px; text-align: left; vertical-align: top; }
+  .md th { background: var(--gris-bg); }
+  .md a { overflow-wrap: anywhere; }
   .redactar { display: grid; gap: var(--s2); margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--borde); }
   .aviso-caja { background: var(--naranja-bg); color: var(--naranja); border-radius: 10px; padding: var(--s2) var(--s3); font-size: 13px; margin: 0 0 var(--s3); }
   .aviso-caja.rojo { background: var(--rojo-bg); color: var(--rojo); }
@@ -351,6 +373,7 @@ const TRAZOS = {
   terminal: ['m4 17 6-6-6-6', 'M12 19h8'],
   flecha: ['m9 18 6-6-6-6'],
   arroba: ['M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', 'M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8'],
+  puerta: ['M13 4h3a2 2 0 0 1 2 2v14', 'M2 20h3', 'M13 20h9', 'M10 12v.01', 'M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z'],
   campana: ['M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9', 'M10.3 21a1.94 1.94 0 0 0 3.4 0'],
   hora: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 6v6l4 2'],
 };
@@ -383,6 +406,78 @@ const base = (cwd) => (cwd ?? '').split('/').filter(Boolean).at(-1) ?? '';
 const inicioDia = (ts) => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return +d; };
 const DIA = 86400000;
 const tareaPorId = (d) => Object.fromEntries(d.tareas.map((t) => [t.id, t]));
+// Markdown sencillo de los agentes → nodos del DOM (nunca innerHTML): párrafos, títulos, listas, tablas, código y énfasis.
+function enLinea(texto) {
+  const nodos = [];
+  const re = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|((?<![\w*])\*[^*\s][^*\n]*\*(?![\w*])|(?<!\w)_[^_\s][^_\n]*_(?!\w))|(\[[^\]\n]+\]\((https?:\/\/[^)\s]+)\))|(https?:\/\/[^\s)<>]+)/g;
+  let i = 0, m;
+  while ((m = re.exec(texto))) {
+    if (m.index > i) nodos.push(texto.slice(i, m.index));
+    const t = m[0];
+    if (m[1]) nodos.push(el('code', {}, t.slice(1, -1)));
+    else if (m[2]) nodos.push(el('strong', {}, enLinea(t.slice(2, -2))));
+    else if (m[3]) nodos.push(el('em', {}, t.slice(1, -1)));
+    else if (m[4]) nodos.push(el('a', { href: m[5], target: '_blank', rel: 'noopener' }, t.slice(1, t.indexOf(']'))));
+    else nodos.push(el('a', { href: t, target: '_blank', rel: 'noopener' }, t));
+    i = m.index + t.length;
+  }
+  if (i < texto.length) nodos.push(texto.slice(i));
+  return nodos;
+}
+const VINETA = /^\s*([-*•]|\d+[.)])\s+/;
+function md(texto) {
+  const lineas = String(texto).replace(/\r/g, '').split('\n');
+  const bloques = [];
+  const celdas = (x) => x.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+  let i = 0;
+  while (i < lineas.length) {
+    const l = lineas[i];
+    if (/^\s*```/.test(l)) {
+      const buf = [];
+      for (i++; i < lineas.length && !/^\s*```/.test(lineas[i]); i++) buf.push(lineas[i]);
+      i++;
+      bloques.push(el('pre', {}, el('code', {}, buf.join('\n'))));
+    } else if (!l.trim()) {
+      i++;
+    } else if (/^#{1,4}\s+/.test(l)) {
+      bloques.push(el('p', { class: 'md-titulo' }, enLinea(l.replace(/^#{1,4}\s+/, ''))));
+      i++;
+    } else if (/^\s*\|.*\|\s*$/.test(l) && /^\s*\|?\s*:?-{2,}/.test(lineas[i + 1] ?? '')) {
+      const cabeza = celdas(l);
+      const filas = [];
+      for (i += 2; i < lineas.length && /^\s*\|.*\|\s*$/.test(lineas[i]); i++) filas.push(celdas(lineas[i]));
+      bloques.push(el('div', { class: 'md-tabla' }, el('table', {}, el('thead', {}, el('tr', {}, cabeza.map((c) => el('th', {}, enLinea(c))))),
+        el('tbody', {}, filas.map((f) => el('tr', {}, f.map((c) => el('td', {}, enLinea(c)))))))));
+    } else if (VINETA.test(l)) {
+      const ordenada = /^\s*\d/.test(l);
+      const items = [];
+      while (i < lineas.length && VINETA.test(lineas[i])) {
+        items.push(lineas[i].replace(VINETA, ''));
+        for (i++; i < lineas.length && /^\s{2,}\S/.test(lineas[i]) && !VINETA.test(lineas[i]); i++) items[items.length - 1] += ` ${lineas[i].trim()}`;
+      }
+      bloques.push(el(ordenada ? 'ol' : 'ul', {}, items.map((x) => el('li', {}, enLinea(x)))));
+    } else {
+      const buf = [l];
+      for (i++; i < lineas.length && lineas[i].trim() && !/^(\s*```|#{1,4}\s|\s*\|)/.test(lineas[i]) && !VINETA.test(lineas[i]); i++) buf.push(lineas[i]);
+      bloques.push(el('p', {}, enLinea(buf.join('\n'))));
+    }
+  }
+  return el('div', { class: 'md' }, bloques);
+}
+const plano = (t) => String(t ?? '').replace(/```[\s\S]*?```/g, ' [código] ').replace(/\*\*|[`#>|]/g, '').replace(/^\s*[-*•]\s+/gm, '· ').replace(/\s+/g, ' ').trim();
+// Ventana de contexto: tokens que ocupó la última respuesta frente al límite de su modelo.
+function nivelContexto(c) {
+  if (!c) return null;
+  const pct = c.tokens / c.limite;
+  return { pct, clase: pct >= 0.95 ? 'lleno' : pct >= 0.8 ? 'medio' : '', texto: `${Math.round(c.tokens / 1000)}k de ${c.limite >= 1_000_000 ? '1M' : `${c.limite / 1000}k`} · ${Math.round(pct * 100)} %` };
+}
+// Texto legible sobre un color: el de mayor contraste entre oscuro y blanco.
+function textoSobre(hex) {
+  const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const [rr, gg, bb] = [1, 3, 5].map((k) => lin(parseInt(hex.slice(k, k + 2), 16)));
+  const L = 0.2126 * rr + 0.7152 * gg + 0.0722 * bb;
+  return (L + 0.05) / 0.06 >= 1.05 / (L + 0.05) ? '#1a1922' : '#ffffff';
+}
 const pendientesParaMi = (d) => d.comentarios.filter((c) => !c.es_mio && c.para_mi && !c.respondido && !c.visto_local);
 const procesosDe = (s) => { try { return JSON.parse(s.procesos_json ?? 'null') ?? []; } catch { return []; } };
 const nombreSesion = (s, tareas) => s.nombre ?? tareas[s.tarea_id]?.nombre ?? (carpeta(s.cwd) || s.id.slice(0, 8));
@@ -583,9 +678,13 @@ en(fondo.getContext('2d'), () => {
 const actores = new Map(); // sesión → { x, y, ruta, sala, lugar, aspecto, boton }
 let primeraCarga = true; // al abrir la página cada quien aparece en su lugar; después caminan al cambiar de estado
 let e = 1; // escala: px de pantalla por px lógico
-function crearBoton(id) {
+function crearBoton(id, look) {
+  // Cada agente lleva su etiqueta del color de su camisa, para reconocerlo de un vistazo.
+  const etiqueta = el('span', { class: 'etiqueta' }, el('span', { class: 'txt' }), el('span', { class: 'ctx' }));
+  etiqueta.style.background = look.camisa;
+  etiqueta.style.color = textoSobre(look.camisa);
   const b = el('button', { class: 'agente', type: 'button', 'aria-haspopup': 'dialog', onclick: () => abrirAgente(id) },
-    el('span', { class: 'burbuja' }), el('span', { class: 'caja' }), el('span', { class: 'etiqueta' }));
+    el('span', { class: 'burbuja' }), el('span', { class: 'caja' }), etiqueta);
   capa.append(b);
   return b;
 }
@@ -599,7 +698,8 @@ function actualizarActores(d) {
     lista.forEach((s, i) => {
       let a = actores.get(s.id);
       if (!a) {
-        a = { x: -8, y: 146, ruta: [], sala: null, aspecto: aspecto(s.id), boton: crearBoton(s.id) };
+        const look = aspecto(s.id);
+        a = { x: -8, y: 146, ruta: [], sala: null, aspecto: look, boton: crearBoton(s.id, look) };
         actores.set(s.id, a);
       }
       const destino = lugar(sala, i);
@@ -624,13 +724,20 @@ function actualizarActores(d) {
       }
       const nombre = s.nombre ?? s.tarea_id ?? base(s.cwd);
       const etiqueta = a.boton.querySelector('.etiqueta');
-      if (etiqueta.textContent !== nombre) { etiqueta.textContent = nombre; a.anchoEtiqueta = null; }
+      if (etiqueta.firstChild.textContent !== nombre) { etiqueta.firstChild.textContent = nombre; a.anchoEtiqueta = null; }
+      const ctxNivel = nivelContexto(d.contexto?.[s.id]);
+      const claveCtx = ctxNivel ? `${Math.round(ctxNivel.pct * 100)}${ctxNivel.clase}` : '';
+      if (etiqueta.lastChild.dataset.clave !== claveCtx) {
+        etiqueta.lastChild.dataset.clave = claveCtx;
+        reemplazar(etiqueta.lastChild, ctxNivel && el('i', { class: ctxNivel.clase, style: `width:${Math.min(100, Math.round(ctxNivel.pct * 100))}%` }));
+      }
       // Ancho máximo según el espacio entre lugares del cuarto; el nombre completo va en el título y en la ficha.
       const maximo = { taller: 56, puerta: 42 }[sala] ?? 30;
       if (a.maximo !== maximo) { a.maximo = maximo; etiqueta.style.maxWidth = `calc(var(--e) * ${maximo}px)`; a.anchoEtiqueta = null; }
       const estadoTexto = a.espera ? `esperando ${n} proceso${n > 1 ? 's' : ''}` : ESTADOS[s.estado]?.[0] ?? s.estado;
-      a.boton.setAttribute('aria-label', `${nombreSesion(s, tareas)}: ${estadoTexto}`);
-      a.boton.title = `${nombreSesion(s, tareas)} · ${estadoTexto}`;
+      const conCtx = ctxNivel ? ` · contexto ${Math.round(ctxNivel.pct * 100)} %` : '';
+      a.boton.setAttribute('aria-label', `${nombreSesion(s, tareas)}: ${estadoTexto}${conCtx}`);
+      a.boton.title = `${nombreSesion(s, tareas)} · ${estadoTexto}${conCtx}`;
     });
   }
   for (const [id, a] of actores) if (!vivas.some((s) => s.id === id)) { a.boton.remove(); actores.delete(id); }
@@ -650,7 +757,7 @@ const fijos = {};
 function fijo(clave, x, y, nodo, centro = '') { nodo.classList.add('fijo'); capa.append(nodo); fijos[clave] = { el: nodo, x, y, centro }; return nodo; }
 for (const [k, s] of Object.entries(SALAS)) fijo(`sala-${k}`, s.x, s.y, el('span', { class: 'cuarto' }, s.titulo));
 fijo('yo', MESA_YO.dx + 14, MESA_YO.dy + 21, el('button', { class: 'objeto', type: 'button', 'aria-haspopup': 'dialog', onclick: () => abrirOficina() },
-  el('span', { class: 'insignia neutra' }, 'Tú · entrar')), ' translate(-50%, -50%)');
+  el('span', { class: 'insignia entrar' }, icono('puerta'), 'Tu oficina')), ' translate(-50%, -50%)');
 fijo('bandeja', MESA_YO.dx + 6, MESA_YO.dy - 4, el('button', { class: 'objeto', type: 'button', 'aria-haspopup': 'dialog', onclick: () => abrirOficina('vo-parati') },
   el('span', { class: 'insignia' }, icono('correo'), el('span', {}))), ' translate(-50%, -50%)');
 fijo('calendario', SALAS.oficina.x + 149, SALAS.oficina.y + 24, el('button', { class: 'objeto', type: 'button', 'aria-haspopup': 'dialog', onclick: () => abrirOficina('vo-agenda') },
@@ -666,6 +773,62 @@ new ResizeObserver(escalar).observe(lienzo);
 const barra = document.getElementById('barra');
 new ResizeObserver(() => document.documentElement.style.setProperty('--cabecera', `${barra.offsetHeight}px`)).observe(barra);
 
+// ── Mensajero: cada mensaje que mandas lo lleva un personaje que sale de tu oficina, entrega y se retira ──
+const MENSAJERO = { pelo: '#3a2a1a', piel: '#dcae84', camisa: '#c0392b', sombra: '#922b21' };
+const mensajeros = [];
+const mensajesVistos = new Set();
+let mensajesIniciados = false;
+function despacharMensajeros(d) {
+  for (const [sid, lista] of Object.entries(d.mensajes ?? {})) {
+    for (const m of lista) {
+      if (mensajesVistos.has(m.id)) continue;
+      mensajesVistos.add(m.id);
+      const a = actores.get(sid);
+      if (!mensajesIniciados || reducido || !a) continue; // los que ya existían al abrir la página no se animan
+      const inicio = { x: MESA_YO.dx - 4, y: MESA_YO.dy + 24 };
+      const destino = { x: a.x + 12, y: a.y + 3 };
+      const ida = [entrada('oficina'), enPasillo('oficina'), enPasillo(a.sala), entrada(a.sala), destino];
+      mensajeros.push({ ...inicio, sid, id: m.id, fase: 'va', ruta: ida, regreso: [entrada(a.sala), enPasillo(a.sala), enPasillo('oficina'), entrada('oficina'), inicio], llego: 0 });
+    }
+  }
+  mensajesIniciados = true;
+}
+function avanzar(o, dt) {
+  let avance = VELOCIDAD * dt;
+  while (avance > 0 && o.ruta.length) {
+    const [p] = o.ruta, dx = p.x - o.x, dy = p.y - o.y, dist = Math.hypot(dx, dy);
+    if (dist <= avance) { o.x = p.x; o.y = p.y; o.ruta.shift(); avance -= dist; }
+    else { o.x += (dx / dist) * avance; o.y += (dy / dist) * avance; avance = 0; }
+  }
+}
+function moverMensajeros(dt) {
+  for (let k = mensajeros.length - 1; k >= 0; k--) {
+    const o = mensajeros[k];
+    avanzar(o, dt * 1.3); // el mensajero va con prisa
+    if (o.ruta.length) continue;
+    if (o.fase === 'va') { o.fase = 'entrega'; o.llego = performance.now(); }
+    else if (o.fase === 'entrega') {
+      const estado = datos?.mensajes?.[o.sid]?.find((m) => m.id === o.id)?.estado ?? 'enviado';
+      o.resultado = estado;
+      // Espera a que la entrega se confirme (o falle), al menos un momento para que se vea.
+      if (estado !== 'enviando' && performance.now() - o.llego > 1200) { o.fase = 'regresa'; o.ruta = o.regreso; }
+    } else mensajeros.splice(k, 1);
+  }
+}
+function dibujarMensajero(o, f, fCamina) {
+  const caminando = o.ruta.length > 0;
+  personaje(o.x, o.y, MENSAJERO, caminando ? 'camina' : 'parado', caminando ? fCamina : f);
+  const ox = Math.round(o.x) - 6, oy = Math.round(o.y) - 16;
+  r(ox + 3, oy - 1, 6, 2, '#c0392b'); r(ox + 2, oy + 1, 8, 1, '#922b21'); // gorra
+  if (o.fase === 'va') { r(ox + 9, oy + 8, 4, 3, '#fffdf5'); r(ox + 9, oy + 8, 4, 1, '#c9c6bd'); } // sobre en la mano
+  if (o.fase === 'entrega') { // globo con el sobre (o una X si no se pudo entregar)
+    const bx = ox - 1, by = oy - 13;
+    r(bx, by, 14, 10, '#1a1922'); r(bx + 1, by + 1, 12, 8, o.resultado === 'error' ? '#ff6b57' : '#fffdf5'); r(bx + 6, by + 10, 2, 2, '#1a1922');
+    if (o.resultado === 'error') { for (let k = 0; k < 4; k++) { r(bx + 5 + k, by + 3 + k, 1, 1, '#fff'); r(bx + 8 - k, by + 3 + k, 1, 1, '#fff'); } }
+    else { r(bx + 3, by + 3, 8, 5, '#f4f1ea'); r(bx + 3, by + 3, 8, 1, '#c9c6bd'); r(bx + 4, by + 4, 2, 1, '#c9c6bd'); r(bx + 8, by + 4, 2, 1, '#c9c6bd'); r(bx + 6, by + 5, 2, 1, '#c9c6bd'); }
+  }
+}
+
 // ── Bucle de animación ──
 const VELOCIDAD = 55; // px lógicos por segundo
 let reloj = 0, previo = performance.now();
@@ -680,6 +843,7 @@ function cuadro(ahora) {
       else { a.x += (dx / dist) * avance; a.y += (dy / dist) * avance; avance = 0; }
     }
   }
+  moverMensajeros(dt);
   dibujar(Math.floor(reloj * 4), Math.floor(reloj * 8));
   const ancho = W * e;
   for (const a of actores.values()) {
@@ -706,6 +870,7 @@ function dibujar(f, fCamina) {
     const subs = (datos?.subagentes ?? []).filter((x) => x.sesion_id === a.s.id && x.estado === 'trabajando').slice(0, 3);
     subs.forEach((_, k) => robot(a.x + (sentado(a) ? 23 : 13) + k * 10, a.y - (sentado(a) ? 6 : 0) - (k % 2) * 3, f, k));
   }
+  for (const o of mensajeros) dibujarMensajero(o, f, fCamina);
   const m = MESA_YO;
   personaje(m.dx + 14, m.dy + 6, YO, 'parado', f);
   r(m.dx, m.dy, 40, 10, '#c88d55'); r(m.dx, m.dy, 40, 1, '#dba06a'); r(m.dx, m.dy + 10, 40, 6, '#8a5a33');
@@ -823,17 +988,20 @@ function renderAgente() {
   reemplazar(document.getElementById('va-sub'),
     espera ? chip(`Esperando ${procesos.length} proceso${procesos.length > 1 ? 's' : ''}`, 'naranja') : chipEstado(s.estado),
     el('span', { class: 'meta' }, `desde ${hace(s.estado_desde_ts)}`),
-    el('span', { class: 'meta' }, viva ? (viva.ocupada ? '· ocupada ahora' : '· libre ahora') : '· sesión cerrada'));
+    el('span', { class: 'meta' }, viva ? (viva.ocupada ? '· ocupada ahora' : '· libre ahora') : '· sesión cerrada'),
+    nivelContexto(d.contexto?.[s.id]) && chip(`Contexto ${nivelContexto(d.contexto[s.id]).texto}`,
+      { lleno: 'rojo', medio: 'naranja', '': 'verde' }[nivelContexto(d.contexto[s.id]).clase]));
 
   // Acciones y avisos solo se repintan si cambian: así un clic no cae en un botón que se acaba de reemplazar.
-  const claveAvisos = [s.id, viva?.tipo, !!viva, viva?.ocupada, confirmandoCierre, s.estado, espera].join('|');
-  if (vAgente.dataset.avisos !== claveAvisos) { vAgente.dataset.avisos = claveAvisos; pintarAvisos(s, viva, tareas, espera); }
+  const nivel = nivelContexto(d.contexto?.[s.id]);
+  const claveAvisos = [s.id, viva?.tipo, !!viva, viva?.ocupada, confirmandoCierre, s.estado, espera, nivel?.clase].join('|');
+  if (vAgente.dataset.avisos !== claveAvisos) { vAgente.dataset.avisos = claveAvisos; pintarAvisos(s, viva, tareas, espera, nivel); }
 
 
   const mensajes = (d.mensajes?.[s.id] ?? []).filter((m) => m.estado !== 'enviado' || Date.now() - m.ts < 90_000);
   const globos = conversacion.map((m) => el('div', { class: `globo rol-${m.rol}` },
     m.rol !== 'sistema' && el('span', { class: 'quien' }, { tu: 'Tú', agente: 'Agente', mensaje: 'Tu mensaje desde la oficina' }[m.rol], m.ts ? ` · ${horaDe(m.ts)}` : ''),
-    el('div', {}, m.texto)));
+    m.rol === 'agente' ? md(m.texto) : el('div', {}, m.texto)));
   for (const m of mensajes) {
     globos.push(el('div', { class: 'globo rol-mensaje' }, el('span', { class: 'quien' },
       m.estado === 'enviando' ? 'Enviando…' : m.estado === 'error' ? `No se envió: ${m.detalle}` : 'Entregado'), el('div', {}, m.texto)));
@@ -875,7 +1043,9 @@ function renderAgente() {
           a.estado === 'trabajando' ? chip('trabajando', 'verde') : el('span', { class: 'meta' }, hace(a.fin_ts ?? a.inicio_ts)))))),
     el('p', { class: 'meta', style: 'margin:0' }, `Última actividad ${hace(s.ultimo_evento_ts)} · sesión ${s.id.slice(0, 8)}`));
 }
-function pintarAvisos(s, viva, tareas, espera) {
+const PEDIR_TRASPASO = 'Tu ventana de contexto está casi llena. Escribe un resumen de traspaso para seguir en una sesión nueva: objetivo, '
+  + 'estado actual, archivos tocados, decisiones tomadas, qué falta y el siguiente paso concreto. Termina con la rama y la carpeta.';
+function pintarAvisos(s, viva, tareas, espera, nivel) {
   reemplazar(document.getElementById('va-acciones'),
     viva?.tipo === 'background' && el('button', { type: 'button', onclick: () => postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/terminal`) },
       icono('terminal'), 'Abrir en terminal'),
@@ -897,7 +1067,16 @@ function pintarAvisos(s, viva, tareas, espera) {
     s.estado === 'necesita_permiso' && el('p', { class: 'aviso-caja rojo' }, el('b', {}, 'Pide permiso. '),
       `Apruébalo en su terminal (${carpeta(s.cwd)}): un mensaje desde aquí no puede aprobar permisos.`),
     s.estado === 'bloqueado' && el('p', { class: 'aviso-caja rojo' }, el('b', {}, 'Está bloqueado. '), 'Su último mensaje dice qué le falta.'),
-    espera && el('p', { class: 'aviso-caja' }, el('b', {}, 'Espera sus procesos. '), 'Cuando terminen, sigue solo; si le escribes ahora, lee tu mensaje y responde.'));
+    espera && el('p', { class: 'aviso-caja' }, el('b', {}, 'Espera sus procesos. '), 'Cuando terminen, sigue solo; si le escribes ahora, lee tu mensaje y responde.'),
+    nivel?.clase && viva && el('div', { class: `aviso-caja ${nivel.clase === 'lleno' ? 'rojo' : ''}` },
+      el('p', { style: 'margin:0 0 8px' }, el('b', {}, nivel.clase === 'lleno' ? 'Contexto casi lleno. ' : 'Contexto alto. '),
+        nivel.clase === 'lleno'
+          ? 'Pídele un resumen de traspaso y abre una sesión nueva con él, o escribe /compact en su terminal.'
+          : 'Conviene compactar pronto: escribe /compact en su terminal (un mensaje desde aquí no ejecuta comandos).'),
+      el('button', { type: 'button', class: 'boton-chico', onclick: async () => {
+        try { await post(`/api/sesiones/${encodeURIComponent(s.id)}/mensaje`, { texto: PEDIR_TRASPASO }); document.getElementById('va-estado').textContent = 'Le pedí el resumen de traspaso.'; }
+        catch (err) { document.getElementById('va-estado').textContent = err.message; }
+      } }, 'Pedir resumen de traspaso')));
 }
 function abrirAsignacion(s, d) {
   asignando = true;
@@ -1101,7 +1280,7 @@ function renderNecesitan() {
   reemplazar(document.getElementById('vn-lista'), cola.length ? cola.map((s) => el('li', { class: 'comentario' },
     el('div', { class: 'fila' }, chipEstado(s.estado), el('b', {}, nombreSesion(s, tareas)), el('span', { class: 'meta' }, `lleva ${hace(s.estado_desde_ts).replace('hace ', '')}`)),
     s.tarea_id && s.nombre && el('div', { class: 'meta corto' }, tareas[s.tarea_id]?.nombre ?? s.tarea_id),
-    s.ultimo_mensaje && el('div', { class: 'mensaje corto3' }, s.ultimo_mensaje),
+    s.ultimo_mensaje && el('div', { class: 'mensaje corto3' }, plano(s.ultimo_mensaje)),
     el('div', { class: 'fila' },
       s.estado === 'necesita_permiso'
         ? el('span', { class: 'aviso-caja rojo', style: 'margin:0;padding:2px 8px' }, `Apruébalo en su terminal · ${carpeta(s.cwd)}`)
@@ -1152,6 +1331,7 @@ function render() {
   const d = datos;
   if (!d) return;
   actualizarActores(d);
+  despacharMensajeros(d);
   renderTarjetas(d);
   if (vAgente.open) renderAgente();
   if (vOficina.open) renderOficina();

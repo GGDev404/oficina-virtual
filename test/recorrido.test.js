@@ -5,7 +5,7 @@ import os from 'node:os';
 import { abrir } from '../server/db.js';
 import { aplicar, revisar } from '../server/estados.js';
 import { aplicarVivas } from '../server/vivas.js';
-import { intercambios, rutaValida } from '../server/conversacion.js';
+import { intercambios, rutaValida, usoContexto } from '../server/conversacion.js';
 import { crearMensajero, interpretar, promptMensajero } from '../server/mensajero.js';
 import { esParaMi } from '../server/clickup.js';
 
@@ -114,4 +114,14 @@ test('para ti: mención, asignado, tu nombre o corrección', () => {
   assert.equal(esParaMi({ comment_text: 'Tesorería pasa a Dev' }, yo, 'dev'), true);
   assert.equal(esParaMi({ comment_text: 'CORRECCIÓN a mi ficha' }, yo), true);
   assert.equal(esParaMi({ comment_text: 'Se movió del sprint 2 al 3' }, yo), false);
+});
+
+test('uso de contexto: última respuesta del agente principal; más de 200 mil es ventana de 1 M', () => {
+  const linea = (u, extra = {}) => JSON.stringify({ type: 'assistant', timestamp: '2026-10-20T18:00:00Z', message: { model: 'claude-opus-5-5', usage: u }, ...extra });
+  assert.deepEqual(usoContexto([linea({ input_tokens: 2, cache_read_input_tokens: 150_000, cache_creation_input_tokens: 1000, output_tokens: 500 })]),
+    { tokens: 151_502, limite: 200_000, modelo: 'claude-opus-5-5', ts: Date.parse('2026-10-20T18:00:00Z') });
+  const grande = usoContexto([linea({ input_tokens: 2, cache_read_input_tokens: 780_000 }), linea({ input_tokens: 9 }, { isSidechain: true }), '{roto']);
+  assert.equal(grande.limite, 1_000_000);
+  assert.equal(grande.tokens, 780_002);
+  assert.equal(usoContexto(['{"type":"user"}']), null);
 });
