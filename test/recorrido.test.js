@@ -1,12 +1,14 @@
 // Piezas del recorrido v2: sesiones vivas, procesos en fondo, conversación, mensajero y «para ti».
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import os from 'node:os';
+import path from 'node:path';
 import { abrir } from '../server/db.js';
 import { aplicar, revisar } from '../server/estados.js';
 import { aplicarVivas } from '../server/vivas.js';
 import { intercambios, rutaValida, usoContexto } from '../server/conversacion.js';
-import { crearMensajero, interpretar, promptMensajero } from '../server/mensajero.js';
+import { crearMensajero, interpretar, promptMensajero, guardarImagenes, conImagenes } from '../server/mensajero.js';
 import { esParaMi } from '../server/clickup.js';
 
 const T0 = Date.parse('2026-10-20T12:00:00-06:00');
@@ -151,4 +153,21 @@ test('claude agents en «waiting» manda la sesión a Tu puerta aunque no haya l
   const { cambios } = aplicarVivas(db, [{ sessionId: SID, pid: 1, cwd: '/x', name: 'n', status: 'waiting', kind: 'background', id: 'a43abe23' }], T0 + 5000, { bandeja: () => true });
   assert.equal(sesion(db).estado, 'necesita_permiso');
   assert.ok(cambios.some((c) => c.estado === 'necesita_permiso'));
+});
+
+test('imágenes adjuntas: solo formatos de imagen reales, se guardan y van como rutas en el mensaje', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'adjuntos-'));
+  const png = Buffer.from('89504e470d0a1a0a0000', 'hex').toString('base64');
+  const viejo = path.join(dir, 'viejo.png');
+  fs.writeFileSync(viejo, 'x');
+  fs.utimesSync(viejo, new Date(0), new Date(0));
+  const [ruta] = guardarImagenes(dir, [png]);
+  assert.match(ruta, /\.png$/);
+  assert.equal(fs.readFileSync(ruta).toString('base64'), png);
+  assert.equal(fs.existsSync(viejo), false, 'los de más de 7 días se borran');
+  assert.throws(() => guardarImagenes(dir, [Buffer.from('<svg/>').toString('base64')]), /solo imágenes/);
+  assert.throws(() => guardarImagenes(dir, Array(5).fill(png)), /máximo 4/);
+  assert.deepEqual(guardarImagenes(dir, undefined), []);
+  assert.equal(conImagenes('mira', [ruta]), `mira\n\nTe mando una imagen; ábrelas con Read:\n- ${ruta}`);
+  assert.equal(conImagenes('hola', []), 'hola');
 });

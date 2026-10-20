@@ -120,11 +120,19 @@ Cada agente lleva una etiqueta del color de su camisa con una barra de **uso de 
 con su formato: listas, tablas, código, negritas y enlaces, armado con nodos y nunca como HTML), cuadro para
 escribirle y contexto (tarea con horario y choque, rama y carpeta, procesos en segundo plano, subagentes). Con el
 contexto alto avisa que conviene `/compact` (escríbelo en su terminal: un mensaje no ejecuta comandos); casi lleno,
-ofrece **Pedir resumen de traspaso** para seguir en una sesión nueva.
+ofrece **Pedir resumen de traspaso** para seguir en una sesión nueva. La conversación se actualiza al momento: el
+servidor vigila (`fs.watch`) el transcript de cada sesión abierta y avisa a la página (`event: conversacion` en el SSE)
+en cada escritura, sin esperar al siguiente hook. El uso de contexto se refresca igual.
 
-**Mensajero**: cada mensaje que mandas lo lleva un personaje de gorra roja que sale de tu oficina, camina hasta el
-agente, se queda con el sobre hasta que la entrega se confirma (una X si falla) y regresa. Es solo visual: el
-mensajero real es un `claude -p` corto que no aparece como agente.
+**Imágenes**: en el cuadro de mensaje puedes pegar (Ctrl+V), arrastrar o elegir con **Imagen** hasta 4 imágenes PNG, JPG,
+GIF o WebP (5 MB juntas). El servidor revisa sus primeros bytes, las guarda en `~/.local/share/oficina-virtual/adjuntos/`
+(600; se borran a los 7 días) y agrega sus rutas al mensaje para que el agente las abra con Read.
+
+**Tú llevas tus mensajes**: tu avatar se levanta de su escritorio, camina hasta el agente con el sobre, espera a que la
+entrega se confirme (una X si falla) y regresa; varios mensajes los lleva uno tras otro. Es solo visual: la entrega real
+la hace un `claude -p` corto que no aparece como agente y no espera a la animación.
+
+**Salida**: cuando una sesión se cierra, su personaje sale caminando por el pasillo y desaparece en la orilla.
 
 **Mensajes a los agentes.** `server/mensajero.js` lanza `claude -p --model haiku` con solo `ListAgents` y
 `SendMessage` (sin tus hooks ni plugins: `--setting-sources project`) que entrega tu texto con la mensajería entre
@@ -145,6 +153,7 @@ para Claude Code). Permisos: auto, aceptar ediciones o manual; nunca `bypassPerm
 
 **Sin tarea y traspasos.** La tarea es opcional. En la ficha, **Continuar en sesión nueva** abre «Nueva sesión» con la
 misma carpeta (y tarea, si tiene) y el último mensaje del agente como indicación: pídele antes un resumen de traspaso.
+Cuando la sesión nueva arranca, la anterior se cierra sola (su conversación queda guardada).
 «Dónde se abre»: en segundo plano (`claude --bg`) o en una **terminal nueva** interactiva (`xdg-terminal-exec claude …`),
 útil si la carpeta aún no es de confianza para Claude Code (el aviso aparece ahí).
 

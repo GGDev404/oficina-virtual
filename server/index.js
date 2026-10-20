@@ -12,8 +12,8 @@ import { ligar, religarTodas, FORMATO_ID } from './tarea-link.js';
 import { crearNotificador, ESTADOS_AVISO } from './notificar.js';
 import { siguiente } from './siguiente.js';
 import { leerVivas, aplicarVivas } from './vivas.js';
-import { leerConversacion, leerContexto } from './conversacion.js';
-import { crearMensajero, MAX_TEXTO } from './mensajero.js';
+import { leerConversacion, leerContexto, rutaValida } from './conversacion.js';
+import { crearMensajero, guardarImagenes, conImagenes, MAX_TEXTO } from './mensajero.js';
 import { PERMISOS, carpetaValida, carpetasConocidas, nuevaSesion, nuevaEnTerminal, cerrarSesion, abrirTerminal } from './control.js';
 
 const PUERTO = Number(process.env.OFICINA_PUERTO ?? 4777);
@@ -99,6 +99,35 @@ function actualizarContextos() {
   if (JSON.stringify(nuevos) !== JSON.stringify(contextos)) { contextos = nuevos; avisar(); }
 }
 
+// Cada escritura en el transcript de una sesión abierta llega a la página al momento (event: conversacion):
+// la ficha relee la conversación sin esperar al siguiente hook, que a mitad de turno casi no llega.
+const vigilados = new Map(); // sesión → { ruta, w }
+function vigilarTranscripts() {
+  const abiertas = new Set();
+  for (const s of db.prepare(`SELECT id, transcript_path FROM sesiones WHERE estado <> 'cerrada' AND transcript_path IS NOT NULL`).all()) {
+    if (!rutaValida(s.transcript_path)) continue;
+    abiertas.add(s.id);
+    if (vigilados.get(s.id)?.ruta === s.transcript_path) continue;
+    vigilados.get(s.id)?.w.close();
+    vigilados.delete(s.id);
+    try {
+      let pendiente = null;
+      const w = fs.watch(s.transcript_path, () => {
+        pendiente ??= setTimeout(() => { pendiente = null; transcriptCambio(s.id, s.transcript_path); }, 60);
+      });
+      w.on('error', () => { w.close(); vigilados.delete(s.id); });
+      vigilados.set(s.id, { ruta: s.transcript_path, w });
+    } catch {} // el archivo aún no existe: se reintenta en el siguiente ciclo
+  }
+  for (const [id, v] of vigilados) if (!abiertas.has(id)) { v.w.close(); vigilados.delete(id); }
+}
+function transcriptCambio(sid, ruta) {
+  const aviso = `event: conversacion\ndata: ${JSON.stringify({ sid })}\n\n`;
+  for (const res of clientes) res.write(aviso);
+  const c = leerContexto(ruta);
+  if (c && JSON.stringify(c) !== JSON.stringify(contextos[sid])) { contextos = { ...contextos, [sid]: c }; avisar(); }
+}
+
 const estadoCompleto = () => ({ ...estado(db), sync, vivas: Object.fromEntries(vivas), mensajes: mensajero.mensajes(), contexto: contextos, permisos: permisos.lista() });
 
 // Notificación de escritorio cuando una sesión pasa a pedirte algo o llega una corrección de ficha.
@@ -143,6 +172,7 @@ function procesarPendientes() {
 function recibir(ev) {
   avisarCambios(aplicar(db, ev, { rama }));
   ligar(db, ev.payload?.session_id, ev.tarea_env);
+  if (ev.evento === 'SessionStart' || ev.evento === 'UserPromptSubmit' || ev.evento === 'SessionEnd') vigilarTranscripts();
 }
 
 // SSE: manda el estado completo; los cambios seguidos se juntan en uno cada 200 ms.
@@ -259,14 +289,17 @@ const servidor = http.createServer(async (req, res) => {
       return json(res, 200, leerConversacion(s.transcript_path, 16));
     }
     if (req.method === 'POST' && (m = url.pathname.match(/^\/api\/sesiones\/([^/]+)\/mensaje$/))) {
-      const { texto } = await leerJson(req);
+      const { texto, imagenes } = await leerJson(req);
       const limpio = typeof texto === 'string' ? texto.trim() : '';
-      if (!limpio || limpio.length > MAX_TEXTO) return json(res, 400, { error: `escribe entre 1 y ${MAX_TEXTO} caracteres` });
+      const hayImagenes = Array.isArray(imagenes) && imagenes.length > 0;
+      if ((!limpio && !hayImagenes) || limpio.length > MAX_TEXTO) return json(res, 400, { error: `escribe entre 1 y ${MAX_TEXTO} caracteres o adjunta una imagen` });
       const s = db.prepare('SELECT cwd FROM sesiones WHERE id = ?').get(m[1]);
       const viva = vivas.get(m[1]);
       if (!s || !viva) return json(res, 409, { error: 'la sesión no está abierta' });
       if (!viva.bandeja || !viva.nombre) return json(res, 409, { error: 'esta sesión no tiene bandeja de mensajes; ábrela de nuevo para activarla' });
-      const enviado = mensajero.enviar(m[1], { nombre: viva.nombre, cwd: s.cwd }, limpio);
+      let rutas;
+      try { rutas = guardarImagenes(path.join(DATOS, 'adjuntos'), imagenes); } catch (e) { return json(res, 400, { error: e.message }); }
+      const enviado = mensajero.enviar(m[1], { nombre: viva.nombre, cwd: s.cwd }, conImagenes(limpio, rutas));
       return json(res, 202, { id: enviado.id });
     }
     if (req.method === 'GET' && url.pathname === '/api/noche') return json(res, 200, leerNoche());
@@ -320,7 +353,9 @@ setInterval(() => {
   procesarPendientes();
   if (revisar(db, Date.now(), { ocupada: (sid) => vivas.get(sid)?.ocupada === true, esperando: (sid) => vivas.get(sid)?.esperando === true }).length) avisar();
   actualizarVivas();
+  vigilarTranscripts();
 }, 5000);
+vigilarTranscripts();
 actualizarVivas();
 actualizarContextos();
 setInterval(actualizarContextos, 20_000);

@@ -83,6 +83,8 @@
   .cuarto { font: 700 13px/1 var(--pixel); letter-spacing: .06em; color: #fff; background: rgba(12, 11, 18, .62);
     padding: 4px 8px 5px; border-radius: 4px; text-transform: uppercase; white-space: nowrap; margin: 4px 0 0 8px; }
   .cuarto.lleno { background: #b4590f; }
+  .agente.saliendo { pointer-events: none; }
+  .agente.saliendo .etiqueta, .agente.saliendo .burbuja { opacity: .5; transition: opacity .4s; }
   .agente { position: absolute; left: 0; top: 0; width: 0; height: 0; padding: 0; border: 0; background: none; min-height: 0;
     pointer-events: auto; cursor: pointer; }
   .agente .caja { position: absolute; left: calc(var(--e) * -9px); top: calc(var(--e) * -19px);
@@ -175,6 +177,13 @@
   .md th, .md td { border: 1px solid var(--borde); padding: 3px 8px; text-align: left; vertical-align: top; }
   .md th { background: var(--gris-bg); }
   .md a { overflow-wrap: anywhere; }
+  .adjuntos { display: flex; flex-wrap: wrap; gap: var(--s2); }
+  .adjuntos:empty { display: none; }
+  .adjunto { position: relative; width: 64px; height: 64px; border: 1px solid var(--borde); border-radius: 8px; overflow: hidden; background: var(--hundido); }
+  .adjunto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .adjunto button { position: absolute; top: 2px; right: 2px; min-height: 0; width: 22px; height: 22px; padding: 0; border-radius: 50%; display: grid; place-items: center; }
+  .adjunto button .icono { width: 14px; height: 14px; }
+  #va-texto.soltando { outline: 2px dashed var(--acento); outline-offset: 2px; }
   .redactar { display: grid; gap: var(--s2); margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--borde); }
   .aviso-caja { background: var(--naranja-bg); color: var(--naranja); border-radius: 10px; padding: var(--s2) var(--s3); font-size: 13px; margin: 0 0 var(--s3); }
   .aviso-caja.rojo { background: var(--rojo-bg); color: var(--rojo); }
@@ -271,9 +280,13 @@
       <div id="va-aviso"></div>
       <div class="conversacion" id="va-conversacion"><p class="vacio">Cargando…</p></div>
       <form class="redactar" id="va-form">
-        <label class="meta" for="va-texto">Escríbele o pregúntale algo. Le llega como mensaje tuyo desde la oficina (Ctrl+Enter envía).</label>
+        <label class="meta" for="va-texto">Escríbele o pregúntale algo. Le llega como mensaje tuyo desde la oficina (Ctrl+Enter envía; pega o arrastra imágenes aquí).</label>
         <textarea id="va-texto" rows="3" maxlength="4000" placeholder="Por ejemplo: ¿ya terminaron las pruebas? Cuando acabes, deja el diff listo para revisar."></textarea>
-        <div class="fila"><button class="primario" type="submit" id="va-enviar"></button><span class="meta" id="va-estado" role="status"></span></div>
+        <div class="adjuntos" id="va-adjuntos"></div>
+        <div class="fila"><button class="primario" type="submit" id="va-enviar"></button>
+          <button class="boton-chico" type="button" id="va-adjuntar"></button>
+          <input type="file" id="va-archivo" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>
+          <span class="meta" id="va-estado" role="status"></span></div>
       </form>
     </section>
     <aside class="contexto" id="va-contexto" aria-label="Contexto"></aside>
@@ -379,6 +392,7 @@ const TRAZOS = {
   externo: ['M15 3h6v6', 'M10 14 21 3', 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'],
   reloj: ['M5 22h14', 'M5 2h14', 'M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22', 'M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2'],
   enviar: ['m22 2-7 20-4-9-9-4Z', 'M22 2 11 13'],
+  imagen: ['M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z', 'M9 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z', 'm21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'],
   terminal: ['m4 17 6-6-6-6', 'M12 19h8'],
   flecha: ['m9 18 6-6-6-6'],
   arroba: ['M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', 'M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8'],
@@ -552,6 +566,7 @@ function lugar(sala, i) {
 }
 const entrada = (sala) => { const s = SALAS[sala]; return { x: s.puerta, y: s.abajo ? s.y + s.h - 6 : s.y + 26 }; };
 const enPasillo = (sala) => ({ x: SALAS[sala].puerta, y: 146 });
+const SALIDA = { x: -8, y: 146 }; // orilla izquierda del pasillo: por ahí entran y salen las sesiones
 
 // Aspecto estable por sesión (pelo, piel y camisa salen del id).
 function hash(t) { let h = 2166136261; for (const c of t) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; }
@@ -706,9 +721,10 @@ function actualizarActores(d) {
     lista.sort((a, b) => (ROL[a.estado].prio ?? 0) - (ROL[b.estado].prio ?? 0) || a.iniciada_ts - b.iniciada_ts || (a.id < b.id ? -1 : 1));
     lista.forEach((s, i) => {
       let a = actores.get(s.id);
+      if (a?.saliendo) { a.saliendo = false; a.destinoClave = null; a.boton.disabled = false; a.boton.classList.remove('saliendo'); } // volvió
       if (!a) {
         const look = aspecto(s.id);
-        a = { x: -8, y: 146, ruta: [], sala: null, aspecto: look, boton: crearBoton(s.id, look) };
+        a = { x: SALIDA.x, y: SALIDA.y, ruta: [], sala: null, aspecto: look, boton: crearBoton(s.id, look) };
         actores.set(s.id, a);
       }
       const destino = lugar(sala, i);
@@ -749,7 +765,15 @@ function actualizarActores(d) {
       a.boton.title = `${nombreSesion(s, tareas)} · ${estadoTexto}${conCtx}`;
     });
   }
-  for (const [id, a] of actores) if (!vivas.some((s) => s.id === id)) { a.boton.remove(); actores.delete(id); }
+  // La sesión que se cierra sale caminando por el pasillo y desaparece al llegar a la orilla.
+  for (const [id, a] of actores) {
+    if (a.saliendo || vivas.some((s) => s.id === id)) continue;
+    if (reducido || !a.sala) { a.boton.remove(); actores.delete(id); continue; }
+    a.saliendo = true;
+    a.boton.disabled = true;
+    a.boton.classList.add('saliendo');
+    a.ruta = [entrada(a.sala), enPasillo(a.sala), SALIDA];
+  }
   primeraCarga = false;
   const activos = (porSala.taller ?? []).length + (porSala.puerta ?? []).length + (porSala.bloqueados ?? []).length;
   for (const s of Object.keys(SALAS)) {
@@ -782,22 +806,20 @@ new ResizeObserver(escalar).observe(lienzo);
 const barra = document.getElementById('barra');
 new ResizeObserver(() => document.documentElement.style.setProperty('--cabecera', `${barra.offsetHeight}px`)).observe(barra);
 
-// ── Mensajero: cada mensaje que mandas lo lleva un personaje que sale de tu oficina, entrega y se retira ──
-const MENSAJERO = { pelo: '#3a2a1a', piel: '#dcae84', camisa: '#c0392b', sombra: '#922b21' };
-const mensajeros = [];
+// ── Tú llevas tus mensajes: tu avatar se levanta de su escritorio, entrega en mano y regresa ──
+// Si mandas varios seguidos, los lleva uno tras otro. La entrega real no espera a la animación.
+const entregas = []; // la primera es la que va en camino
 const mensajesVistos = new Set();
 let mensajesIniciados = false;
+const EN_MESA = { x: MESA_YO.dx + 14, y: MESA_YO.dy + 6 };
+const RODEO = [{ x: MESA_YO.dx - 6, y: MESA_YO.dy + 6 }, { x: MESA_YO.dx - 6, y: MESA_YO.dy + 24 }]; // por un lado del escritorio
 function despacharMensajeros(d) {
   for (const [sid, lista] of Object.entries(d.mensajes ?? {})) {
     for (const m of lista) {
       if (mensajesVistos.has(m.id)) continue;
       mensajesVistos.add(m.id);
-      const a = actores.get(sid);
-      if (!mensajesIniciados || reducido || !a) continue; // los que ya existían al abrir la página no se animan
-      const inicio = { x: MESA_YO.dx - 4, y: MESA_YO.dy + 24 };
-      const destino = { x: a.x + 12, y: a.y + 3 };
-      const ida = [entrada('oficina'), enPasillo('oficina'), enPasillo(a.sala), entrada(a.sala), destino];
-      mensajeros.push({ ...inicio, sid, id: m.id, fase: 'va', ruta: ida, regreso: [entrada(a.sala), enPasillo(a.sala), enPasillo('oficina'), entrada('oficina'), inicio], llego: 0 });
+      if (!mensajesIniciados || reducido || !actores.get(sid)) continue; // los que ya existían al abrir la página no se animan
+      entregas.push({ sid, id: m.id, fase: 'espera' });
     }
   }
   mensajesIniciados = true;
@@ -811,24 +833,29 @@ function avanzar(o, dt) {
   }
 }
 function moverMensajeros(dt) {
-  for (let k = mensajeros.length - 1; k >= 0; k--) {
-    const o = mensajeros[k];
-    avanzar(o, dt * 1.3); // el mensajero va con prisa
-    if (o.ruta.length) continue;
-    if (o.fase === 'va') { o.fase = 'entrega'; o.llego = performance.now(); }
-    else if (o.fase === 'entrega') {
-      const estado = datos?.mensajes?.[o.sid]?.find((m) => m.id === o.id)?.estado ?? 'enviado';
-      o.resultado = estado;
-      // Espera a que la entrega se confirme (o falle), al menos un momento para que se vea.
-      if (estado !== 'enviando' && performance.now() - o.llego > 1200) { o.fase = 'regresa'; o.ruta = o.regreso; }
-    } else mensajeros.splice(k, 1);
+  const o = entregas[0];
+  if (!o) return;
+  if (o.fase === 'espera') { // sale ahora: el destino se calcula con el agente donde está en este momento
+    const a = actores.get(o.sid);
+    if (!a || a.saliendo) { entregas.shift(); return; }
+    Object.assign(o, { ...EN_MESA, fase: 'va', ruta: [...RODEO, entrada('oficina'), enPasillo('oficina'), enPasillo(a.sala), entrada(a.sala), { x: a.x + 12, y: a.y + 3 }],
+      regreso: [entrada(a.sala), enPasillo(a.sala), enPasillo('oficina'), entrada('oficina'), ...[...RODEO].reverse(), EN_MESA] });
   }
+  avanzar(o, dt * 1.6); // va con prisa
+  if (o.ruta.length) return;
+  if (o.fase === 'va') { o.fase = 'entrega'; o.llego = performance.now(); }
+  else if (o.fase === 'entrega') {
+    const estado = datos?.mensajes?.[o.sid]?.find((m) => m.id === o.id)?.estado ?? 'enviado';
+    o.resultado = estado;
+    // Espera a que la entrega se confirme (o falle), al menos un momento para que se vea.
+    if (estado !== 'enviando' && performance.now() - o.llego > 900) { o.fase = 'regresa'; o.ruta = o.regreso; }
+  } else entregas.shift();
 }
 function dibujarMensajero(o, f, fCamina) {
+  if (o.fase === 'espera') return;
   const caminando = o.ruta.length > 0;
-  personaje(o.x, o.y, MENSAJERO, caminando ? 'camina' : 'parado', caminando ? fCamina : f);
+  personaje(o.x, o.y, YO, caminando ? 'camina' : 'parado', caminando ? fCamina : f);
   const ox = Math.round(o.x) - 6, oy = Math.round(o.y) - 16;
-  r(ox + 3, oy - 1, 6, 2, '#c0392b'); r(ox + 2, oy + 1, 8, 1, '#922b21'); // gorra
   if (o.fase === 'va') { r(ox + 9, oy + 8, 4, 3, '#fffdf5'); r(ox + 9, oy + 8, 4, 1, '#c9c6bd'); } // sobre en la mano
   if (o.fase === 'entrega') { // globo con el sobre (o una X si no se pudo entregar)
     const bx = ox - 1, by = oy - 13;
@@ -844,7 +871,8 @@ let reloj = 0, previo = performance.now();
 function cuadro(ahora) {
   const dt = Math.min(0.1, (ahora - previo) / 1000);
   previo = ahora; reloj += dt;
-  for (const a of actores.values()) {
+  for (const [id, a] of actores) {
+    if (a.saliendo && !a.ruta.length) { a.boton.remove(); actores.delete(id); continue; }
     let avance = VELOCIDAD * dt;
     while (avance > 0 && a.ruta.length) {
       const [o] = a.ruta, dx = o.x - a.x, dy = o.y - a.y, dist = Math.hypot(dx, dy);
@@ -879,9 +907,9 @@ function dibujar(f, fCamina) {
     const subs = (datos?.subagentes ?? []).filter((x) => x.sesion_id === a.s.id && x.estado === 'trabajando').slice(0, 3);
     subs.forEach((_, k) => robot(a.x + (sentado(a) ? 23 : 13) + k * 10, a.y - (sentado(a) ? 6 : 0) - (k % 2) * 3, f, k));
   }
-  for (const o of mensajeros) dibujarMensajero(o, f, fCamina);
+  if (entregas[0]) dibujarMensajero(entregas[0], f, fCamina);
   const m = MESA_YO;
-  personaje(m.dx + 14, m.dy + 6, YO, 'parado', f);
+  if (!entregas.length) personaje(EN_MESA.x, EN_MESA.y, YO, 'parado', f); // si va a entregar, su lugar queda vacío
   r(m.dx, m.dy, 40, 10, '#c88d55'); r(m.dx, m.dy, 40, 1, '#dba06a'); r(m.dx, m.dy + 10, 40, 6, '#8a5a33');
   r(m.dx + 25, m.dy - 9, 12, 10, '#2b2b33'); r(m.dx + 30, m.dy + 1, 2, 2, '#2b2b33');
   const n = datos ? pendientesParaMi(datos).length : 0;
@@ -962,17 +990,23 @@ let asignando = false; // eligiendo tarea: el contexto no se repinta para no per
 let confirmandoCierre = false;
 let conversacion = [];
 let conversacionTs = 0;
+let pedidoConversacion = 0; // si llegan dos lecturas seguidas, solo cuenta la más nueva
 async function cargarConversacion(id) {
+  const n = ++pedidoConversacion;
+  let nueva;
   try {
     const r = await fetch(`/api/sesiones/${encodeURIComponent(id)}/conversacion`);
-    conversacion = r.ok ? await r.json() : [];
-  } catch { conversacion = []; }
-  if (abierta === id) renderAgente();
+    nueva = r.ok ? await r.json() : [];
+  } catch { nueva = []; }
+  if (n !== pedidoConversacion || abierta !== id) return;
+  conversacion = nueva;
+  renderAgente();
 }
 function abrirAgente(id, { escribir = false } = {}) {
   abierta = id;
   conversacion = []; conversacionTs = 0; asignando = false; confirmandoCierre = false;
   document.getElementById('va-texto').value = '';
+  quitarAdjuntos();
   document.getElementById('va-estado').textContent = '';
   document.getElementById('va-conversacion').replaceChildren(el('p', { class: 'vacio' }, 'Cargando…'));
   renderAgente();
@@ -1025,6 +1059,7 @@ function renderAgente() {
   reemplazar(boton, icono('enviar'), viva?.ocupada ? 'Enviar (lo lee entre pasos)' : 'Enviar');
   boton.disabled = !puede;
   document.getElementById('va-texto').disabled = !puede;
+  document.getElementById('va-adjuntar').disabled = !puede;
   if (!puede) document.getElementById('va-estado').textContent = !viva ? 'La sesión está cerrada.' : 'Esta sesión no tiene bandeja de mensajes; ábrela de nuevo para activarla.';
 
   const contexto = document.getElementById('va-contexto');
@@ -1139,11 +1174,11 @@ function abrirAsignacion(s, d) {
 }
 
 // ── Nueva sesión: tarea opcional, carpeta, indicación, nombre y permisos ──
-let nueva = { tarea: null, auto: { prompt: '', nombre: '' }, carpetas: [] };
-async function abrirNueva({ tareaId = null, cwd = null, prompt = '', nombre = '' } = {}) {
+let nueva = { tarea: null, auto: { prompt: '', nombre: '' }, carpetas: [], cerrar: null };
+async function abrirNueva({ tareaId = null, cwd = null, prompt = '', nombre = '', cerrar = null } = {}) {
   const d = datos;
   if (!d) return;
-  nueva = { tarea: null, auto: { prompt: '', nombre: '' }, carpetas: [] };
+  nueva = { tarea: null, auto: { prompt: '', nombre: '' }, carpetas: [], cerrar }; // cerrar: sesión que se traspasa
   for (const id of ['vs-cwd', 'vs-prompt', 'vs-nombre']) document.getElementById(id).value = '';
   document.getElementById('vs-donde').value = 'fondo';
   document.getElementById('vs-estado').textContent = '';
@@ -1196,6 +1231,11 @@ document.getElementById('vs-form').addEventListener('submit', async (ev) => {
     });
     estado.textContent = r.terminal ? 'Se abrió en una terminal nueva; aparece en la oficina en cuanto arranque.'
       : `Sesión ${r.id} iniciada; aparece en el Taller en unos segundos.`;
+    // Traspaso: con la nueva ya arrancada, la anterior se cierra sola (su conversación queda guardada).
+    if (nueva.cerrar && datos?.vivas?.[nueva.cerrar]) {
+      try { await post(`/api/sesiones/${encodeURIComponent(nueva.cerrar)}/cerrar`); estado.textContent += ' La sesión anterior se cerró.'; }
+      catch (err) { estado.textContent += ` No pude cerrar la anterior: ${err.message}`; }
+    }
     setTimeout(() => vNueva.open && vNueva.close(), 1800);
   } catch (err) {
     estado.textContent = err.message;
@@ -1203,25 +1243,70 @@ document.getElementById('vs-form').addEventListener('submit', async (ev) => {
   }
 });
 document.getElementById('nueva').addEventListener('click', () => abrirNueva());
-// Traspaso: la sesión nueva arranca en la misma carpeta (y tarea) con el último mensaje del agente como contexto.
+// Traspaso: la sesión nueva arranca en la misma carpeta (y tarea) con el último mensaje del agente como contexto;
+// al arrancar, la anterior se cierra y sale caminando de la oficina.
 function continuarEnNueva(s, tareas) {
   const nombre = nombreSesion(s, tareas);
   const resumen = s.ultimo_mensaje ? `\n\nSu último mensaje (resumen de traspaso si se lo pediste):\n\n${s.ultimo_mensaje}` : '';
   vAgente.close();
   abrirNueva({ tareaId: s.tarea_id, cwd: s.cwd, nombre: `${nombre} · continuación`.slice(0, 80),
-    prompt: `Retoma el trabajo de la sesión «${nombre}» (id ${s.id}), que se cerró o se quedó sin contexto.${resumen}` });
+    prompt: `Retoma el trabajo de la sesión «${nombre}» (id ${s.id}), que se cerró o se quedó sin contexto.${resumen}`, cerrar: s.id });
 }
+
+// Imágenes para el agente: se pegan, se arrastran o se eligen; el servidor las guarda y le manda sus rutas.
+const MAX_IMAGENES = 4, MAX_BYTES_JUNTAS = 5.5 * 1024 * 1024; // el cuerpo del POST admite hasta 8 MB en base64
+let adjuntos = []; // { archivo, url }
+function quitarAdjuntos() { for (const a of adjuntos) URL.revokeObjectURL(a.url); adjuntos = []; pintarAdjuntos(); }
+function pintarAdjuntos() {
+  reemplazar(document.getElementById('va-adjuntos'), adjuntos.map((a, i) => el('div', { class: 'adjunto' },
+    el('img', { src: a.url, alt: a.archivo.name || 'imagen pegada' }),
+    el('button', { type: 'button', 'aria-label': `Quitar ${a.archivo.name || 'imagen'}`, onclick: () => { URL.revokeObjectURL(a.url); adjuntos.splice(i, 1); pintarAdjuntos(); } }, icono('cerrar')))));
+}
+function agregarImagenes(archivos) {
+  const estado = document.getElementById('va-estado');
+  for (const f of archivos) {
+    if (!/^image\/(png|jpeg|gif|webp)$/.test(f.type)) { estado.textContent = 'Solo imágenes PNG, JPG, GIF o WebP.'; continue; }
+    if (adjuntos.length >= MAX_IMAGENES) { estado.textContent = `Máximo ${MAX_IMAGENES} imágenes por mensaje.`; break; }
+    if (adjuntos.reduce((n, a) => n + a.archivo.size, f.size) > MAX_BYTES_JUNTAS) { estado.textContent = 'Las imágenes juntas no deben pasar de 5 MB.'; break; }
+    adjuntos.push({ archivo: f, url: URL.createObjectURL(f) });
+  }
+  pintarAdjuntos();
+}
+const base64De = (f) => new Promise((ok, falla) => {
+  const lector = new FileReader();
+  lector.onload = () => ok(String(lector.result).split(',')[1]);
+  lector.onerror = () => falla(new Error('no se pudo leer la imagen'));
+  lector.readAsDataURL(f);
+});
+reemplazar(document.getElementById('va-adjuntar'), icono('imagen'), 'Imagen');
+document.getElementById('va-adjuntar').addEventListener('click', () => document.getElementById('va-archivo').click());
+document.getElementById('va-archivo').addEventListener('change', (ev) => { agregarImagenes(ev.target.files); ev.target.value = ''; });
+const cajaTexto = document.getElementById('va-texto');
+cajaTexto.addEventListener('paste', (ev) => {
+  const imagenes = [...ev.clipboardData.files].filter((f) => f.type.startsWith('image/'));
+  if (imagenes.length) { ev.preventDefault(); agregarImagenes(imagenes); }
+});
+cajaTexto.addEventListener('dragover', (ev) => { if (!cajaTexto.disabled && ev.dataTransfer.types.includes('Files')) { ev.preventDefault(); cajaTexto.classList.add('soltando'); } });
+cajaTexto.addEventListener('dragleave', () => cajaTexto.classList.remove('soltando'));
+cajaTexto.addEventListener('drop', (ev) => {
+  cajaTexto.classList.remove('soltando');
+  if (!ev.dataTransfer.files.length || cajaTexto.disabled) return;
+  ev.preventDefault();
+  agregarImagenes(ev.dataTransfer.files);
+});
 
 document.getElementById('va-form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const caja = document.getElementById('va-texto');
   const texto = caja.value.trim();
-  if (!texto || !abierta) return;
+  if ((!texto && !adjuntos.length) || !abierta) return;
   const estado = document.getElementById('va-estado');
   try {
-    await post(`/api/sesiones/${encodeURIComponent(abierta)}/mensaje`, { texto });
+    const imagenes = adjuntos.length ? await Promise.all(adjuntos.map((a) => base64De(a.archivo))) : undefined;
+    await post(`/api/sesiones/${encodeURIComponent(abierta)}/mensaje`, { texto, imagenes });
     caja.value = '';
-    estado.textContent = 'En camino; tarda unos segundos.';
+    quitarAdjuntos();
+    estado.textContent = 'Voy en camino; tarda unos segundos.';
   } catch (err) { estado.textContent = err.message; }
 });
 document.getElementById('va-texto').addEventListener('keydown', (ev) => {
@@ -1421,6 +1506,8 @@ requestAnimationFrame(cuadro);
 const conexion = document.getElementById('conexion');
 const fuente = new EventSource('/api/stream');
 fuente.addEventListener('estado', (ev) => { datos = JSON.parse(ev.data); render(); });
+// El servidor avisa cada escritura en el transcript: la ficha abierta muestra la respuesta al momento.
+fuente.addEventListener('conversacion', (ev) => { const { sid } = JSON.parse(ev.data); if (vAgente.open && abierta === sid) cargarConversacion(sid); });
 fuente.onopen = () => { conexion.textContent = 'en vivo'; conexion.className = 'chip verde'; };
 fuente.onerror = () => { conexion.textContent = 'desconectado'; conexion.className = 'chip rojo'; };
 </script>
