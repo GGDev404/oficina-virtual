@@ -143,6 +143,16 @@ horario de la ficha. Propone el worktree de la tarea (`git worktree list` de tus
 indicación y un nombre. Arranca con `claude --bg` y `CLICKUP_TASK=<ID>` en la carpeta elegida (debe ser de confianza
 para Claude Code). Permisos: auto, aceptar ediciones o manual; nunca `bypassPermissions` desde la página.
 
+**Sin tarea y traspasos.** La tarea es opcional. En la ficha, **Continuar en sesión nueva** abre «Nueva sesión» con la
+misma carpeta (y tarea, si tiene) y el último mensaje del agente como indicación: pídele antes un resumen de traspaso.
+«Dónde se abre»: en segundo plano (`claude --bg`) o en una **terminal nueva** interactiva (`xdg-terminal-exec claude …`),
+útil si la carpeta aún no es de confianza para Claude Code (el aviso aparece ahí).
+
+**Permisos.** El hook `PermissionRequest` solo informa (no decide): la ficha y «Te necesitan» muestran qué herramienta
+pide permiso y con qué (p. ej. `Write` y la ruta). Si `claude agents` dice que la sesión espera (`waiting`), se queda en
+Tu puerta aunque su transcript cambie. Un permiso se aprueba en su terminal o en la app; un mensaje desde la oficina
+no lo aprueba (queda en cola). Para las de segundo plano hay **Abrir su terminal para aprobar**.
+
 **Cerrar sesión** (ficha del agente, con confirmación): las de segundo plano con `claude stop <id>`; las interactivas
 (terminal o app) con SIGTERM a su proceso, solo si el pid sigue siendo de Claude Code. La conversación queda guardada
 (`claude --resume <id>`). Las de segundo plano tienen además **Abrir en terminal** (`xdg-terminal-exec claude attach <id>`).

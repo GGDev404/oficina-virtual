@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import os from 'node:os';
-import { carpetaValida, nuevaSesion, cerrarSesion } from '../server/control.js';
+import { carpetaValida, nuevaSesion, nuevaEnTerminal, cerrarSesion } from '../server/control.js';
 
 test('carpeta válida: absoluta, existente y dentro de tu home', () => {
   assert.equal(carpetaValida(os.homedir()), true);
@@ -38,4 +38,14 @@ test('cerrar: segundo plano con claude stop; interactiva con SIGTERM solo si el 
   const ajeno = await cerrarSesion({ tipo: 'interactive', pid: 4243 }, { matar, verificar: () => false });
   assert.equal(ajeno.ok, false);
   assert.equal(señales.length, 1);
+});
+
+test('terminal nueva: xdg-terminal-exec con claude interactivo en la carpeta, permisos y CLICKUP_TASK', () => {
+  let visto;
+  nuevaEnTerminal({ cwd: '/home/x', prompt: 'Retoma el traspaso', nombre: 'traspaso', permiso: 'auto', tarea: null },
+    { lanzar: (cmd, args, opts) => { visto = { cmd, args, opts }; return { on() {}, unref() {} }; } });
+  assert.equal(visto.cmd, 'xdg-terminal-exec');
+  assert.deepEqual(visto.args, ['claude', '--permission-mode', 'auto', '--name', 'traspaso', 'Retoma el traspaso']);
+  assert.equal(visto.opts.cwd, '/home/x');
+  assert.equal(visto.opts.env.CLICKUP_TASK, undefined);
 });

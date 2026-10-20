@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS comentarios (
 const COLUMNAS_NUEVAS = [
   ['sesiones', 'nombre TEXT'],
   ['sesiones', 'procesos_json TEXT'],
+  ['sesiones', 'permiso_json TEXT'],
   ['comentarios', 'para_mi INTEGER NOT NULL DEFAULT 0'],
 ];
 

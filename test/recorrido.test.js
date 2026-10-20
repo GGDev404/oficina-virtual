@@ -48,7 +48,7 @@ test('claude agents: crea sesiones sin hooks, pone nombre, ignora claude-mem y c
   assert.equal(sesion(db, 'afd31579-dd7e-478e-84ed-9d2b0859b360'), undefined);
   assert.equal(sesion(db, vieja).estado, 'cerrada');
   assert.equal(sesion(db, vieja).fin_razon, 'proceso terminado');
-  assert.deepEqual(vivas.get(SID), { pid: 6352, nombre: 'mi-erp-2f', ocupada: true, bandeja: true, tipo: 'interactive', corto: null });
+  assert.deepEqual(vivas.get(SID), { pid: 6352, nombre: 'mi-erp-2f', ocupada: true, esperando: false, bandeja: true, tipo: 'interactive', corto: null });
   assert.ok(cambios.some((c) => c.sesion_id === vieja && c.estado === 'cerrada'));
   // Una sesión recién abierta no se cierra aunque todavía no salga en la lista.
   const nueva = '11111111-2222-3333-4444-555555555555';
@@ -124,4 +124,31 @@ test('uso de contexto: última respuesta del agente principal; más de 200 mil e
   assert.equal(grande.limite, 1_000_000);
   assert.equal(grande.tokens, 780_002);
   assert.equal(usoContexto(['{"type":"user"}']), null);
+});
+
+test('permiso: PermissionRequest guarda qué pide; esperar en claude agents lo mantiene en Tu puerta aunque cambie el transcript', () => {
+  const db = abrir(':memory:');
+  aplicar(db, { evento: 'UserPromptSubmit', ts: T0, payload: { session_id: SID, prompt: '/agil k7p2tfedd' } });
+  aplicar(db, { evento: 'PermissionRequest', ts: T0 + 1000, payload: { session_id: SID, tool_name: 'Write', tool_input: { file_path: '/x/plan.md', content: '…' } } });
+  assert.equal(sesion(db).estado, 'necesita_permiso');
+  assert.deepEqual(JSON.parse(sesion(db).permiso_json), { herramienta: 'Write', detalle: '/x/plan.md' });
+  assert.equal(sesion(db).ultimo_mensaje, 'Pide permiso para Write: /x/plan.md');
+  // El aviso genérico no tapa el detalle.
+  aplicar(db, { evento: 'Notification', ts: T0 + 2000, payload: { session_id: SID, notification_type: 'permission_prompt', message: 'Claude needs your permission' } });
+  assert.equal(sesion(db).ultimo_mensaje, 'Pide permiso para Write: /x/plan.md');
+  // Un mensaje en cola escribe en el transcript, pero la sesión sigue esperando.
+  const conTranscript = { mtime: () => T0 + 60_000, cola: () => '' };
+  db.prepare("UPDATE sesiones SET transcript_path = '/t.jsonl' WHERE id = ?").run(SID);
+  assert.deepEqual(revisar(db, T0 + 70_000, { ...conTranscript, esperando: () => true }), []);
+  // Ya aprobado: deja de esperar y el transcript avanza; vuelve a trabajar y se limpia el permiso.
+  assert.equal(revisar(db, T0 + 80_000, { ...conTranscript, esperando: () => false })[0].estado, 'trabajando');
+  assert.equal(sesion(db).permiso_json, null);
+});
+
+test('claude agents en «waiting» manda la sesión a Tu puerta aunque no haya llegado el hook', () => {
+  const db = abrir(':memory:');
+  aplicar(db, { evento: 'UserPromptSubmit', ts: T0, payload: { session_id: SID, prompt: 'hola' } });
+  const { cambios } = aplicarVivas(db, [{ sessionId: SID, pid: 1, cwd: '/x', name: 'n', status: 'waiting', kind: 'background', id: 'a43abe23' }], T0 + 5000, { bandeja: () => true });
+  assert.equal(sesion(db).estado, 'necesita_permiso');
+  assert.ok(cambios.some((c) => c.estado === 'necesita_permiso'));
 });

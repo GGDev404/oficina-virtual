@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // Fusiona los hooks de la oficina en ~/.claude/settings.json (con respaldo).
 // Uso: node scripts/instalar-hooks.js [--quitar]
-const fs = require('node:fs');
-const path = require('node:path');
-const os = require('node:os');
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 
 const SETTINGS = path.join(os.homedir(), '.claude', 'settings.json');
-const HOOK = path.resolve(__dirname, '..', 'hooks', 'hook.sh');
+const HOOK = path.resolve(import.meta.dirname, '..', 'hooks', 'hook.sh');
 const EVENTOS = ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse',
-  'Notification', 'Stop', 'SubagentStart', 'SubagentStop', 'SessionEnd'];
+  'Notification', 'PermissionRequest', 'Stop', 'SubagentStart', 'SubagentStop', 'SessionEnd'];
 const MATCHER = { PreToolUse: 'Task|Agent', PostToolUse: 'Task|Agent' };
 const quitar = process.argv.includes('--quitar');
 

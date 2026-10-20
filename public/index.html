@@ -205,6 +205,7 @@
   .grupo-titulo:first-child { margin-top: 0; }
   .campo { display: grid; gap: var(--s1); }
   .campo > span { font-size: 12.5px; color: var(--suave); font-weight: 600; }
+  .campo select { width: 100%; }
   .acciones { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
   button.peligro { color: var(--rojo); background: var(--rojo-bg); border-color: transparent; }
 
@@ -307,7 +308,7 @@
 
 <dialog class="ventana" id="v-nueva" aria-labelledby="vs-titulo">
   <header><div class="titulos"><h2 id="vs-titulo">Nueva sesión</h2>
-    <div class="meta">Arranca en segundo plano: la ves en la oficina, le escribes desde su ficha y la puedes abrir en una terminal.</div></div>
+    <div class="meta">Para una tarea de ClickUp o para cualquier otra cosa (un traspaso, una investigación): la tarea es opcional.</div></div>
     <button class="cerrar" type="button" data-cerrar aria-label="Cerrar ventana"></button></header>
   <div class="cuerpo"><form class="dos-col" id="vs-form">
     <section aria-labelledby="vs-tareas-t"><h3 id="vs-tareas-t" style="margin-top:0">Tarea (opcional)</h3><div id="vs-tareas"></div></section>
@@ -318,6 +319,9 @@
       <label class="campo"><span>Indicación</span>
         <textarea id="vs-prompt" rows="4" required maxlength="4000" placeholder="Por ejemplo: /agil k7p2tfedr, o lo que quieres que haga"></textarea></label>
       <label class="campo"><span>Nombre (como aparece en la oficina)</span><input type="text" id="vs-nombre" maxlength="80"></label>
+      <label class="campo"><span>Dónde se abre</span><select id="vs-donde">
+        <option value="fondo">En segundo plano: aparece en la oficina y la abres en terminal cuando quieras</option>
+        <option value="terminal">En una terminal nueva: interactiva; sirve si la carpeta aún no es de confianza</option></select></label>
       <label class="campo"><span>Permisos</span><select id="vs-permiso">
         <option value="auto">Auto: decide solo lo seguro (recomendado)</option>
         <option value="acceptEdits">Aceptar ediciones: pregunta antes de correr comandos</option>
@@ -994,7 +998,7 @@ function renderAgente() {
 
   // Acciones y avisos solo se repintan si cambian: así un clic no cae en un botón que se acaba de reemplazar.
   const nivel = nivelContexto(d.contexto?.[s.id]);
-  const claveAvisos = [s.id, viva?.tipo, !!viva, viva?.ocupada, confirmandoCierre, s.estado, espera, nivel?.clase].join('|');
+  const claveAvisos = [s.id, viva?.tipo, !!viva, viva?.ocupada, confirmandoCierre, s.estado, espera, nivel?.clase, s.permiso_json].join('|');
   if (vAgente.dataset.avisos !== claveAvisos) { vAgente.dataset.avisos = claveAvisos; pintarAvisos(s, viva, tareas, espera, nivel); }
 
 
@@ -1043,12 +1047,26 @@ function renderAgente() {
           a.estado === 'trabajando' ? chip('trabajando', 'verde') : el('span', { class: 'meta' }, hace(a.fin_ts ?? a.inicio_ts)))))),
     el('p', { class: 'meta', style: 'margin:0' }, `Última actividad ${hace(s.ultimo_evento_ts)} · sesión ${s.id.slice(0, 8)}`));
 }
+// Qué permiso pide y dónde se aprueba: en su terminal (o la app). Un mensaje desde la oficina no lo aprueba.
+function avisoPermiso(s, viva) {
+  let permiso = null;
+  try { permiso = JSON.parse(s.permiso_json ?? 'null'); } catch {}
+  return el('div', { class: 'aviso-caja rojo' },
+    el('p', { style: 'margin:0 0 6px' }, el('b', {}, 'Pide permiso'), permiso ? ` para ${permiso.herramienta}:` : '.'),
+    permiso?.detalle && el('pre', { style: 'margin:0 0 8px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12.5px' }, permiso.detalle),
+    el('p', { style: 'margin:0 0 8px' }, viva?.tipo === 'background'
+      ? 'Apruébalo en su terminal: ábrela y elige «Yes». Escribirle un mensaje no lo aprueba; queda en cola hasta después.'
+      : `Apruébalo en su terminal o en la app (${carpeta(s.cwd)}). Escribirle un mensaje no lo aprueba; queda en cola hasta después.`),
+    viva?.tipo === 'background' && el('button', { type: 'button', class: 'boton-chico', onclick: () => postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/terminal`) },
+      icono('terminal'), 'Abrir su terminal para aprobar'));
+}
 const PEDIR_TRASPASO = 'Tu ventana de contexto está casi llena. Escribe un resumen de traspaso para seguir en una sesión nueva: objetivo, '
   + 'estado actual, archivos tocados, decisiones tomadas, qué falta y el siguiente paso concreto. Termina con la rama y la carpeta.';
 function pintarAvisos(s, viva, tareas, espera, nivel) {
   reemplazar(document.getElementById('va-acciones'),
     viva?.tipo === 'background' && el('button', { type: 'button', onclick: () => postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/terminal`) },
       icono('terminal'), 'Abrir en terminal'),
+    el('button', { type: 'button', onclick: () => continuarEnNueva(s, tareas) }, 'Continuar en sesión nueva'),
     viva && el('button', { type: 'button', class: 'peligro', onclick: () => { confirmandoCierre = true; renderAgente(); } }, 'Cerrar sesión'));
   reemplazar(document.getElementById('va-aviso'),
     confirmandoCierre && viva && el('div', { class: 'aviso-caja rojo', role: 'alertdialog', 'aria-label': 'Confirmar cierre' },
@@ -1064,8 +1082,7 @@ function pintarAvisos(s, viva, tareas, espera, nivel) {
           renderAgente();
         } }, 'Sí, cerrar'),
         el('button', { type: 'button', onclick: () => { confirmandoCierre = false; renderAgente(); } }, 'Cancelar'))),
-    s.estado === 'necesita_permiso' && el('p', { class: 'aviso-caja rojo' }, el('b', {}, 'Pide permiso. '),
-      `Apruébalo en su terminal (${carpeta(s.cwd)}): un mensaje desde aquí no puede aprobar permisos.`),
+    s.estado === 'necesita_permiso' && avisoPermiso(s, viva),
     s.estado === 'bloqueado' && el('p', { class: 'aviso-caja rojo' }, el('b', {}, 'Está bloqueado. '), 'Su último mensaje dice qué le falta.'),
     espera && el('p', { class: 'aviso-caja' }, el('b', {}, 'Espera sus procesos. '), 'Cuando terminen, sigue solo; si le escribes ahora, lee tu mensaje y responde.'),
     nivel?.clase && viva && el('div', { class: `aviso-caja ${nivel.clase === 'lleno' ? 'rojo' : ''}` },
@@ -1094,11 +1111,12 @@ function abrirAsignacion(s, d) {
 
 // ── Nueva sesión: tarea opcional, carpeta, indicación, nombre y permisos ──
 let nueva = { tarea: null, auto: { prompt: '', nombre: '' }, carpetas: [] };
-async function abrirNueva(tareaId = null) {
+async function abrirNueva({ tareaId = null, cwd = null, prompt = '', nombre = '' } = {}) {
   const d = datos;
   if (!d) return;
   nueva = { tarea: null, auto: { prompt: '', nombre: '' }, carpetas: [] };
   for (const id of ['vs-cwd', 'vs-prompt', 'vs-nombre']) document.getElementById(id).value = '';
+  document.getElementById('vs-donde').value = 'fondo';
   document.getElementById('vs-estado').textContent = '';
   document.getElementById('vs-empezar').disabled = false;
   try { nueva.carpetas = await (await fetch('/api/carpetas')).json(); } catch { nueva.carpetas = []; }
@@ -1108,8 +1126,13 @@ async function abrirNueva(tareaId = null) {
   reemplazar(document.getElementById('vs-tareas'), selector);
   const t = d.tareas.find((x) => x.id === tareaId);
   if (t) elegirParaNueva(t, d); else pintarElegida(null);
+  // Lo que venga explícito (por ejemplo, un traspaso) manda sobre lo que se rellena solo.
+  if (cwd) document.getElementById('vs-cwd').value = cwd;
+  if (prompt) document.getElementById('vs-prompt').value = prompt;
+  if (nombre) document.getElementById('vs-nombre').value = nombre;
   if (!vNueva.open) vNueva.showModal();
-  if (!t) selector.enfocar();
+  if (prompt) document.getElementById('vs-prompt').focus();
+  else if (!t) selector.enfocar();
 }
 function pintarElegida(t) {
   reemplazar(document.getElementById('vs-elegida'), t
@@ -1140,8 +1163,10 @@ document.getElementById('vs-form').addEventListener('submit', async (ev) => {
     const r = await post('/api/sesiones/nueva', {
       cwd: document.getElementById('vs-cwd').value.trim(), prompt: document.getElementById('vs-prompt').value,
       nombre: document.getElementById('vs-nombre').value, permiso: document.getElementById('vs-permiso').value, tarea_id: nueva.tarea,
+      donde: document.getElementById('vs-donde').value,
     });
-    estado.textContent = `Sesión ${r.id} iniciada; aparece en el Taller en unos segundos.`;
+    estado.textContent = r.terminal ? 'Se abrió en una terminal nueva; aparece en la oficina en cuanto arranque.'
+      : `Sesión ${r.id} iniciada; aparece en el Taller en unos segundos.`;
     setTimeout(() => vNueva.open && vNueva.close(), 1800);
   } catch (err) {
     estado.textContent = err.message;
@@ -1149,6 +1174,14 @@ document.getElementById('vs-form').addEventListener('submit', async (ev) => {
   }
 });
 document.getElementById('nueva').addEventListener('click', () => abrirNueva());
+// Traspaso: la sesión nueva arranca en la misma carpeta (y tarea) con el último mensaje del agente como contexto.
+function continuarEnNueva(s, tareas) {
+  const nombre = nombreSesion(s, tareas);
+  const resumen = s.ultimo_mensaje ? `\n\nSu último mensaje (resumen de traspaso si se lo pediste):\n\n${s.ultimo_mensaje}` : '';
+  vAgente.close();
+  abrirNueva({ tareaId: s.tarea_id, cwd: s.cwd, nombre: `${nombre} · continuación`.slice(0, 80),
+    prompt: `Retoma el trabajo de la sesión «${nombre}» (id ${s.id}), que se cerró o se quedó sin contexto.${resumen}` });
+}
 
 document.getElementById('va-form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
@@ -1204,7 +1237,7 @@ function filaTarea(t, d, { conHora = true } = {}) {
       ses.map((s) => el('button', { class: 'enlace', type: 'button', style: 'gap:4px', onclick: () => { vOficina.close(); abrirAgente(s.id); } },
         icono('robot'), esperaProcesos(s, d) ? 'esperando proceso' : ESTADOS[s.estado]?.[0])),
       nCom > 0 && chip(`${nCom} para ti`, 'naranja'),
-      !ses.length && el('button', { class: 'boton-chico', type: 'button', onclick: () => { vOficina.close(); abrirNueva(t.id); } }, 'Empezar sesión')),
+      !ses.length && el('button', { class: 'boton-chico', type: 'button', onclick: () => { vOficina.close(); abrirNueva({ tareaId: t.id }); } }, 'Empezar sesión')),
     t.horario && el('div', { class: 'ficha-tarea' }, el('b', {}, 'Horario: '), t.horario),
     t.choque && el('div', { class: 'ficha-tarea' }, el('b', {}, 'Choque: '), t.choque),
   ];
@@ -1283,7 +1316,9 @@ function renderNecesitan() {
     s.ultimo_mensaje && el('div', { class: 'mensaje corto3' }, plano(s.ultimo_mensaje)),
     el('div', { class: 'fila' },
       s.estado === 'necesita_permiso'
-        ? el('span', { class: 'aviso-caja rojo', style: 'margin:0;padding:2px 8px' }, `Apruébalo en su terminal · ${carpeta(s.cwd)}`)
+        ? (d.vivas?.[s.id]?.tipo === 'background'
+          ? el('button', { class: 'primario boton-chico', type: 'button', onclick: () => postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/terminal`) }, icono('terminal'), 'Abrir su terminal para aprobar')
+          : el('span', { class: 'aviso-caja rojo', style: 'margin:0;padding:2px 8px' }, `Apruébalo en su terminal o en la app · ${carpeta(s.cwd)}`))
         : el('button', { class: 'primario boton-chico', type: 'button', onclick: () => { vNecesitan.close(); abrirAgente(s.id, { escribir: true }); } }, 'Responder'),
       el('button', { class: 'boton-chico', type: 'button', onclick: () => { vNecesitan.close(); abrirAgente(s.id); } }, 'Ver ficha'))))
     : el('li', { class: 'vacio' }, 'Ningún agente te espera.'));

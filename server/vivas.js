@@ -35,7 +35,8 @@ export function aplicarVivas(db, lista, ahora = Date.now(), { bandeja = tieneBan
   const cambios = [];
   for (const v of lista) {
     if (!v.sessionId || INTERNAS.test(v.cwd ?? '')) continue;
-    vivas.set(v.sessionId, { pid: v.pid, nombre: v.name ?? null, ocupada: v.status === 'busy', bandeja: bandeja(v.pid),
+    const esperando = v.status === 'waiting'; // detenida en un diálogo: casi siempre un permiso
+    vivas.set(v.sessionId, { pid: v.pid, nombre: v.name ?? null, ocupada: v.status === 'busy', esperando, bandeja: bandeja(v.pid),
       tipo: v.kind ?? 'interactive', corto: v.id ?? null });
     const s = db.prepare('SELECT estado FROM sesiones WHERE id = ?').get(v.sessionId);
     if (!s) {
@@ -51,6 +52,9 @@ export function aplicarVivas(db, lista, ahora = Date.now(), { bandeja = tieneBan
       if (s.estado === 'cerrada') { // se reanudó una sesión que habíamos dado por cerrada
         db.prepare(`UPDATE sesiones SET estado = 'listo_para_revisar', estado_desde_ts = ?, terminada_ts = NULL WHERE id = ?`).run(ahora, v.sessionId);
         cambios.push({ sesion_id: v.sessionId, antes: 'cerrada', estado: 'listo_para_revisar' });
+      } else if (esperando && s.estado !== 'necesita_permiso') { // el hook no llegó o algo lo sacó de Tu puerta
+        db.prepare(`UPDATE sesiones SET estado = 'necesita_permiso', estado_desde_ts = ? WHERE id = ?`).run(ahora, v.sessionId);
+        cambios.push({ sesion_id: v.sessionId, antes: s.estado, estado: 'necesita_permiso' });
       }
     }
   }

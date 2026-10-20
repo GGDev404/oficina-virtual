@@ -69,13 +69,26 @@ export function aplicar(db, { evento, ts, payload: p }, { rama = () => null } = 
           .run(t, p.last_assistant_message ?? null, p.agent_id);
       }
       break;
+    case 'PermissionRequest': { // qué herramienta pide permiso y con qué (solo se registra; la decisión sigue siendo tuya)
+      nuevo = 'necesita_permiso';
+      const entrada = p.tool_input ?? {};
+      const detalle = [entrada.command, entrada.file_path, entrada.url, entrada.pattern, entrada.description, entrada.prompt]
+        .find((v) => typeof v === 'string' && v.trim()) ?? '';
+      const permiso = { herramienta: p.tool_name ?? 'herramienta', detalle: detalle.slice(0, 400) };
+      db.prepare('UPDATE sesiones SET permiso_json = ?, ultimo_mensaje = ? WHERE id = ?')
+        .run(JSON.stringify(permiso), `Pide permiso para ${permiso.herramienta}${detalle ? `: ${detalle.slice(0, 200)}` : ''}`, sid);
+      break;
+    }
     case 'Notification':
       if (p.notification_type === 'permission_prompt') nuevo = 'necesita_permiso';
       // Claude Code avisa inactividad 1 min después del Stop aunque haya un shell o subagente corriendo:
       // en ese caso el agente espera su proceso, no a ti.
       else if (p.notification_type === 'idle_prompt' && !db.prepare('SELECT procesos_json FROM sesiones WHERE id = ?').get(sid).procesos_json) nuevo = 'te_espera';
       // El texto de idle_prompt es genérico; no debe tapar el último mensaje real del agente.
-      if (nuevo === 'necesita_permiso' && p.message) db.prepare('UPDATE sesiones SET ultimo_mensaje = ? WHERE id = ?').run(p.message, sid);
+      // El aviso genérico no tapa el detalle que dejó PermissionRequest.
+      if (nuevo === 'necesita_permiso' && p.message && !db.prepare('SELECT permiso_json FROM sesiones WHERE id = ?').get(sid).permiso_json) {
+        db.prepare('UPDATE sesiones SET ultimo_mensaje = ? WHERE id = ?').run(p.message, sid);
+      }
       break;
     case 'Stop': {
       const msg = p.last_assistant_message ?? '';
@@ -110,6 +123,7 @@ function cambiarEstado(db, sid, nuevo, t) {
   const { estado } = db.prepare('SELECT estado FROM sesiones WHERE id = ?').get(sid);
   if (estado === nuevo) return [];
   db.prepare('UPDATE sesiones SET estado = ?, estado_desde_ts = ? WHERE id = ?').run(nuevo, t, sid);
+  if (estado === 'necesita_permiso') db.prepare('UPDATE sesiones SET permiso_json = NULL WHERE id = ?').run(sid);
   return [{ sesion_id: sid, antes: estado, estado: nuevo }];
 }
 
@@ -161,7 +175,7 @@ function postToolUse(db, sid, p, t) {
 
 // Revisión periódica con la fecha del transcript (los hooks no avisan de rechazos ni de herramientas largas).
 // `mtime(ruta)` y `cola(ruta)` se inyectan en las pruebas.
-export function revisar(db, ahora = Date.now(), { mtime = mtimeArchivo, cola = colaArchivo, ocupada = () => false } = {}) {
+export function revisar(db, ahora = Date.now(), { mtime = mtimeArchivo, cola = colaArchivo, ocupada = () => false, esperando = () => false } = {}) {
   const cambios = [];
   const sesiones = db.prepare(
     `SELECT id, estado, estado_desde_ts, ultimo_evento_ts, transcript_path FROM sesiones
@@ -170,6 +184,9 @@ export function revisar(db, ahora = Date.now(), { mtime = mtimeArchivo, cola = c
   for (const s of sesiones) {
     const m = s.transcript_path ? mtime(s.transcript_path) : null;
     if (s.estado === 'necesita_permiso') {
+      // Mientras `claude agents` diga que espera, el permiso sigue pendiente aunque el transcript cambie
+      // (un mensaje en cola, por ejemplo, escribe en él).
+      if (esperando(s.id)) continue;
       if (m && m > s.estado_desde_ts) {
         const nuevo = fueInterrumpido(cola(s.transcript_path)) ? 'te_espera' : 'trabajando';
         cambios.push(...cambiarEstado(db, s.id, nuevo, m));

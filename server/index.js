@@ -13,7 +13,7 @@ import { siguiente } from './siguiente.js';
 import { leerVivas, aplicarVivas } from './vivas.js';
 import { leerConversacion, leerContexto } from './conversacion.js';
 import { crearMensajero, MAX_TEXTO } from './mensajero.js';
-import { PERMISOS, carpetaValida, carpetasConocidas, nuevaSesion, cerrarSesion, abrirTerminal } from './control.js';
+import { PERMISOS, carpetaValida, carpetasConocidas, nuevaSesion, nuevaEnTerminal, cerrarSesion, abrirTerminal } from './control.js';
 
 const PUERTO = Number(process.env.OFICINA_PUERTO ?? 4777);
 const DATOS = process.env.OFICINA_DATOS ?? path.join(os.homedir(), '.local', 'share', 'oficina-virtual');
@@ -62,6 +62,7 @@ async function actualizarVivas() {
   try {
     const r = aplicarVivas(db, await leerVivas());
     vivas = r.vivas;
+    avisarCambios(r.cambios);
     avisar();
   } catch (e) {
     console.error('claude agents:', e.message.split('\n')[0]); // sin lista no se cierra nada
@@ -246,7 +247,7 @@ const servidor = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/noche') return json(res, 200, leerNoche());
     if (req.method === 'GET' && url.pathname === '/api/carpetas') return json(res, 200, carpetasConocidas(db));
     if (req.method === 'POST' && url.pathname === '/api/sesiones/nueva') {
-      const { cwd, prompt, nombre, permiso, tarea_id } = await leerJson(req);
+      const { cwd, prompt, nombre, permiso, tarea_id, donde } = await leerJson(req);
       const texto = typeof prompt === 'string' ? prompt.trim() : '';
       if (!carpetaValida(cwd)) return json(res, 400, { error: 'la carpeta no existe o está fuera de tu home' });
       if (!texto || texto.length > MAX_TEXTO) return json(res, 400, { error: `la indicación debe tener entre 1 y ${MAX_TEXTO} caracteres` });
@@ -255,7 +256,9 @@ const servidor = http.createServer(async (req, res) => {
         return json(res, 400, { error: 'tarea_id no es una tarea abierta conocida' });
       }
       const limpio = typeof nombre === 'string' ? nombre.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 80) : '';
-      const r = await nuevaSesion({ cwd: cwd, prompt: texto, nombre: limpio, permiso, tarea: tarea_id || null });
+      const datosSesion = { cwd, prompt: texto, nombre: limpio, permiso, tarea: tarea_id || null };
+      if (donde === 'terminal') { nuevaEnTerminal(datosSesion); return json(res, 201, { terminal: true }); }
+      const r = await nuevaSesion(datosSesion);
       if (!r.ok) return json(res, 422, { error: r.motivo });
       actualizarVivas();
       return json(res, 201, { id: r.id });
@@ -290,7 +293,7 @@ const servidor = http.createServer(async (req, res) => {
 procesarPendientes();
 setInterval(() => {
   procesarPendientes();
-  if (revisar(db, Date.now(), { ocupada: (sid) => vivas.get(sid)?.ocupada === true }).length) avisar();
+  if (revisar(db, Date.now(), { ocupada: (sid) => vivas.get(sid)?.ocupada === true, esperando: (sid) => vivas.get(sid)?.esperando === true }).length) avisar();
   actualizarVivas();
 }, 5000);
 actualizarVivas();

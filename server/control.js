@@ -49,9 +49,23 @@ export async function nuevaSesion({ cwd, prompt, nombre, permiso, tarea }, { cla
   const id = texto.match(/backgrounded\s*·\s*([0-9a-f]{6,})/)?.[1];
   if (id) return { ok: true, id };
   const motivo = /not trusted/i.test(texto)
-    ? 'Esa carpeta todavía no es de confianza: abre `claude` ahí una vez y acepta el aviso.'
+    ? 'Esa carpeta todavía no es de confianza para Claude Code. Elige «Terminal nueva» y acepta el aviso ahí.'
     : (texto.split('\n').find(Boolean) ?? e?.message ?? 'claude no respondió').slice(0, 300);
   return { ok: false, motivo };
+}
+
+// Sesión interactiva en una terminal nueva: sirve para trabajos sin tarea y para carpetas que aún no son de
+// confianza (ahí mismo aparece el aviso de Claude Code para aceptarla).
+export function nuevaEnTerminal({ cwd, prompt, nombre, permiso, tarea }, { lanzar = spawn } = {}) {
+  const args = ['claude', '--permission-mode', permiso];
+  if (nombre) args.push('--name', nombre);
+  args.push(prompt);
+  const env = { ...process.env };
+  if (tarea) env.CLICKUP_TASK = tarea;
+  const hijo = lanzar('xdg-terminal-exec', args, { cwd, env, detached: true, stdio: 'ignore' });
+  hijo.on?.('error', (e) => console.error('xdg-terminal-exec:', e.message));
+  hijo.unref?.();
+  return { ok: true };
 }
 
 // El pid debe seguir siendo de Claude Code (evita matar otro proceso si el número se reutilizó).
