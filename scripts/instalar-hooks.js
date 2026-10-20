@@ -13,6 +13,8 @@ const PROPIOS = { PermissionRequest: { command: path.join(HOOKS, 'permiso.sh'), 
 const EVENTOS = ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse',
   'Notification', 'PermissionRequest', 'Stop', 'SubagentStart', 'SubagentStop', 'SessionEnd'];
 const MATCHER = { PreToolUse: 'Task|Agent', PostToolUse: 'Task|Agent' };
+// AskUserQuestion espera tu respuesta en la oficina hasta 15 min (pregunta.sh): un grupo aparte con su matcher.
+const EXTRA = [['PreToolUse', { matcher: 'AskUserQuestion', hooks: [{ type: 'command', command: path.join(HOOKS, 'pregunta.sh'), timeout: 910 }] }]];
 const quitar = process.argv.includes('--quitar');
 
 const texto = fs.readFileSync(SETTINGS, 'utf8');
@@ -37,6 +39,7 @@ if (!quitar) {
     if (MATCHER[ev]) grupo.matcher = MATCHER[ev];
     (hooks[ev] ??= []).push(grupo);
   }
+  for (const [ev, grupo] of EXTRA) (hooks[ev] ??= []).push(grupo);
 }
 
 if (Object.keys(hooks).length) settings.hooks = hooks; else delete settings.hooks;
