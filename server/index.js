@@ -13,6 +13,7 @@ import { siguiente } from './siguiente.js';
 import { leerVivas, aplicarVivas } from './vivas.js';
 import { leerConversacion } from './conversacion.js';
 import { crearMensajero, MAX_TEXTO } from './mensajero.js';
+import { PERMISOS, carpetaValida, carpetasConocidas, nuevaSesion, cerrarSesion, abrirTerminal } from './control.js';
 
 const PUERTO = Number(process.env.OFICINA_PUERTO ?? 4777);
 const DATOS = process.env.OFICINA_DATOS ?? path.join(os.homedir(), '.local', 'share', 'oficina-virtual');
@@ -232,6 +233,36 @@ const servidor = http.createServer(async (req, res) => {
       return json(res, 202, { id: enviado.id });
     }
     if (req.method === 'GET' && url.pathname === '/api/noche') return json(res, 200, leerNoche());
+    if (req.method === 'GET' && url.pathname === '/api/carpetas') return json(res, 200, carpetasConocidas(db));
+    if (req.method === 'POST' && url.pathname === '/api/sesiones/nueva') {
+      const { cwd, prompt, nombre, permiso, tarea_id } = await leerJson(req);
+      const texto = typeof prompt === 'string' ? prompt.trim() : '';
+      if (!carpetaValida(cwd)) return json(res, 400, { error: 'la carpeta no existe o está fuera de tu home' });
+      if (!texto || texto.length > MAX_TEXTO) return json(res, 400, { error: `la indicación debe tener entre 1 y ${MAX_TEXTO} caracteres` });
+      if (!PERMISOS.includes(permiso)) return json(res, 400, { error: 'modo de permisos no válido' });
+      if (tarea_id && !(FORMATO_ID.test(tarea_id) && db.prepare('SELECT 1 FROM tareas WHERE id = ?').get(tarea_id))) {
+        return json(res, 400, { error: 'tarea_id no es una tarea abierta conocida' });
+      }
+      const limpio = typeof nombre === 'string' ? nombre.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 80) : '';
+      const r = await nuevaSesion({ cwd: cwd, prompt: texto, nombre: limpio, permiso, tarea: tarea_id || null });
+      if (!r.ok) return json(res, 422, { error: r.motivo });
+      actualizarVivas();
+      return json(res, 201, { id: r.id });
+    }
+    if (req.method === 'POST' && (m = url.pathname.match(/^\/api\/sesiones\/([^/]+)\/cerrar$/))) {
+      const viva = vivas.get(m[1]);
+      if (!viva) return json(res, 409, { error: 'la sesión ya no está abierta' });
+      const r = await cerrarSesion(viva);
+      if (!r.ok) return json(res, 422, { error: r.motivo });
+      setTimeout(actualizarVivas, 1500);
+      return json(res, 204);
+    }
+    if (req.method === 'POST' && (m = url.pathname.match(/^\/api\/sesiones\/([^/]+)\/terminal$/))) {
+      const viva = vivas.get(m[1]);
+      if (viva?.tipo !== 'background' || !viva.corto) return json(res, 409, { error: 'solo las sesiones en segundo plano se abren así' });
+      abrirTerminal(viva.corto);
+      return json(res, 204);
+    }
     if (req.method === 'GET' && url.pathname === '/') {
       const html = path.join(RAIZ, 'public', 'index.html');
       if (!fs.existsSync(html)) return json(res, 404, { error: 'la página llega en la Fase 5' });

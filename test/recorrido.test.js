@@ -48,7 +48,7 @@ test('claude agents: crea sesiones sin hooks, pone nombre, ignora claude-mem y c
   assert.equal(sesion(db, 'afd31579-dd7e-478e-84ed-9d2b0859b360'), undefined);
   assert.equal(sesion(db, vieja).estado, 'cerrada');
   assert.equal(sesion(db, vieja).fin_razon, 'proceso terminado');
-  assert.deepEqual(vivas.get(SID), { pid: 6352, nombre: 'mi-erp-2f', ocupada: true, bandeja: true });
+  assert.deepEqual(vivas.get(SID), { pid: 6352, nombre: 'mi-erp-2f', ocupada: true, bandeja: true, tipo: 'interactive', corto: null });
   assert.ok(cambios.some((c) => c.sesion_id === vieja && c.estado === 'cerrada'));
   // Una sesión recién abierta no se cierra aunque todavía no salga en la lista.
   const nueva = '11111111-2222-3333-4444-555555555555';

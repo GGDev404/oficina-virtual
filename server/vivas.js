@@ -5,7 +5,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 
 const RAIZ_SOCKETS = [`/run/user/${process.getuid?.() ?? 1000}/cc-socks`, `/tmp/cc-socks-${process.getuid?.() ?? 1000}`];
-const INTERNAS = /\/\.claude-mem\//; // sesiones observadoras de claude-mem, no son agentes de trabajo
+// Sesiones que no son agentes de trabajo: observadoras de claude-mem y el mensajero de la propia oficina.
+const INTERNAS = /\/\.claude-mem\/|\/oficina-virtual\/mensajero$/;
 
 export function leerVivas({ claude = 'claude' } = {}) {
   return new Promise((ok, falla) => {
@@ -26,7 +27,8 @@ export function aplicarVivas(db, lista, ahora = Date.now(), { bandeja = tieneBan
   const cambios = [];
   for (const v of lista) {
     if (!v.sessionId || INTERNAS.test(v.cwd ?? '')) continue;
-    vivas.set(v.sessionId, { pid: v.pid, nombre: v.name ?? null, ocupada: v.status === 'busy', bandeja: bandeja(v.pid) });
+    vivas.set(v.sessionId, { pid: v.pid, nombre: v.name ?? null, ocupada: v.status === 'busy', bandeja: bandeja(v.pid),
+      tipo: v.kind ?? 'interactive', corto: v.id ?? null });
     const s = db.prepare('SELECT estado FROM sesiones WHERE id = ?').get(v.sessionId);
     if (!s) {
       // Abierta antes de los hooks o sin eventos todavía: entra con lo que dice `claude agents`.

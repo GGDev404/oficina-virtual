@@ -126,6 +126,16 @@ casilla para ver todos) y el resumen del turno nocturno (carpeta `OFICINA_NOCHE_
 
 **Te necesitan**: cola de agentes que esperan algo de ti con Responder y Ver ficha.
 
+**Nueva sesión** (botón de la barra, o «Empezar sesión» en una tarea de tu agenda): eliges la tarea en un selector que
+agrupa por cuándo vence (vencidas, hoy, mañana, esta semana…) y muestra hora de entrega, estado, prioridad, sprint y
+horario de la ficha. Propone el worktree de la tarea (`git worktree list` de tus repos conocidos), `/agil <ID>` como
+indicación y un nombre. Arranca con `claude --bg` y `CLICKUP_TASK=<ID>` en la carpeta elegida (debe ser de confianza
+para Claude Code). Permisos: auto, aceptar ediciones o manual; nunca `bypassPermissions` desde la página.
+
+**Cerrar sesión** (ficha del agente, con confirmación): las de segundo plano con `claude stop <id>`; las interactivas
+(terminal o app) con SIGTERM a su proceso, solo si el pid sigue siendo de Claude Code. La conversación queda guardada
+(`claude --resume <id>`). Las de segundo plano tienen además **Abrir en terminal** (`xdg-terminal-exec claude attach <id>`).
+
 **Sesiones vivas**: cada 5 s `claude agents --json` da nombre, ocupada/libre y bandeja; crea las sesiones abiertas
 antes de los hooks, ignora las de claude-mem y cierra las que ya no tienen proceso (20 s de margen).
 

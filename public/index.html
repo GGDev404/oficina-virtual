@@ -166,6 +166,26 @@
   .ficha-tarea { font-size: 12.5px; }
   .ficha-tarea b { color: var(--naranja); font-weight: 600; }
 
+  /* Selector de tareas y formularios */
+  input[type=text], input[type=search] { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--borde);
+    border-radius: 8px; padding: var(--s2) var(--s3); min-height: 36px; width: 100%; }
+  .selector { display: grid; gap: var(--s2); }
+  .selector .opciones { max-height: min(46svh, 420px); overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+  .opcion { display: grid; gap: 3px; text-align: left; width: 100%; flex: none; background: none; border: 1px solid transparent; border-radius: 10px;
+    padding: var(--s2) var(--s3); min-height: 0; }
+  .opcion:hover { background: var(--hundido); border-color: var(--borde); }
+  .opcion[aria-pressed="true"] { background: var(--acento-suave); border-color: var(--acento); }
+  .opcion .nombre { font-weight: 600; font-size: 13.5px; }
+  .opcion .cuando { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+  .opcion .cuando.vencida { color: var(--rojo); }
+  .opcion .cuando.hoy { color: var(--naranja); }
+  .grupo-titulo { font-size: 11.5px; color: var(--suave); text-transform: uppercase; letter-spacing: .05em; margin: var(--s3) 0 2px; font-weight: 600; }
+  .grupo-titulo:first-child { margin-top: 0; }
+  .campo { display: grid; gap: var(--s1); }
+  .campo > span { font-size: 12.5px; color: var(--suave); font-weight: 600; }
+  .acciones { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
+  button.peligro { color: var(--rojo); background: var(--rojo-bg); border-color: transparent; }
+
   /* Tu oficina */
   .veredicto { font-size: 13.5px; font-weight: 600; }
   .hoy li { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--s3); padding: var(--s3) 0; border-top: 1px solid var(--borde); }
@@ -194,6 +214,7 @@
 <body>
 <header class="barra" id="barra">
   <h1>Oficina virtual</h1>
+  <button class="primario" id="nueva" type="button" aria-haspopup="dialog">Nueva sesión</button>
   <div class="sync"><span id="sync-texto">Sin sincronizar</span>
     <button id="sincronizar" type="button">Sincronizar ahora</button>
     <span id="conexion" class="chip">conectando…</span></div>
@@ -215,7 +236,8 @@
 
 <dialog class="ventana" id="v-agente" aria-labelledby="va-titulo">
   <header><div class="titulos"><h2 id="va-titulo"></h2><div class="fila" id="va-sub"></div></div>
-    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar"></button></header>
+    <div class="acciones" id="va-acciones"></div>
+    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar ventana"></button></header>
   <div class="cuerpo"><div class="dos-col">
     <section aria-label="Conversación">
       <div id="va-aviso"></div>
@@ -261,6 +283,28 @@
   <div class="cuerpo"><ul id="vn-lista"></ul></div>
 </dialog>
 
+<dialog class="ventana" id="v-nueva" aria-labelledby="vs-titulo">
+  <header><div class="titulos"><h2 id="vs-titulo">Nueva sesión</h2>
+    <div class="meta">Arranca en segundo plano: la ves en la oficina, le escribes desde su ficha y la puedes abrir en una terminal.</div></div>
+    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar ventana"></button></header>
+  <div class="cuerpo"><form class="dos-col" id="vs-form">
+    <section aria-labelledby="vs-tareas-t"><h3 id="vs-tareas-t" style="margin-top:0">Tarea (opcional)</h3><div id="vs-tareas"></div></section>
+    <div class="contexto">
+      <section class="bloque" id="vs-elegida" aria-live="polite"></section>
+      <label class="campo"><span>Carpeta</span>
+        <input type="text" id="vs-cwd" list="vs-carpetas" required autocomplete="off" placeholder="/home/…/mi-proyecto"><datalist id="vs-carpetas"></datalist></label>
+      <label class="campo"><span>Indicación</span>
+        <textarea id="vs-prompt" rows="4" required maxlength="4000" placeholder="Por ejemplo: /agil k7p2tfedr, o lo que quieres que haga"></textarea></label>
+      <label class="campo"><span>Nombre (como aparece en la oficina)</span><input type="text" id="vs-nombre" maxlength="80"></label>
+      <label class="campo"><span>Permisos</span><select id="vs-permiso">
+        <option value="auto">Auto: decide solo lo seguro (recomendado)</option>
+        <option value="acceptEdits">Aceptar ediciones: pregunta antes de correr comandos</option>
+        <option value="manual">Manual: pregunta todo</option></select></label>
+      <div class="fila"><button class="primario" type="submit" id="vs-empezar">Empezar sesión</button><span class="meta" id="vs-estado" role="status"></span></div>
+    </div>
+  </form></div>
+</dialog>
+
 <script>
 // ════════════════════════ Datos y utilidades ════════════════════════
 const ESTADOS = {
@@ -287,10 +331,10 @@ function el(tag, attrs = {}, ...hijos) {
     else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
     else n.setAttribute(k, v === true ? '' : v);
   }
-  for (const h of hijos.flat()) if (h != null && h !== false) n.append(h instanceof Node ? h : String(h));
+  for (const h of hijos.flat(Infinity)) if (h != null && h !== false) n.append(h instanceof Node ? h : String(h));
   return n;
 }
-const reemplazar = (nodo, ...hijos) => nodo.replaceChildren(...hijos.flat().filter((h) => h != null && h !== false));
+const reemplazar = (nodo, ...hijos) => nodo.replaceChildren(...hijos.flat(Infinity).filter((h) => h != null && h !== false));
 // Íconos de trazo (formas de Lucide, ISC) dibujados aquí mismo: nada de emoji ni glifos.
 const TRAZOS = {
   cerrar: ['M18 6 6 18', 'm6 6 12 12'],
@@ -675,14 +719,73 @@ function dibujar(f, fCamina) {
 const vAgente = document.getElementById('v-agente');
 const vOficina = document.getElementById('v-oficina');
 const vNecesitan = document.getElementById('v-necesitan');
-for (const v of [vAgente, vOficina, vNecesitan]) {
+const vNueva = document.getElementById('v-nueva');
+for (const v of [vAgente, vOficina, vNecesitan, vNueva]) {
   v.querySelector('[data-cerrar]').append(icono('cerrar'));
   v.querySelector('[data-cerrar]').addEventListener('click', () => v.close());
   v.addEventListener('click', (ev) => { if (ev.target === v) v.close(); }); // clic en el fondo cierra
 }
-vAgente.addEventListener('close', () => { abierta = null; });
+vAgente.addEventListener('close', () => { abierta = null; asignando = false; confirmandoCierre = false; });
+
+// ── Selector de tareas: busca por nombre o ID, agrupa por cuándo vence y muestra lo que importa para elegir ──
+const GRUPOS = ['Vencidas', 'Hoy', 'Mañana', 'Esta semana', 'Después', 'Sin fecha'];
+function grupoDe(t, ahora = Date.now()) {
+  if (t.due_ts == null) return 'Sin fecha';
+  const hoy = inicioDia(ahora);
+  if (t.due_ts < ahora) return 'Vencidas';
+  if (t.due_ts < hoy + DIA) return 'Hoy';
+  if (t.due_ts < hoy + 2 * DIA) return 'Mañana';
+  if (t.due_ts < hoy + 7 * DIA) return 'Esta semana';
+  return 'Después';
+}
+function cuandoVence(t) {
+  if (t.due_ts == null) return ['sin fecha', ''];
+  const g = grupoDe(t), hora = horaDe(t.due_ts);
+  if (g === 'Vencidas') return [`vencida · ${fecha(t.due_ts)}`, 'vencida'];
+  if (g === 'Hoy') return [`hoy ${hora}`, 'hoy'];
+  if (g === 'Mañana') return [`mañana ${hora}`, ''];
+  return [fecha(t.due_ts), ''];
+}
+function selectorTarea(d, { seleccionada = null, alElegir }) {
+  const buscar = el('input', { type: 'search', placeholder: 'Buscar por nombre o ID', 'aria-label': 'Buscar tarea', autocomplete: 'off' });
+  const lista = el('div', { class: 'opciones' });
+  const opcion = (t) => {
+    const ses = d.sesiones.filter((x) => x.tarea_id === t.id && ROL[x.estado]);
+    const [cuando, tono] = cuandoVence(t);
+    return el('button', { type: 'button', class: 'opcion', 'aria-pressed': String(t.id === seleccionada), onclick: () => alElegir(t) },
+      el('span', { class: 'fila', style: 'justify-content:space-between;flex-wrap:nowrap;gap:12px' },
+        el('span', { class: 'nombre' }, t.nombre), el('span', { class: `meta cuando ${tono}` }, cuando)),
+      el('span', { class: 'fila meta' }, el('span', {}, t.id), chip(t.estado ?? '—'), t.prioridad && chip(...PRIORIDAD[t.prioridad] ?? [t.prioridad]),
+        t.lista && el('span', {}, t.lista), ses.length > 0 && chip(ses.length > 1 ? `${ses.length} agentes en ella` : 'un agente en ella', 'verde')),
+      t.horario && el('span', { class: 'ficha-tarea' }, el('b', {}, 'Horario: '), t.horario));
+  };
+  const pintar = () => {
+    const q = buscar.value.trim().toLowerCase();
+    const ts = d.tareas.filter((t) => !q || t.nombre.toLowerCase().includes(q) || t.id.includes(q))
+      .sort((a, b) => (a.due_ts ?? Infinity) - (b.due_ts ?? Infinity));
+    const porGrupo = Object.groupBy(ts, (t) => grupoDe(t));
+    reemplazar(lista, ts.length ? GRUPOS.filter((g) => porGrupo[g]).flatMap((g) =>
+      [el('div', { class: 'grupo-titulo' }, `${g} · ${porGrupo[g].length}`), ...porGrupo[g].map(opcion)])
+      : el('p', { class: 'vacio' }, q ? 'Ninguna tarea coincide.' : 'No hay tareas abiertas sincronizadas.'));
+  };
+  buscar.addEventListener('input', pintar);
+  pintar();
+  const caja = el('div', { class: 'selector' }, buscar, lista);
+  caja.enfocar = () => buscar.focus();
+  return caja;
+}
+function resumenTarea(t) {
+  const [cuando, tono] = cuandoVence(t);
+  return [el('a', { href: t.url, target: '_blank', rel: 'noopener', style: 'font-weight:600' }, t.nombre),
+    el('div', { class: 'fila meta' }, el('span', { class: `cuando ${tono}`, style: 'font-weight:600' }, `Vence ${cuando}`), chip(t.estado ?? '—'),
+      t.prioridad && chip(...PRIORIDAD[t.prioridad] ?? [t.prioridad]), t.lista && el('span', {}, t.lista)),
+    t.horario && el('div', { class: 'ficha-tarea' }, el('b', {}, 'Horario: '), t.horario),
+    t.choque && el('div', { class: 'ficha-tarea' }, el('b', {}, 'Choque: '), t.choque)];
+}
 
 // ── Ficha del agente: conversación + mensaje + contexto ──
+let asignando = false; // eligiendo tarea: el contexto no se repinta para no perder la búsqueda
+let confirmandoCierre = false;
 let conversacion = [];
 let conversacionTs = 0;
 async function cargarConversacion(id) {
@@ -694,7 +797,7 @@ async function cargarConversacion(id) {
 }
 function abrirAgente(id, { escribir = false } = {}) {
   abierta = id;
-  conversacion = []; conversacionTs = 0;
+  conversacion = []; conversacionTs = 0; asignando = false; confirmandoCierre = false;
   document.getElementById('va-texto').value = '';
   document.getElementById('va-estado').textContent = '';
   document.getElementById('va-conversacion').replaceChildren(el('p', { class: 'vacio' }, 'Cargando…'));
@@ -722,11 +825,10 @@ function renderAgente() {
     el('span', { class: 'meta' }, `desde ${hace(s.estado_desde_ts)}`),
     el('span', { class: 'meta' }, viva ? (viva.ocupada ? '· ocupada ahora' : '· libre ahora') : '· sesión cerrada'));
 
-  reemplazar(document.getElementById('va-aviso'),
-    s.estado === 'necesita_permiso' && el('p', { class: 'aviso-caja rojo' }, el('b', {}, 'Pide permiso. '),
-      `Apruébalo en su terminal (${carpeta(s.cwd)}): un mensaje desde aquí no puede aprobar permisos.`),
-    s.estado === 'bloqueado' && el('p', { class: 'aviso-caja rojo' }, el('b', {}, 'Está bloqueado. '), 'Su último mensaje dice qué le falta.'),
-    espera && el('p', { class: 'aviso-caja' }, el('b', {}, 'Espera sus procesos. '), 'Cuando terminen, sigue solo; si le escribes ahora, lee tu mensaje y responde.'));
+  // Acciones y avisos solo se repintan si cambian: así un clic no cae en un botón que se acaba de reemplazar.
+  const claveAvisos = [s.id, viva?.tipo, !!viva, viva?.ocupada, confirmandoCierre, s.estado, espera].join('|');
+  if (vAgente.dataset.avisos !== claveAvisos) { vAgente.dataset.avisos = claveAvisos; pintarAvisos(s, viva, tareas, espera); }
+
 
   const mensajes = (d.mensajes?.[s.id] ?? []).filter((m) => m.estado !== 'enviado' || Date.now() - m.ts < 90_000);
   const globos = conversacion.map((m) => el('div', { class: `globo rol-${m.rol}` },
@@ -749,21 +851,18 @@ function renderAgente() {
   if (!puede) document.getElementById('va-estado').textContent = !viva ? 'La sesión está cerrada.' : 'Esta sesión no tiene bandeja de mensajes; ábrela de nuevo para activarla.';
 
   const contexto = document.getElementById('va-contexto');
-  if (contexto.contains(document.activeElement) && document.activeElement.tagName === 'SELECT') return; // no se cierra el select en uso
+  if (asignando) return; // se está eligiendo tarea: no se repinta para no perder la búsqueda
   const subs = d.subagentes.filter((a) => a.sesion_id === s.id);
   const vivos = subs.filter((a) => a.estado === 'trabajando');
   reemplazar(contexto,
     el('section', { class: 'bloque' }, el('h4', {}, 'Tarea'),
       s.tarea_id
-        ? [el('div', {}, enlaceTarea(t, s.tarea_id)),
-          t?.due_ts && el('div', { class: 'meta' }, `Vence ${fecha(t.due_ts)} · ${t.estado ?? ''}`),
-          t?.horario && el('div', { class: 'ficha-tarea' }, el('b', {}, 'Horario: '), t.horario),
-          t?.choque && el('div', { class: 'ficha-tarea' }, el('b', {}, 'Choque: '), t.choque),
+        ? [t ? resumenTarea(t) : el('div', {}, s.tarea_id),
           el('div', { class: 'fila' }, el('span', { class: 'meta' }, `ligada por ${s.tarea_origen}`),
+            el('button', { class: 'boton-chico', type: 'button', onclick: () => abrirAsignacion(s, d) }, 'Cambiar'),
             el('button', { class: 'boton-chico', type: 'button', onclick: () => postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/tarea`, { tarea_id: null }) }, 'Desligar'))]
-        : el('select', { 'aria-label': 'Asignar tarea a la sesión',
-          onchange: (ev) => ev.target.value && postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/tarea`, { tarea_id: ev.target.value }) },
-          el('option', { value: '' }, 'Sin tarea · asignar…'), d.tareas.map((x) => el('option', { value: x.id }, `${x.id} · ${x.nombre}`)))),
+        : [el('p', { class: 'meta', style: 'margin:0' }, 'Sin tarea ligada.'),
+          el('button', { class: 'primario', type: 'button', onclick: () => abrirAsignacion(s, d) }, 'Asignar tarea')]),
     el('section', { class: 'bloque' }, el('h4', {}, 'Dónde trabaja'),
       s.rama_git && el('div', { class: 'fila' }, icono('rama'), s.rama_git),
       el('div', { class: 'fila', style: 'overflow-wrap:anywhere' }, icono('carpeta'), s.cwd ?? '')),
@@ -776,6 +875,102 @@ function renderAgente() {
           a.estado === 'trabajando' ? chip('trabajando', 'verde') : el('span', { class: 'meta' }, hace(a.fin_ts ?? a.inicio_ts)))))),
     el('p', { class: 'meta', style: 'margin:0' }, `Última actividad ${hace(s.ultimo_evento_ts)} · sesión ${s.id.slice(0, 8)}`));
 }
+function pintarAvisos(s, viva, tareas, espera) {
+  reemplazar(document.getElementById('va-acciones'),
+    viva?.tipo === 'background' && el('button', { type: 'button', onclick: () => postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/terminal`) },
+      icono('terminal'), 'Abrir en terminal'),
+    viva && el('button', { type: 'button', class: 'peligro', onclick: () => { confirmandoCierre = true; renderAgente(); } }, 'Cerrar sesión'));
+  reemplazar(document.getElementById('va-aviso'),
+    confirmandoCierre && viva && el('div', { class: 'aviso-caja rojo', role: 'alertdialog', 'aria-label': 'Confirmar cierre' },
+      el('p', { style: 'margin:0 0 8px' }, el('b', {}, `¿Cerrar «${nombreSesion(s, tareas)}»? `),
+        viva.ocupada ? 'Está trabajando ahora: se corta lo que esté haciendo. ' : '',
+        `La conversación queda guardada; la retomas con claude --resume ${s.id.slice(0, 8)}…${viva.tipo === 'background' ? ` o claude attach ${viva.corto}` : ''}.`),
+      el('div', { class: 'acciones' },
+        el('button', { type: 'button', class: 'primario', style: 'background:#b3261e;color:#fff', onclick: async () => {
+          confirmandoCierre = false;
+          document.getElementById('va-estado').textContent = 'Cerrando…';
+          try { await post(`/api/sesiones/${encodeURIComponent(s.id)}/cerrar`); document.getElementById('va-estado').textContent = 'Sesión cerrada.'; }
+          catch (err) { document.getElementById('va-estado').textContent = err.message; }
+          renderAgente();
+        } }, 'Sí, cerrar'),
+        el('button', { type: 'button', onclick: () => { confirmandoCierre = false; renderAgente(); } }, 'Cancelar'))),
+    s.estado === 'necesita_permiso' && el('p', { class: 'aviso-caja rojo' }, el('b', {}, 'Pide permiso. '),
+      `Apruébalo en su terminal (${carpeta(s.cwd)}): un mensaje desde aquí no puede aprobar permisos.`),
+    s.estado === 'bloqueado' && el('p', { class: 'aviso-caja rojo' }, el('b', {}, 'Está bloqueado. '), 'Su último mensaje dice qué le falta.'),
+    espera && el('p', { class: 'aviso-caja' }, el('b', {}, 'Espera sus procesos. '), 'Cuando terminen, sigue solo; si le escribes ahora, lee tu mensaje y responde.'));
+}
+function abrirAsignacion(s, d) {
+  asignando = true;
+  const selector = selectorTarea(d, { seleccionada: s.tarea_id, alElegir: async (t) => {
+    asignando = false;
+    await postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/tarea`, { tarea_id: t.id });
+    renderAgente();
+  } });
+  reemplazar(document.getElementById('va-contexto'), el('section', { class: 'bloque' },
+    el('div', { class: 'fila' }, el('h4', { style: 'margin-right:auto' }, 'Elige su tarea'),
+      el('button', { class: 'boton-chico', type: 'button', onclick: () => { asignando = false; renderAgente(); } }, 'Cancelar')),
+    selector));
+  selector.enfocar();
+}
+
+// ── Nueva sesión: tarea opcional, carpeta, indicación, nombre y permisos ──
+let nueva = { tarea: null, auto: { prompt: '', nombre: '' }, carpetas: [] };
+async function abrirNueva(tareaId = null) {
+  const d = datos;
+  if (!d) return;
+  nueva = { tarea: null, auto: { prompt: '', nombre: '' }, carpetas: [] };
+  for (const id of ['vs-cwd', 'vs-prompt', 'vs-nombre']) document.getElementById(id).value = '';
+  document.getElementById('vs-estado').textContent = '';
+  document.getElementById('vs-empezar').disabled = false;
+  try { nueva.carpetas = await (await fetch('/api/carpetas')).json(); } catch { nueva.carpetas = []; }
+  reemplazar(document.getElementById('vs-carpetas'), nueva.carpetas.map((c) => el('option', { value: c })));
+  if (nueva.carpetas[0]) document.getElementById('vs-cwd').value = nueva.carpetas[0];
+  const selector = selectorTarea(d, { seleccionada: tareaId, alElegir: (t) => elegirParaNueva(t, d) });
+  reemplazar(document.getElementById('vs-tareas'), selector);
+  const t = d.tareas.find((x) => x.id === tareaId);
+  if (t) elegirParaNueva(t, d); else pintarElegida(null);
+  if (!vNueva.open) vNueva.showModal();
+  if (!t) selector.enfocar();
+}
+function pintarElegida(t) {
+  reemplazar(document.getElementById('vs-elegida'), t
+    ? [el('div', { class: 'fila' }, el('h4', { style: 'margin-right:auto' }, 'Tarea elegida'),
+      el('button', { class: 'boton-chico', type: 'button', onclick: () => { nueva.tarea = null; pintarElegida(null); reemplazar(document.getElementById('vs-tareas'), selectorTarea(datos, { alElegir: (x) => elegirParaNueva(x, datos) })); } }, 'Quitar')),
+      resumenTarea(t)]
+    : [el('h4', {}, 'Sin tarea'), el('p', { class: 'meta', style: 'margin:0' }, 'Elige una a la izquierda para ligarla desde el inicio, o empieza sin tarea.')]);
+}
+function elegirParaNueva(t, d) {
+  nueva.tarea = t.id;
+  pintarElegida(t);
+  reemplazar(document.getElementById('vs-tareas'), selectorTarea(d, { seleccionada: t.id, alElegir: (x) => elegirParaNueva(x, d) }));
+  // Se rellenan indicación y nombre mientras no los hayas cambiado tú.
+  const prompt = document.getElementById('vs-prompt'), nombre = document.getElementById('vs-nombre');
+  if (!prompt.value || prompt.value === nueva.auto.prompt) prompt.value = nueva.auto.prompt = `/agil ${t.id}`;
+  const corto = `${t.id} · ${t.nombre.replace(/^.*?·\s*/, '')}`.slice(0, 60);
+  if (!nombre.value || nombre.value === nueva.auto.nombre) nombre.value = nueva.auto.nombre = corto;
+  // Si alguna carpeta conocida lleva el ID (worktree de la tarea), se propone.
+  const propia = nueva.carpetas.find((c) => c.includes(t.id));
+  if (propia) document.getElementById('vs-cwd').value = propia;
+}
+document.getElementById('vs-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const estado = document.getElementById('vs-estado'), boton = document.getElementById('vs-empezar');
+  boton.disabled = true;
+  estado.textContent = 'Arrancando…';
+  try {
+    const r = await post('/api/sesiones/nueva', {
+      cwd: document.getElementById('vs-cwd').value.trim(), prompt: document.getElementById('vs-prompt').value,
+      nombre: document.getElementById('vs-nombre').value, permiso: document.getElementById('vs-permiso').value, tarea_id: nueva.tarea,
+    });
+    estado.textContent = `Sesión ${r.id} iniciada; aparece en el Taller en unos segundos.`;
+    setTimeout(() => vNueva.open && vNueva.close(), 1800);
+  } catch (err) {
+    estado.textContent = err.message;
+    boton.disabled = false;
+  }
+});
+document.getElementById('nueva').addEventListener('click', () => abrirNueva());
+
 document.getElementById('va-form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const caja = document.getElementById('va-texto');
@@ -829,7 +1024,8 @@ function filaTarea(t, d, { conHora = true } = {}) {
       conHora && t.due_ts && el('span', {}, fecha(t.due_ts)),
       ses.map((s) => el('button', { class: 'enlace', type: 'button', style: 'gap:4px', onclick: () => { vOficina.close(); abrirAgente(s.id); } },
         icono('robot'), esperaProcesos(s, d) ? 'esperando proceso' : ESTADOS[s.estado]?.[0])),
-      nCom > 0 && chip(`${nCom} para ti`, 'naranja')),
+      nCom > 0 && chip(`${nCom} para ti`, 'naranja'),
+      !ses.length && el('button', { class: 'boton-chico', type: 'button', onclick: () => { vOficina.close(); abrirNueva(t.id); } }, 'Empezar sesión')),
     t.horario && el('div', { class: 'ficha-tarea' }, el('b', {}, 'Horario: '), t.horario),
     t.choque && el('div', { class: 'ficha-tarea' }, el('b', {}, 'Choque: '), t.choque),
   ];
