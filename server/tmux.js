@@ -29,12 +29,29 @@ const tmux = (ejecutar, args, entrada) => new Promise((ok, falla) => {
   hijo?.stdin?.end(entrada);
 });
 
-// Pega el texto como bracketed paste (los saltos de línea no lo envían a medias) y luego Enter.
-export async function enviarTexto(socket, texto, { ejecutar = execFile } = {}) {
+// ¿Lo pegado sigue en la caja de entrada? Claude Code lo agrupa como «[Pasted text #N…]» / «[Image #N]» o lo deja tal cual.
+export function sigueEnLaCaja(pantalla, texto) {
+  const caja = pantalla.split('\n').reverse().find((l) => /^\s*❯/.test(l))?.replace(/^\s*❯\s?/, '').trim() ?? '';
+  if (!caja) return false;
+  if (/\[(Pasted text|Image) #\d+/.test(caja)) return true;
+  const inicio = texto.trim().split('\n')[0].slice(0, 24).trim();
+  return !!inicio && caja.startsWith(inicio);
+}
+
+// Pega el texto como bracketed paste (los saltos de línea no lo envían a medias) y luego Enter. Claude Code procesa lo
+// pegado (imágenes, texto largo) de forma asíncrona y un Enter que llega antes se pierde: se espera y, si el texto sigue
+// en la caja, se reintenta (hasta 3 veces).
+export async function enviarTexto(socket, texto, { ejecutar = execFile, esperar = (ms) => new Promise((ok) => setTimeout(ok, ms)) } = {}) {
   if (!socketValido(socket)) throw new Error('socket no válido');
   await tmux(ejecutar, ['-L', socket, 'load-buffer', '-b', 'ov', '-'], texto);
   await tmux(ejecutar, ['-L', socket, 'paste-buffer', '-p', '-d', '-b', 'ov', '-t', PANEL]);
-  await tmux(ejecutar, ['-L', socket, 'send-keys', '-t', PANEL, 'Enter']);
+  await esperar(/\.(png|jpe?g|gif|webp)\b/i.test(texto) ? 1200 : texto.includes('\n') || texto.length > 200 ? 500 : 250);
+  for (let intento = 0; intento < 3; intento++) {
+    await tmux(ejecutar, ['-L', socket, 'send-keys', '-t', PANEL, 'Enter']);
+    await esperar(700);
+    if (!sigueEnLaCaja(await tmux(ejecutar, ['-L', socket, 'capture-pane', '-p', '-t', PANEL]), texto)) return;
+  }
+  throw new Error('lo pegué en su terminal pero no se envió; revisa su caja de entrada');
 }
 
 export async function enviarTecla(socket, tecla, { ejecutar = execFile } = {}) {
