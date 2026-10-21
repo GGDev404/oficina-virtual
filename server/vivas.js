@@ -35,6 +35,8 @@ export function aplicarVivas(db, lista, ahora = Date.now(), { bandeja = tieneBan
   const cambios = [];
   for (const v of lista) {
     if (!v.sessionId || INTERNAS.test(v.cwd ?? '')) continue;
+    // De fondo sin pid: su proceso murió (OOM, reinicio) y `claude agents` solo conserva el registro; no está viva.
+    if (v.kind === 'background' && !v.pid) continue;
     const esperando = v.status === 'waiting'; // detenida en un diálogo: casi siempre un permiso
     vivas.set(v.sessionId, { pid: v.pid, nombre: v.name ?? null, ocupada: v.status === 'busy', esperando, bandeja: bandeja(v.pid),
       tipo: v.kind ?? 'interactive', corto: v.id ?? null });
@@ -50,7 +52,7 @@ export function aplicarVivas(db, lista, ahora = Date.now(), { bandeja = tieneBan
       db.prepare('UPDATE sesiones SET nombre = COALESCE(?, nombre), transcript_path = COALESCE(transcript_path, ?) WHERE id = ?')
         .run(v.name ?? null, rutaTranscript(v.cwd, v.sessionId), v.sessionId);
       if (s.estado === 'cerrada') { // se reanudó una sesión que habíamos dado por cerrada
-        db.prepare(`UPDATE sesiones SET estado = 'listo_para_revisar', estado_desde_ts = ?, terminada_ts = NULL WHERE id = ?`).run(ahora, v.sessionId);
+        db.prepare(`UPDATE sesiones SET estado = 'listo_para_revisar', estado_desde_ts = ?, terminada_ts = NULL, pendiente = 0 WHERE id = ?`).run(ahora, v.sessionId);
         cambios.push({ sesion_id: v.sessionId, antes: 'cerrada', estado: 'listo_para_revisar' });
       } else if (esperando && s.estado !== 'necesita_permiso') { // el hook no llegó o algo lo sacó de Tu puerta
         db.prepare(`UPDATE sesiones SET estado = 'necesita_permiso', estado_desde_ts = ? WHERE id = ?`).run(ahora, v.sessionId);
@@ -58,11 +60,12 @@ export function aplicarVivas(db, lista, ahora = Date.now(), { bandeja = tieneBan
       }
     }
   }
-  // Abiertas en la base pero ya sin proceso: se cerraron sin SessionEnd (ventana cerrada, kill, reinicio).
-  // Margen de 20 s: una sesión recién abierta puede mandar su primer hook antes de aparecer en la lista.
+  // Abiertas en la base pero ya sin proceso: se cerraron sin SessionEnd (ventana cerrada, kill, reinicio, OOM).
+  // Sin SessionEnd (fin_razon vacío) quedan pendientes para Retomar o Descartar. Margen de 20 s: una sesión recién abierta puede mandar su primer hook antes de aparecer en la lista.
   for (const s of db.prepare(`SELECT id, estado FROM sesiones WHERE estado <> 'cerrada' AND ultimo_evento_ts < ?`).all(ahora - 20_000)) {
     if (vivas.has(s.id) || !/^[0-9a-f-]{36}$/.test(s.id)) continue;
     db.prepare(`UPDATE sesiones SET estado = 'cerrada', estado_desde_ts = ?, terminada_ts = ?, fin_razon = COALESCE(fin_razon, 'proceso terminado'),
+                pendiente = CASE WHEN fin_razon IS NULL THEN 1 ELSE pendiente END,
                 procesos_json = NULL WHERE id = ?`).run(ahora, ahora, s.id);
     db.prepare(`UPDATE subagentes SET estado = 'terminado', fin_ts = ? WHERE sesion_id = ? AND estado = 'trabajando'`).run(ahora, s.id);
     cambios.push({ sesion_id: s.id, antes: s.estado, estado: 'cerrada' });

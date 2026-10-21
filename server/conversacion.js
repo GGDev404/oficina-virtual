@@ -7,7 +7,9 @@ const PROYECTOS = path.join(os.homedir(), '.claude', 'projects') + path.sep;
 // Se lee el final del transcript y, si ahí no aparece ningún prompt tuyo, se amplía (las imágenes pesan mucho).
 const COLAS = [1, 4, 16].map((mb) => mb * 1024 * 1024);
 const SISTEMA = /^\s*<(task-notification|agent-message|system-reminder|local-command|command-)/;
-const ENTRE_SESIONES = /^\s*<cross-session-message\b[^>]*>([\s\S]*?)<\/cross-session-message>/;
+// Claude Code puede anteponer una línea («Another Claude session sent a message:») antes de la etiqueta.
+const ENTRE_SESIONES = /^\s*(?:[^<\n]*\n)?\s*<cross-session-message\b[^>]*>([\s\S]*?)<\/cross-session-message>/;
+const NOTA_RESPUESTA = /\n*\(Contesta aquí mismo, en tu propio turno, no con SendMessage:[^)]*\)\s*$/;
 
 // Solo transcripts de Claude Code: la ruta llega de los hooks, pero se valida antes de leer.
 export function rutaValida(ruta) {
@@ -35,13 +37,14 @@ export function intercambios(lineas, max = 14) {
       salida.push({ rol: 'agente', texto, ts });
       continue;
     }
-    if (e.isMeta) continue;
     const contenido = e.message?.content;
     if (Array.isArray(contenido) && contenido.every((b) => b.type === 'tool_result')) continue;
     const texto = textoDe(contenido).trim();
     if (!texto) continue;
+    // Los mensajes entre sesiones llegan marcados isMeta: se revisan antes de descartar lo meta.
     const peer = texto.match(ENTRE_SESIONES);
-    if (peer) salida.push({ rol: 'mensaje', texto: peer[1].trim().replace(/^Mensaje de .+ desde la oficina virtual:\n/, ''), ts });
+    if (!peer && e.isMeta) continue;
+    if (peer) salida.push({ rol: 'mensaje', texto: peer[1].trim().replace(/^Mensaje de .+ desde la oficina virtual:\n/, '').replace(NOTA_RESPUESTA, ''), ts });
     else if (texto.startsWith('[Request interrupted')) salida.push({ rol: 'sistema', texto: 'Interrumpido (permiso rechazado o Esc).', ts });
     else if (SISTEMA.test(texto)) continue;
     else salida.push({ rol: 'tu', texto, ts });

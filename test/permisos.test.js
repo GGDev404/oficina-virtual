@@ -1,7 +1,7 @@
 // Permisos desde la oficina: la petición espera la decisión; sin decisión a tiempo no se responde nada.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { crearPermisos, resumenEntrada, decisionHook, resumenPreguntas } from '../server/permisos.js';
+import { crearPermisos, resumenEntrada, decisionHook, resumenPreguntas, ESPERA_MS } from '../server/permisos.js';
 
 const relojFalso = () => {
   const pendientes = new Map(); let n = 0;
@@ -13,7 +13,7 @@ test('aprobar: el hook recibe allow y el permiso sale de la lista', () => {
   const respuestas = [];
   const p = crearPermisos({ reloj: relojFalso() });
   const id = p.pedir(pedido, (c) => respuestas.push(c), 1000);
-  assert.deepEqual(p.lista()[0], { id, sid: 's1', herramienta: 'Write', campos: [['file_path', '/x/plan.md'], ['content', 'hola']], preguntas: null, creado: 1000, vence: 121000 });
+  assert.deepEqual(p.lista()[0], { id, sid: 's1', herramienta: 'Write', campos: [['file_path', '/x/plan.md'], ['content', 'hola']], preguntas: null, creado: 1000, vence: 901000, reglas: [], destino: null });
   assert.equal(p.decidir(id, 'allow'), true);
   assert.deepEqual(respuestas, [{ hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: { behavior: 'allow' } } }]);
   assert.deepEqual(p.lista(), []);
@@ -69,4 +69,33 @@ test('preguntas: eliges opciones y el hook recibe la entrada original con answer
     permissionDecisionReason: 'Respondido desde la oficina virtual.',
     updatedInput: { questions, answers: { '¿Qué carril?': 'Ágil', '¿Qué pruebas?': 'Unitarias, e2e' } } });
   assert.equal(resumenPreguntas({ command: 'ls' }), null);
+});
+
+test('espera por omisión: 15 minutos', () => assert.equal(ESPERA_MS, 900_000));
+
+test('Permitir siempre: solo con las reglas allow que sugirió Claude Code, y se devuelven tal cual', () => {
+  const regla = { type: 'addRules', rules: [{ toolName: 'Bash', ruleContent: 'npx vitest *' }], behavior: 'allow', destination: 'localSettings' };
+  const conSugerencias = { ...pedido, tool_name: 'Bash', permission_suggestions: [regla,
+    { type: 'addDirectories', directories: ['/etc'], destination: 'session' }, { type: 'setMode', mode: 'bypassPermissions', destination: 'session' }] };
+  const respuestas = [];
+  const p = crearPermisos({ reloj: relojFalso() });
+  const id = p.pedir(conSugerencias, (c) => respuestas.push(c), 0);
+  assert.deepEqual(p.lista()[0].reglas, ['Bash(npx vitest *)']);
+  assert.equal(p.lista()[0].destino, 'localSettings');
+  assert.equal(p.decidir(id, 'deny', undefined, { siempre: true }), false); // siempre solo con allow
+  assert.equal(p.decidir(id, 'allow', undefined, { siempre: true }), true);
+  assert.deepEqual(respuestas[0].hookSpecificOutput.decision, { behavior: 'allow', updatedPermissions: [regla] });
+
+  const sinSugerencias = p.pedir(pedido, () => {}, 0);
+  assert.equal(p.decidir(sinSugerencias, 'allow', undefined, { siempre: true }), false);
+  assert.equal(p.decidir(sinSugerencias, 'allow'), true); // aprobar una vez sigue igual
+});
+
+test('Decidir en la terminal: el hook recibe null y el permiso sale de la lista', () => {
+  const respuestas = [];
+  const p = crearPermisos({ reloj: relojFalso() });
+  const id = p.pedir(pedido, (c) => respuestas.push(c), 0);
+  assert.equal(p.abandonar(id), true);
+  assert.deepEqual(respuestas, [null]);
+  assert.equal(p.lista().length, 0);
 });

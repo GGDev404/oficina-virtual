@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { abrir } from '../server/db.js';
+import { abrir, estado } from '../server/db.js';
 import { aplicar, revisar } from '../server/estados.js';
 import { aplicarVivas } from '../server/vivas.js';
 import { intercambios, rutaValida, usoContexto } from '../server/conversacion.js';
@@ -80,12 +80,15 @@ test('conversación: tus prompts, cada texto del agente, mensajes entre sesiones
     l({ type: 'user', message: { content: '<task-notification>fin</task-notification>' } }),
     l({ type: 'user', message: { content: '<cross-session-message from="x">Mensaje de Dev: ¿ya?</cross-session-message>' } }),
     l({ type: 'user', message: { content: '<cross-session-message from="y">\nMensaje de Geovany desde la oficina virtual:\nya lo reinicie\n</cross-session-message>' } }),
+    // Formato actual: Claude Code antepone una línea y la oficina agrega la nota de cómo responder.
+    l({ type: 'user', isMeta: true, message: { content: 'Another Claude session sent a message:\n<cross-session-message from="z" from-name="mensajero-86">\n'
+      + 'Mensaje de Geovany desde la oficina virtual:\nvale\n\n(Contesta aquí mismo, en tu propio turno, no con SendMessage: este mensajero ya se cerró y no recibe respuestas. La oficina lee tu respuesta de tu conversación y me avisa.)\n</cross-session-message>\n\nThis came from another Claude session' } }),
     l({ type: 'user', isSidechain: true, message: { content: 'de un subagente' } }),
     '{roto',
   ];
   assert.deepEqual(intercambios(lineas).map((m) => [m.rol, m.texto]), [
     ['tu', 'arregla el filtro'], ['agente', 'Reviso el filtro.'], ['agente', 'Listo.'], ['mensaje', 'Mensaje de Dev: ¿ya?'],
-    ['mensaje', 'ya lo reinicie'],
+    ['mensaje', 'ya lo reinicie'], ['mensaje', 'vale'],
   ]);
   assert.equal(rutaValida(`${os.homedir()}/.claude/projects/x/a.jsonl`), true);
   assert.equal(rutaValida(`${os.homedir()}/.claude/projects/../../.ssh/id_rsa.jsonl`), false);
@@ -95,7 +98,7 @@ test('conversación: tus prompts, cada texto del agente, mensajes entre sesiones
 test('mensajero: arma el prompt, interpreta la respuesta y avisa cada cambio de estado', async () => {
   const p = promptMensajero({ nombre: 'mi-erp-2f', cwd: '/x/mi-erp', texto: '¿Ya corriste las pruebas?', firma: 'Dev' });
   assert.match(p, /«mi-erp-2f»/);
-  assert.match(p, /<<<INICIO>>>\nMensaje de Dev desde la oficina virtual:\n¿Ya corriste las pruebas\?\n<<<FIN>>>/);
+  assert.match(p, /<<<INICIO>>>\nMensaje de Dev desde la oficina virtual:\n¿Ya corriste las pruebas\?\n\n\(Contesta aquí mismo[^\n]*no con SendMessage[^\n]*\)\n<<<FIN>>>/);
   assert.deepEqual(interpretar('ENVIADO\n'), { ok: true, detalle: null });
   assert.deepEqual(interpretar('NO ENVIADO: la sesión no aparece'), { ok: false, detalle: 'la sesión no aparece' });
 
@@ -176,4 +179,24 @@ test('imágenes adjuntas: solo formatos de imagen reales, se guardan y van como 
   assert.deepEqual(guardarImagenes(dir, undefined), []);
   assert.equal(conImagenes('mira', [ruta]), `mira\n\nTe mando una imagen; ábrelas con Read:\n- ${ruta}`);
   assert.equal(conImagenes('hola', []), 'hola');
+});
+
+test('una sesión de fondo sin pid (proceso muerto) no cuenta como viva y se cierra', () => {
+  const db = abrir(':memory:');
+  const SID2 = '1db8cd5e-736a-42af-b11b-cba7730a4282';
+  db.prepare(`INSERT INTO sesiones (id, cwd, estado, estado_desde_ts, ultimo_evento_ts, iniciada_ts) VALUES (?, '/x', 'trabajando', 0, 0, 0)`).run(SID2);
+  const { vivas, cambios } = aplicarVivas(db, [{ sessionId: SID2, pid: null, cwd: '/x', name: 'tarea faltante', kind: 'background', id: '1db8cd5e' }], 60_000);
+  assert.equal(vivas.has(SID2), false);
+  assert.deepEqual(cambios, [{ sesion_id: SID2, antes: 'trabajando', estado: 'cerrada' }]);
+});
+
+test('una sesión que muere sin SessionEnd queda pendiente; con SessionEnd no; al reabrirse deja de estarlo', () => {
+  const db = abrir(':memory:');
+  const MUERTA = 'aaaaaaaa-0000-0000-0000-000000000001', CERRADA = 'aaaaaaaa-0000-0000-0000-000000000002';
+  for (const id of [MUERTA, CERRADA]) db.prepare(`INSERT INTO sesiones (id, cwd, estado, estado_desde_ts, ultimo_evento_ts, iniciada_ts) VALUES (?, '/x', 'trabajando', 0, 0, 0)`).run(id);
+  db.prepare(`UPDATE sesiones SET fin_razon = 'prompt_input_exit' WHERE id = ?`).run(CERRADA);
+  aplicarVivas(db, [], 60_000);
+  assert.deepEqual(estado(db, 60_000).pendientes.sesiones.map((s) => s.id), [MUERTA]);
+  aplicarVivas(db, [{ sessionId: MUERTA, pid: 7, cwd: '/x', status: 'idle' }], 70_000, { bandeja: () => false });
+  assert.deepEqual(estado(db, 70_000).pendientes.sesiones, []);
 });

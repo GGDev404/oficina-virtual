@@ -151,8 +151,20 @@ casilla para ver todos) y el resumen del turno nocturno (carpeta `OFICINA_NOCHE_
 **Nueva sesión** (botón de la barra, o «Empezar sesión» en una tarea de tu agenda): eliges la tarea en un selector que
 agrupa por cuándo vence (vencidas, hoy, mañana, esta semana…) y muestra hora de entrega, estado, prioridad, sprint y
 horario de la ficha. Propone el worktree de la tarea (`git worktree list` de tus repos conocidos), `/agil <ID>` como
-indicación y un nombre. Arranca con `claude --bg` y `CLICKUP_TASK=<ID>` en la carpeta elegida (debe ser de confianza
-para Claude Code). Permisos: auto, aceptar ediciones o manual; nunca `bypassPermissions` desde la página.
+indicación y un nombre. Arranca `claude` con `CLICKUP_TASK=<ID>` dentro de **su propio tmux** (ver abajo); con
+`OFICINA_LANZADOR=bg` vuelve a `claude --bg`. Permisos: auto, aceptar ediciones o manual; nunca `bypassPermissions`
+desde la página. Si la carpeta no es de confianza, se abre una terminal adjunta para que aceptes el aviso.
+
+**Sesiones en tmux: lo que escribes cuenta como tecleado.** Cada sesión que abre o retoma la oficina corre en un
+servidor tmux propio (`tmux -L ov-<nombre>-<hex>`), lanzado con `systemd-run --user --scope`: un OOM o un cierre se
+lleva solo esa sesión. `OFICINA_TMUX` liga la sesión con su socket (columna `sesiones.tmux`). Tus mensajes desde la
+ficha se pegan en su terminal (bracketed paste + Enter), así que Claude Code los toma como tuyos: contestar «sí,
+hazlo» o una duda funciona igual que en la terminal, sin el mensajero. Si tiene un diálogo abierto, la oficina no
+teclea texto encima (409): la ficha muestra su pantalla (`tmux capture-pane`) y contestas con las teclas **1–4** o
+**Esc**; no hay otras teclas permitidas. Ojo: elegir en la oficina es tan válido como elegir en la terminal, incluida
+la opción de cambiar a modo auto. **Abrir en terminal** hace `tmux -L <socket> attach -t main`; a mano:
+`tmux -L <socket> attach`. **Cerrar** hace `kill-server` (Claude Code guarda la conversación). Lo único que se
+teclea es el texto que escribes en la ficha (`test/teclado.test.js` falla si otra fuente se conecta al teclado).
 
 **Sin tarea y traspasos.** La tarea es opcional. En la ficha, **Continuar en sesión nueva** abre «Nueva sesión» con la
 misma carpeta (y tarea, si tiene) y el último mensaje del agente como indicación: pídele antes un resumen de traspaso.
@@ -164,13 +176,22 @@ Cuando la sesión nueva arranca, la anterior se cierra sola (su conversación qu
 pide permiso y con qué (p. ej. `Write` y la ruta). Si `claude agents` dice que la sesión espera (`waiting`), se queda en
 Tu puerta aunque su transcript cambie.
 
-**Aprobar o rechazar desde la oficina.** `hooks/permiso.sh` (hook `PermissionRequest`, timeout 130 s) manda la petición
-a `POST /api/permisos`, que queda abierta hasta **2 minutos**. En la ficha y en «Te necesitan» ves la herramienta y sus
+**Aprobar o rechazar desde la oficina.** `hooks/permiso.sh` (hook `PermissionRequest`, timeout 910 s) manda la petición
+a `POST /api/permisos`, que queda abierta hasta **15 minutos** (`OFICINA_PERMISO_ESPERA_MS`; el hook usa `OFICINA_PERMISO_ESPERA_S`).
+Mientras espera, la terminal no muestra el diálogo: **Decidir en la terminal** lo suelta al momento. **Permitir siempre**
+aprueba y guarda las reglas `allow` que el propio Claude Code sugirió (se muestran antes, con su destino), igual que la
+opción 2 de su diálogo. En la ficha y en «Te necesitan» ves la herramienta y sus
 datos (comando, archivo, contenido…) con una cuenta regresiva y los botones **Aprobar** / **Rechazar** (con motivo
 opcional, que recibe el agente). Si no decides a tiempo, o si el servidor no responde, el hook sale sin respuesta y el
 diálogo aparece en su terminal como siempre. La página solo aprueba o rechaza: nunca cambia la entrada de la
-herramienta. Ojo: cualquier programa de tu equipo que hable con 127.0.0.1:4777 podría aprobar; los sitios web no
-(Host exacto y `application/json`). Un mensaje desde la oficina no aprueba permisos: queda en cola.
+herramienta. Un mensaje desde la oficina no aprueba permisos: queda en cola.
+
+**Quién puede mandar órdenes a la oficina.** Todo POST exige Host exacto, `application/json`, `Origin` propio (si viene)
+y el header `X-Oficina-Token` con el token de este arranque. El servidor lo genera al iniciar y lo escribe en
+`~/.local/share/oficina-virtual/token` (0600); la página lo recibe al cargarse y los hooks lo leen de ese archivo
+(si el servidor no los acepta, `hook.sh` deja el evento en `pendientes.jsonl`). Tras reiniciar el servicio, recarga la
+página. Cada mensaje que la oficina hace llegar a una sesión queda en `eventos` (7 días): `mensaje_oficina` si fue
+por el mensajero, `teclado` si se tecleó en su tmux (texto o tecla).
 
 **Preguntas con opciones.** Cuando un agente usa `AskUserQuestion`, `hooks/pregunta.sh` (hook `PreToolUse` con matcher
 `AskUserQuestion`, timeout 910 s) la manda a `POST /api/preguntas`, que espera hasta **15 minutos**. La sesión pasa a
@@ -183,7 +204,8 @@ Un mensaje entregado se ve aparte («Entregado · lo lee entre pasos») solo has
 
 **Cerrar sesión** (ficha del agente, con confirmación): las de segundo plano con `claude stop <id>`; las interactivas
 (terminal o app) con SIGTERM a su proceso, solo si el pid sigue siendo de Claude Code. La conversación queda guardada
-(`claude --resume <id>`). Las de segundo plano tienen además **Abrir en terminal** (`xdg-terminal-exec claude attach <id>`).
+(`claude --resume <id>`). Las de tmux se cierran con `kill-server`. Las de segundo plano y las de tmux tienen además
+**Abrir en terminal** (`claude attach <id>` o `tmux -L <socket> attach -t main`).
 
 **Sesiones vivas**: cada 5 s `claude agents --json` da nombre, ocupada/libre y bandeja; crea las sesiones abiertas
 antes de los hooks, ignora las de claude-mem y cierra las que ya no tienen proceso (20 s de margen).

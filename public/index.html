@@ -161,12 +161,9 @@
   .dos-col > .partir > * { grid-column: 1; min-width: 0; }
   .dos-col > .partir > .ancho { grid-column: 1 / -1; }
   .dos-col > .lateral { grid-column: 2; grid-row: 1 / span 2; }
-  #v-agente .dos-col { row-gap: 0; column-gap: var(--s5); }
-  #v-agente .dos-col > .lateral { margin-bottom: var(--s3); }
   #v-oficina .dos-col { row-gap: var(--s3); }
   @media (max-width: 860px) {
     .dos-col > .partir > *, .dos-col > .partir > .ancho, .dos-col > .lateral { grid-column: 1; grid-row: auto; }
-    #v-agente .dos-col > .lateral { order: 1; margin-top: var(--s4); }
     .ventana > header { flex-wrap: wrap; }
     .ventana > header .titulos { flex-basis: calc(100% - 52px); }
   }
@@ -175,15 +172,114 @@
   #v-oficina.solo .dos-col > .lateral { grid-column: 1; grid-row: auto; }
   #v-oficina [hidden] { display: none !important; }
 
-  /* Ficha del agente */
-  .conversacion { display: flex; flex-direction: column; gap: var(--s2); max-height: 52svh; overflow: auto; padding-right: var(--s1); }
-  .globo { max-width: 92%; padding: var(--s2) var(--s3); border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; }
-  .globo.rol-agente { background: var(--hundido); border: 1px solid var(--borde); align-self: flex-start; border-bottom-left-radius: 4px; }
-  .globo.rol-tu { background: var(--acento-suave); align-self: flex-end; border-bottom-right-radius: 4px; }
-  .globo.rol-mensaje { background: var(--verde-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
-  .globo.rol-sistema { align-self: center; background: none; color: var(--suave); font-size: 12.5px; padding: 0; }
-  .globo .quien { display: block; font-size: 11.5px; color: var(--suave); margin-bottom: 2px; }
-  .globo.rol-agente { white-space: normal; }
+  /* Ficha del agente: completa con panel lateral; reducida (< 900 px de ventana) con chips y menús */
+  .oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .mono { font-family: ui-monospace, monospace; font-size: 12.5px; }
+  #v-agente { container-type: inline-size; height: min(880px, 92svh); }
+  #v-agente > header.va-cabeza { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s2) var(--s4); align-items: center;
+    padding: var(--s4) var(--s5) var(--s3); }
+  .va-cabeza h2 { font-size: 17px; }
+  .va-botones { display: flex; gap: var(--s2); align-items: center; }
+  .va-botones .acciones { flex-wrap: nowrap; }
+  .va-sep { width: 1px; height: 24px; background: var(--borde); margin: 0 var(--s1); }
+  .icono-boton { width: 34px; height: 34px; padding: 0; justify-content: center; background: none; flex: none; }
+  .icono-boton:hover { background: var(--gris-bg); }
+  .icono-boton.chico { width: 24px; height: 24px; min-height: 0; border-color: transparent; }
+  .icono-boton.chico svg.icono { width: 14px; height: 14px; }
+  button.contorno-rojo { background: none; color: var(--rojo); border-color: color-mix(in srgb, var(--rojo) 45%, transparent); }
+  .va-sub { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); align-items: center; min-width: 0; font-size: 13px; color: var(--suave); }
+  .va-sub .dato { display: inline-flex; gap: 6px; align-items: center; min-width: 0; }
+  .va-sub .chip { font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
+  .va-sub .chip::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .va-ctx { display: flex; gap: var(--s2); align-items: center; font-size: 12.5px; color: var(--suave); white-space: nowrap; justify-self: end; }
+  .va-ctx b { color: var(--texto); font-variant-numeric: tabular-nums; }
+  .barra-ctx { width: 84px; height: 6px; border-radius: 3px; background: var(--gris-bg); overflow: hidden; }
+  .barra-ctx i { display: block; height: 100%; background: var(--verde); }
+  .barra-ctx i.medio { background: var(--naranja); }
+  .barra-ctx i.lleno { background: var(--rojo); }
+  .va-chips { display: none; gap: var(--s2); flex-wrap: wrap; padding: var(--s2) var(--s4); border-bottom: 1px solid var(--borde); }
+  .va-chip { border-radius: 99px; font-size: 13px; min-height: 30px; background: var(--hundido); }
+  .va-chip svg.icono { width: 14px; height: 14px; color: var(--suave); }
+  .va-pop { margin: 6px 0 0; padding: var(--s2); border: 1px solid var(--borde); border-radius: 12px; background: var(--panel); color: var(--texto);
+    box-shadow: var(--sombra); width: min(440px, 92vw); max-height: 60svh; overflow: auto; position-area: bottom span-right; position-try-fallbacks: flip-inline; }
+  .va-pop .vacio { padding: var(--s2); }
+  .va-cuerpo { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; }
+  #v-agente.sin-lado .va-cuerpo { grid-template-columns: minmax(0, 1fr) 52px; }
+  .va-chat { display: flex; flex-direction: column; min-height: 0; min-width: 0; padding: var(--s2) var(--s5) var(--s4); }
+  .va-lado { border-left: 1px solid var(--borde); display: flex; flex-direction: column; min-height: 0; min-width: 0;
+    background: color-mix(in srgb, var(--hundido) 55%, var(--panel)); }
+  .va-tabs { display: flex; gap: 2px; align-items: center; padding: var(--s3) var(--s3) var(--s2); }
+  .va-tabs [role=tab] { background: none; border-color: transparent; font-size: 13px; }
+  .va-tabs [role=tab][aria-selected=true] { background: var(--panel); border-color: var(--borde); font-weight: 600; }
+  .va-tabs .plegar { margin-left: auto; }
+  #v-agente.sin-lado .va-tabs { justify-content: center; padding-inline: 0; }
+  #v-agente.sin-lado .va-tabs [role=tab], #v-agente.sin-lado .va-panel { display: none; }
+  .va-panel { flex: 1; min-height: 0; overflow: auto; padding: var(--s1) var(--s3) var(--s3); display: grid; gap: var(--s2); align-content: start; }
+  .cuenta { display: inline-grid; place-items: center; min-width: 18px; height: 18px; border-radius: 9px; font-size: 11px; font-weight: 600;
+    background: var(--gris-bg); color: var(--suave); padding: 0 5px; }
+  .cuenta.aviso { background: var(--naranja); color: var(--panel); }
+  .punto { width: 8px; height: 8px; border-radius: 50%; background: var(--borde-fuerte); flex: none; }
+  .punto.verde { background: var(--verde); }
+  .punto.azul { background: var(--acento); }
+  .punto.naranja { background: var(--naranja); }
+  .marca { font: 11.5px/1.6 ui-monospace, monospace; background: var(--gris-bg); color: var(--suave); border-radius: 6px; padding: 0 6px; white-space: nowrap; }
+  .proc { border: 1px solid var(--borde); border-radius: 10px; background: var(--panel); min-width: 0; }
+  .proc > summary, .proc-fila { list-style: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: var(--s2) var(--s3);
+    align-items: center; padding: var(--s2) var(--s3); color: var(--texto); font-size: 13px; }
+  .proc > summary::-webkit-details-marker { display: none; }
+  .proc .textos { display: grid; min-width: 0; }
+  .proc .nombre { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .proc .sub { color: var(--suave); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .proc .giro { color: var(--suave); transition: transform .15s; }
+  .proc[open] .giro { transform: rotate(180deg); }
+  .proc .detalle { padding: 0 var(--s3) var(--s3); display: grid; gap: var(--s2); }
+  .va-pop .proc { border: 0; background: none; }
+  .va-pop .proc + .proc { border-top: 1px solid var(--borde); border-radius: 0; }
+  .consola { margin: 0; background: var(--hundido); border: 1px solid var(--borde); border-radius: 8px; padding: 8px 10px;
+    font: 12px/1.5 ui-monospace, monospace; max-height: 16em; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .conversacion { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: var(--s4); padding: var(--s2) var(--s1) var(--s2) 0; }
+  .dia-sep { align-self: center; font-size: 12px; color: var(--suave); }
+  .msg { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: var(--s3); align-items: start; font-size: 14px; }
+  .avatar { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-size: 11px; font-weight: 700;
+    background: var(--acento-suave); color: var(--acento); }
+  .msg .quien { font-size: 12.5px; color: var(--suave); margin-bottom: 2px; }
+  .msg .quien b { color: var(--texto); font-weight: 600; }
+  .msg-yo { grid-template-columns: minmax(0, 1fr) 28px; }
+  .msg-yo .globo-yo { justify-self: end; background: var(--hundido); border: 1px solid var(--borde); border-radius: 12px;
+    padding: var(--s2) var(--s3); max-width: min(560px, 88%); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg-yo .avatar { background: var(--gris-bg); color: var(--suave); }
+  .msg-yo.pendiente .globo-yo { border-style: dashed; }
+  .msg-yo.error .globo-yo { border-color: var(--rojo); background: var(--rojo-bg); }
+  .msg-yo.error .quien { color: var(--rojo); font-weight: 600; }
+  .msg-sistema { align-self: center; color: var(--suave); font-size: 12.5px; text-align: center; }
+  .actividad { display: flex; gap: var(--s2); align-items: center; color: var(--suave); font-size: 13px; padding-left: 40px; }
+  .actividad .punto { animation: late 1.4s ease-in-out infinite; }
+  @keyframes late { 50% { opacity: .3; } }
+  @media (prefers-reduced-motion: reduce) { .actividad .punto { animation: none; } }
+  .va-chat .redactar { margin-top: var(--s3); border: 1px solid var(--borde); border-radius: 12px; padding: var(--s2) var(--s3); background: var(--panel); }
+  .va-chat .redactar:focus-within { border-color: var(--acento); }
+  .va-chat .redactar textarea { border: 0; padding: var(--s1) 0; resize: none; background: none; min-height: 48px; }
+  .va-chat .redactar textarea:focus-visible { outline: none; }
+  .va-pie { display: flex; align-items: center; gap: var(--s2); }
+  .va-pie #va-enviar { margin-left: auto; }
+  @container (max-width: 899px) {
+    .va-lado { display: none; }
+    .va-cuerpo, #v-agente.sin-lado .va-cuerpo { grid-template-columns: minmax(0, 1fr); }
+    .va-chips { display: flex; }
+    .solo-ancho, .va-sub .carpeta-dato, .va-ctx .texto-ctx, .va-pista { display: none !important; }
+    #v-agente > header.va-cabeza { padding-inline: var(--s4); }
+    .va-chat { padding-inline: var(--s4); }
+    .va-chat .redactar { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: var(--s2); }
+    .va-chat .redactar > .adjuntos, .va-chat #va-estado { grid-column: 1 / -1; }
+    .va-chat .redactar textarea { grid-column: 2; grid-row: 2; min-height: 0; }
+    .va-pie { display: contents; }
+    #va-adjuntar { grid-column: 1; grid-row: 2; }
+    #va-enviar { grid-column: 3; grid-row: 2; width: 36px; padding: 0; justify-content: center; }
+    #va-estado { grid-row: 3; }
+  }
+  @container (min-width: 900px) { .solo-angosto { display: none !important; } }
+  .va-pop .opcion { font-size: 13.5px; }
+  .va-pop .opcion.peligro-texto { color: var(--rojo); }
   /* Markdown de los agentes, armado con nodos (nunca HTML del texto) */
   .md { display: grid; gap: 6px; }
   .md p { margin: 0; white-space: pre-line; }
@@ -293,29 +389,44 @@
     <button class="tarjeta" id="t-hoy" type="button" aria-haspopup="dialog"></button>
     <button class="tarjeta" id="t-parati" type="button" aria-haspopup="dialog"></button>
     <button class="tarjeta" id="t-corte" type="button" aria-haspopup="dialog"></button>
+    <button class="tarjeta" id="t-pendientes" type="button" aria-haspopup="dialog"></button>
+    <button class="tarjeta" id="t-memoria" type="button" aria-haspopup="dialog"></button>
   </nav>
 </main>
 
+<!-- Ficha del agente. Completa (≥ 900 px): conversación + panel con pestañas. Reducida: el panel se vuelve chips con
+     menús desplegables bajo la cabecera y el redactor queda en una sola línea. -->
 <dialog class="ventana" id="v-agente" aria-labelledby="va-titulo">
-  <header><div class="titulos"><h2 id="va-titulo"></h2><div class="fila" id="va-sub"></div></div>
-    <div class="acciones" id="va-acciones"></div>
-    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar ventana"></button></header>
-  <div class="cuerpo"><div class="dos-col">
-    <section class="partir" aria-label="Conversación">
+  <header class="va-cabeza">
+    <h2 id="va-titulo"></h2>
+    <div class="va-botones"><div class="acciones" id="va-acciones"></div>
+      <button class="cerrar" type="button" data-cerrar aria-label="Cerrar ventana"></button></div>
+    <div class="va-sub" id="va-sub"></div>
+    <div class="va-ctx" id="va-ctx"></div>
+  </header>
+  <div class="va-chips" id="va-chips"></div>
+  <div class="va-cuerpo">
+    <section class="va-chat" aria-label="Conversación">
       <div id="va-aviso"></div>
       <div class="conversacion" id="va-conversacion"><p class="vacio">Cargando…</p></div>
-      <form class="redactar ancho" id="va-form">
-        <label class="meta" for="va-texto">Escríbele o pregúntale algo. Le llega como mensaje tuyo desde la oficina (Ctrl+Enter envía; pega o arrastra imágenes aquí).</label>
-        <textarea id="va-texto" rows="3" maxlength="4000" placeholder="Por ejemplo: ¿ya terminaron las pruebas? Cuando acabes, deja el diff listo para revisar."></textarea>
+      <form class="redactar" id="va-form">
         <div class="adjuntos" id="va-adjuntos"></div>
-        <div class="fila"><button class="primario" type="submit" id="va-enviar"></button>
-          <button class="boton-chico" type="button" id="va-adjuntar"></button>
+        <label class="oculto" for="va-texto">Escríbele o pregúntale algo</label>
+        <textarea id="va-texto" rows="2" maxlength="4000" placeholder="Escríbele o pregúntale algo. Pega o arrastra imágenes aquí."></textarea>
+        <div class="va-pie">
+          <button class="icono-boton" type="button" id="va-adjuntar" aria-label="Adjuntar imagen" title="Adjuntar imagen"></button>
           <input type="file" id="va-archivo" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>
-          <span class="meta" id="va-estado" role="status"></span></div>
+          <span class="meta va-pista" id="va-pista"></span>
+          <span class="meta" id="va-estado" role="status"></span>
+          <button class="primario" type="submit" id="va-enviar"></button>
+        </div>
       </form>
     </section>
-    <aside class="contexto lateral" id="va-contexto" aria-label="Contexto"></aside>
-  </div></div>
+    <aside class="va-lado" id="va-lado" aria-label="Contexto">
+      <div class="va-tabs" role="tablist" aria-label="Panel" id="va-tabs"></div>
+      <div class="va-panel" id="va-contexto" role="tabpanel"></div>
+    </aside>
+  </div>
 </dialog>
 
 <dialog class="ventana" id="v-oficina" aria-labelledby="vo-titulo">
@@ -330,6 +441,19 @@
       <div class="ancho" id="vo-despues"></div>
     </section>
     <div class="contexto lateral" id="vo-lateral">
+      <section class="bloque" aria-labelledby="vo-memoria-t" id="vo-memoria">
+        <h4 id="vo-memoria-t">Memoria</h4>
+        <div id="vo-mem"><p class="vacio">Cargando…</p></div>
+      </section>
+      <section class="bloque" aria-labelledby="vo-pendientes-t" id="vo-pendientes">
+        <h4 id="vo-pendientes-t">Pendientes</h4>
+        <div id="vo-pend-lista"></div>
+        <form class="fila" id="vo-pend-form" style="margin-top:8px">
+          <label class="meta" for="vo-pend-texto" hidden>Nuevo pendiente</label>
+          <input id="vo-pend-texto" maxlength="500" placeholder="Anota algo pendiente…" style="flex:1;min-width:0">
+          <button class="boton-chico" type="submit">Agregar</button>
+        </form>
+      </section>
       <section class="bloque" aria-labelledby="vo-parati-t" id="vo-parati">
         <div class="fila"><h4 id="vo-parati-t" style="margin-right:auto">Para ti</h4>
           <label class="meta"><input type="checkbox" id="vo-todos"> Todos los comentarios</label></div>
@@ -349,6 +473,19 @@
   <div class="cuerpo"><ul id="vn-lista"></ul></div>
 </dialog>
 
+<dialog class="ventana" id="v-entrar" aria-labelledby="ve-titulo" style="max-width:440px">
+  <header><div class="titulos"><h2 id="ve-titulo">Entra a tu oficina</h2>
+    <div class="meta">Una vez en este navegador; dura 30 días. Así ningún agente puede aprobar ni teclear en tu nombre.</div></div>
+    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar"></button></header>
+  <div class="cuerpo">
+    <form id="ve-form" style="display:grid;gap:8px">
+      <label for="ve-frase">Tu frase</label>
+      <input id="ve-frase" type="password" autocomplete="current-password" required>
+      <div class="fila"><button class="primario" type="submit">Entrar</button><span class="meta" id="ve-estado" role="status"></span></div>
+    </form>
+  </div>
+</dialog>
+
 <dialog class="ventana" id="v-nueva" aria-labelledby="vs-titulo">
   <header><div class="titulos"><h2 id="vs-titulo">Nueva sesión</h2>
     <div class="meta">Para una tarea de ClickUp o para cualquier otra cosa (un traspaso, una investigación): la tarea es opcional.</div></div>
@@ -357,14 +494,22 @@
     <section aria-labelledby="vs-tareas-t"><h3 id="vs-tareas-t" style="margin-top:0">Tarea (opcional)</h3><div id="vs-tareas"></div></section>
     <div class="contexto">
       <section class="bloque" id="vs-elegida" aria-live="polite"></section>
-      <label class="campo"><span>Carpeta</span>
-        <input type="text" id="vs-cwd" list="vs-carpetas" required autocomplete="off" placeholder="/home/…/mi-proyecto"><datalist id="vs-carpetas"></datalist></label>
+      <label class="campo"><span>Dónde trabaja</span><select id="vs-ubicacion"></select></label>
+      <label class="campo" id="vs-cwd-campo"><span id="vs-cwd-t">Carpeta</span>
+        <input type="text" id="vs-cwd" list="vs-carpetas" autocomplete="off" placeholder="/home/…/mi-proyecto"><datalist id="vs-carpetas"></datalist>
+        <span class="meta" id="vs-cwd-nota"></span></label>
       <label class="campo"><span>Indicación</span>
         <textarea id="vs-prompt" rows="4" required maxlength="4000" placeholder="Por ejemplo: /agil k7p2tfedr, o lo que quieres que haga"></textarea></label>
       <label class="campo"><span>Nombre (como aparece en la oficina)</span><input type="text" id="vs-nombre" maxlength="80"></label>
       <label class="campo"><span>Dónde se abre</span><select id="vs-donde">
         <option value="fondo">En segundo plano: aparece en la oficina y la abres en terminal cuando quieras</option>
         <option value="terminal">En una terminal nueva: interactiva; sirve si la carpeta aún no es de confianza</option></select></label>
+      <label class="campo"><span>Modelo</span><select id="vs-modelo">
+        <option value="">Predeterminado de Claude Code</option>
+        <option value="claude-opus-5-5">Opus 5.5: el más capaz, para planear y tareas difíciles</option>
+        <option value="claude-sonnet-5-5">Sonnet 5.5: rápido y capaz, para la mayoría del código</option>
+        <option value="claude-haiku-5-5">Haiku 5.5: el más rápido y barato, para cosas chicas</option>
+        <option value="claude-fable-5-1">Fable 5.1</option></select></label>
       <label class="campo"><span>Permisos</span><select id="vs-permiso">
         <option value="auto">Auto: decide solo lo seguro (recomendado)</option>
         <option value="acceptEdits">Aceptar ediciones: pregunta antes de correr comandos</option>
@@ -390,6 +535,7 @@ const CORTES = [['09:00', 'Daily'], ['09:35', 'Seguimiento de ClickUp'], ['13:00
   ['13:35', 'Seguimiento de ClickUp'], ['17:35', 'Seguimiento de ClickUp'], ['18:00', 'Integración a develop']];
 let datos = null;
 let abierta = null; // sesión de la ficha abierta
+let yo = { frase: true }; // /api/yo: si ya entraste en este navegador y tu nombre (iniciales en la ficha)
 
 // Los textos vienen de agentes y comentarios: siempre como texto, nunca como HTML.
 function el(tag, attrs = {}, ...hijos) {
@@ -424,6 +570,12 @@ const TRAZOS = {
   puerta: ['M13 4h3a2 2 0 0 1 2 2v14', 'M2 20h3', 'M13 20h9', 'M10 12v.01', 'M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z'],
   campana: ['M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9', 'M10.3 21a1.94 1.94 0 0 0 3.4 0'],
   hora: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 6v6l4 2'],
+  recargar: ['M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8', 'M21 3v5h-5', 'M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16', 'M8 16H3v5'],
+  copiar: ['M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z', 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2'],
+  mas: ['M12 12h.01', 'M19 12h.01', 'M5 12h.01'],
+  abajo: ['m6 9 6 6 6-6'],
+  izquierda: ['m15 18-6-6 6-6'],
+  chip: ['M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M9 9h6v6H9z', 'M15 2v2', 'M9 2v2', 'M15 20v2', 'M9 20v2', 'M2 15h2', 'M2 9h2', 'M20 15h2', 'M20 9h2'],
 };
 function icono(nombre) {
   const ns = 'http://www.w3.org/2000/svg';
@@ -534,7 +686,9 @@ function enlaceTarea(t, id) {
   return el('a', { href: t.url, target: '_blank', rel: 'noopener' }, t.nombre);
 }
 async function post(url, cuerpo) {
-  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo ?? {}) });
+  // Lo que actúa en tu nombre va con la cookie de este navegador (entras una vez con tu frase; dura 30 días).
+  const r = await fetch(url, { method: 'POST', body: JSON.stringify(cuerpo ?? {}), headers: { 'Content-Type': 'application/json' } });
+  if (r.status === 401) pedirEntrar();
   if (!r.ok && r.status !== 202) throw new Error((await r.json().catch(() => ({}))).error ?? `Error ${r.status}`);
   return r.status === 204 ? null : r.json().catch(() => null);
 }
@@ -945,9 +1099,28 @@ function dibujar(f, fCamina) {
 // ════════════════════════ Ventanas ════════════════════════
 const vAgente = document.getElementById('v-agente');
 const vOficina = document.getElementById('v-oficina');
+const vEntrar = document.getElementById('v-entrar');
+async function pedirEntrar() {
+  try { yo = await (await fetch('/api/yo')).json(); } catch {}
+  if (yo.entrado) return;
+  document.getElementById('ve-estado').textContent = yo.frase ? ''
+    : 'Aún no tienes frase. En tu terminal corre: ~/Proyectos/Oficina-virtual/scripts/poner-frase.sh';
+  if (!vEntrar.open) vEntrar.showModal();
+  document.getElementById('ve-frase').focus();
+}
+document.getElementById('ve-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const caja = document.getElementById('ve-frase');
+  const estado = document.getElementById('ve-estado');
+  const r = await fetch('/api/entrar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ frase: caja.value }) });
+  caja.value = '';
+  if (r.ok) { estado.textContent = ''; vEntrar.close(); return; }
+  estado.textContent = (await r.json().catch(() => ({}))).error ?? `Error ${r.status}`;
+});
+pedirEntrar();
 const vNecesitan = document.getElementById('v-necesitan');
 const vNueva = document.getElementById('v-nueva');
-for (const v of [vAgente, vOficina, vNecesitan, vNueva]) {
+for (const v of [vAgente, vOficina, vNecesitan, vNueva, vEntrar]) {
   v.querySelector('[data-cerrar]').append(icono('cerrar'));
   v.querySelector('[data-cerrar]').addEventListener('click', () => v.close());
   v.addEventListener('click', (ev) => { if (ev.target === v) v.close(); }); // clic en el fondo cierra
@@ -1052,92 +1225,207 @@ function renderAgente() {
   if (conversacionTs && s.ultimo_evento_ts !== conversacionTs) cargarConversacion(s.id);
   conversacionTs = s.ultimo_evento_ts;
 
+  const ctx = d.contexto?.[s.id];
+  const nivel = nivelContexto(ctx);
+  const [textoEstado, colorEstado] = espera ? [`Esperando ${procesos.length} proceso${procesos.length > 1 ? 's' : ''}`, 'naranja'] : (ESTADOS[s.estado] ?? [s.estado, '']);
   document.getElementById('va-titulo').textContent = nombreSesion(s, tareas);
   reemplazar(document.getElementById('va-sub'),
-    espera ? chip(`Esperando ${procesos.length} proceso${procesos.length > 1 ? 's' : ''}`, 'naranja') : chipEstado(s.estado),
-    el('span', { class: 'meta' }, `desde ${hace(s.estado_desde_ts)}`),
-    el('span', { class: 'meta' }, viva ? (viva.ocupada ? '· ocupada ahora' : '· libre ahora') : '· sesión cerrada'),
-    nivelContexto(d.contexto?.[s.id]) && chip(`Contexto ${nivelContexto(d.contexto[s.id]).texto}`,
-      { lleno: 'rojo', medio: 'naranja', '': 'verde' }[nivelContexto(d.contexto[s.id]).clase]));
+    el('span', { class: `chip ${colorEstado}` }, viva ? `${textoEstado} · ${duracion(s.estado_desde_ts)}` : 'Sesión cerrada'),
+    ctx?.modelo && el('span', { class: 'dato' }, icono('chip'), nombreModelo(ctx.modelo)),
+    s.rama_git && el('span', { class: 'dato' }, icono('rama'), el('span', { class: 'mono' }, s.rama_git)),
+    s.cwd && el('span', { class: 'dato carpeta-dato' }, icono('carpeta'), el('span', { class: 'mono', title: s.cwd }, `…/${carpeta(s.cwd)}`),
+      el('button', { type: 'button', class: 'icono-boton chico', 'aria-label': 'Copiar ruta', title: 'Copiar ruta',
+        onclick: (ev) => navigator.clipboard?.writeText(s.cwd).then(() => { ev.currentTarget.title = 'Copiada'; }) }, icono('copiar'))));
+  reemplazar(document.getElementById('va-ctx'), nivel && [
+    el('span', { class: 'texto-ctx' }, `Contexto ${miles(ctx.tokens)} / ${miles(ctx.limite)}`),
+    el('span', { class: 'barra-ctx', role: 'meter', 'aria-label': 'Contexto usado', 'aria-valuenow': Math.round(nivel.pct * 100), 'aria-valuemin': 0, 'aria-valuemax': 100 },
+      el('i', { class: nivel.clase, style: `width:${Math.min(100, Math.round(nivel.pct * 100))}%` })),
+    el('b', {}, `${Math.round(nivel.pct * 100)} %`)]);
 
   // Acciones y avisos solo se repintan si cambian: así un clic no cae en un botón que se acaba de reemplazar.
-  const nivel = nivelContexto(d.contexto?.[s.id]);
-  const claveAvisos = [s.id, viva?.tipo, !!viva, viva?.ocupada, confirmandoCierre, s.estado, espera, nivel?.clase, s.permiso_json, permisoPendiente(s.id)?.id, preguntaPendiente(s.id)?.id].join('|');
+  const claveAvisos = [s.id, viva?.tipo, !!viva, viva?.ocupada, confirmandoCierre, s.estado, espera, nivel?.clase, s.permiso_json, permisoPendiente(s.id)?.id, preguntaPendiente(s.id)?.id, s.tmux].join('|');
   if (vAgente.dataset.avisos !== claveAvisos) { vAgente.dataset.avisos = claveAvisos; pintarAvisos(s, viva, tareas, espera, nivel); }
 
-
-  // Una sola línea de tiempo, como un chat: tus mensajes y las respuestas por hora. Un mensaje entregado deja de
-  // mostrarse aparte en cuanto aparece en el transcript (si el agente está ocupado, lo lee entre pasos).
-  const recibidos = conversacion.filter((m) => m.rol === 'mensaje').map((m) => m.texto);
+  // Una sola línea de tiempo, como un chat. Un mensaje tuyo enviado deja de mostrarse aparte en cuanto aparece en el
+  // transcript (si el agente está ocupado, lo lee entre pasos).
+  const recibidos = conversacion.filter((m) => m.rol === 'mensaje' || m.rol === 'tu').map((m) => m.texto);
   const mensajes = (d.mensajes?.[s.id] ?? []).filter((m) => m.estado !== 'enviado'
     || (Date.now() - m.ts < 600_000 && !recibidos.some((t) => t.includes(m.texto.trim()))));
-  const globos = [
-    ...conversacion.map((m) => ({ ts: m.ts ?? 0, nodo: el('div', { class: `globo rol-${m.rol}` },
-      m.rol !== 'sistema' && el('span', { class: 'quien' }, { tu: 'Tú', agente: 'Agente', mensaje: 'Tu mensaje desde la oficina' }[m.rol], m.ts ? ` · ${horaDe(m.ts)}` : ''),
-      m.rol === 'agente' ? md(m.texto) : el('div', {}, m.texto)) })),
-    ...mensajes.map((m) => ({ ts: m.ts, nodo: el('div', { class: 'globo rol-mensaje' }, el('span', { class: 'quien' },
-      m.estado === 'enviando' ? 'Enviando…' : m.estado === 'error' ? `No se envió: ${m.detalle}` : `Entregado · ${horaDe(m.ts)} · lo lee entre pasos`),
-      el('div', {}, m.texto)) })),
-  ].sort((x, y) => x.ts - y.ts).map((g) => g.nodo);
+  const items = [
+    ...conversacion.map((m) => ({ ts: m.ts ?? 0, nodo: m.rol === 'sistema' ? el('div', { class: 'msg-sistema' }, m.texto)
+      : m.rol === 'agente' ? el('div', { class: 'msg' }, el('span', { class: 'avatar', 'aria-hidden': 'true' }, 'AG'),
+        el('div', { style: 'min-width:0' }, el('div', { class: 'quien' }, el('b', {}, 'Agente'), m.ts ? ` · ${horaDe(m.ts)}` : ''), md(m.texto)))
+      : msgYo(m.rol === 'mensaje' ? 'Tú · desde la oficina' : 'Tú', m.ts, m.texto) })),
+    ...mensajes.map((m) => ({ ts: m.ts, nodo: msgYo(m.estado === 'enviando' ? 'Enviando…' : m.estado === 'error' ? `No se envió: ${m.detalle}` : 'Entregado · lo lee entre pasos',
+      m.ts, m.texto, m.estado === 'error' ? 'error' : 'pendiente') })),
+    ...(fallidos.get(s.id) ?? []).map((m) => ({ ts: m.ts, nodo: msgYo(`No se envió: ${m.motivo}`, m.ts, m.texto, 'error') })),
+  ].sort((x, y) => x.ts - y.ts);
+  const nodos = [];
+  let diaPrevio = null;
+  for (const it of items) { // separador al empezar y en cada cambio de día
+    const dia = it.ts ? inicioDia(it.ts) : diaPrevio;
+    if (it.ts && dia !== diaPrevio) nodos.push(el('div', { class: 'dia-sep' }, `${dia === inicioDia(Date.now()) ? 'Hoy' : diaLargo(it.ts)} · ${horaDe(it.ts)}`));
+    diaPrevio = dia;
+    nodos.push(it.nodo);
+  }
+  if (viva?.ocupada || espera) nodos.push(el('div', { class: 'actividad', role: 'status' }, el('span', { class: 'punto azul' }),
+    espera ? `Esperando ${procesos.length} proceso${procesos.length > 1 ? 's' : ''} en segundo plano…` : 'Trabajando…'));
   const lista = document.getElementById('va-conversacion');
   const alFondo = lista.scrollHeight - lista.scrollTop - lista.clientHeight < 60 || lista.querySelector('.vacio');
-  if (globos.length || conversacionTs) reemplazar(lista, globos.length ? globos : el('p', { class: 'vacio' }, 'Todavía no hay conversación que mostrar.'));
+  if (items.length || conversacionTs) reemplazar(lista, items.length ? nodos : el('p', { class: 'vacio' }, 'Todavía no hay conversación que mostrar.'));
   if (alFondo) lista.scrollTop = lista.scrollHeight;
 
-  const puede = viva?.bandeja && viva?.nombre;
+  // En tmux se teclea en su terminal; si no, va por el mensajero a su bandeja.
+  const puede = s.tmux ? !!viva : viva?.bandeja && viva?.nombre;
   const boton = document.getElementById('va-enviar');
-  reemplazar(boton, icono('enviar'), viva?.ocupada ? 'Enviar (lo lee entre pasos)' : 'Enviar');
+  reemplazar(boton, icono('enviar'), el('span', { class: 'solo-ancho' }, 'Enviar'));
+  boton.setAttribute('aria-label', 'Enviar');
   boton.disabled = !puede;
   document.getElementById('va-texto').disabled = !puede;
   document.getElementById('va-adjuntar').disabled = !puede;
+  document.getElementById('va-pista').textContent = s.tmux ? 'Se teclea en su terminal · Ctrl+Enter envía'
+    : viva?.ocupada ? 'Lo lee entre pasos · Ctrl+Enter envía' : 'Ctrl+Enter envía';
   if (!puede) document.getElementById('va-estado').textContent = !viva ? 'La sesión está cerrada.' : 'Esta sesión no tiene bandeja de mensajes; ábrela de nuevo para activarla.';
 
-  const contexto = document.getElementById('va-contexto');
   if (asignando) return; // se está eligiendo tarea: no se repinta para no perder la búsqueda
+  pintarLado(s, d, t, procesos, espera);
+}
+// Duración legible desde un instante: «22 min», «1 h 5 min».
+function duracion(ts) {
+  const m = Math.max(0, Math.round((Date.now() - ts) / 60000));
+  if (m < 1) return 'ahora';
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`;
+}
+const miles = (n) => (n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : `${Math.round(n / 1000)}k`);
+const iniciales = () => (yo.nombre ?? '').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join('') || 'TÚ';
+function msgYo(quien, ts, texto, clase = '') {
+  return el('div', { class: `msg msg-yo ${clase}` },
+    el('div', { style: 'display:grid;justify-items:end;min-width:0' }, el('div', { class: 'quien' }, quien, ts ? ` · ${horaDe(ts)}` : ''),
+      el('div', { class: 'globo-yo' }, texto)),
+    el('span', { class: 'avatar', 'aria-hidden': 'true' }, iniciales()));
+}
+
+// Procesos en segundo plano: nombre corto, a dónde escribe su log (si lo manda a un .log) y de qué tipo es.
+function infoProceso(p) {
+  const d = p.descripcion || '';
+  if (p.tipo === 'subagent') return { nombre: d || 'subagente', sub: p.agente ? `Subagente · ${p.agente}` : 'Subagente', marca: 'agente', punto: 'azul' };
+  const log = d.match(/>{1,2}\s*(\S+\.log)\b/)?.[1] ?? null;
+  const comando = /^[\w./~$-]+(\s|$)/.test(d) && /[/\s]-|\//.test(d);
+  return { nombre: comando ? base(d.split(/\s+/)[0]) : d || 'comando', sub: log ? `Escribe en ${base(log)}` : comando ? d : 'Comando en segundo plano',
+    marca: 'shell', punto: 'verde', log, comando: d };
+}
+const fallidos = new Map(); // sesión → mensajes que la oficina rechazó (se ven en rojo hasta recargar)
+const procAbiertos = new Set(); // procesos desplegados (sobreviven a cada repintado)
+const logs = new Map(); // `${sesión}:${i}` → últimas líneas de su log
+async function cargarLog(sid, i, n = 40) {
+  try {
+    const r = await (await fetch(`/api/sesiones/${encodeURIComponent(sid)}/log?i=${i}&n=${n}`)).json();
+    logs.set(`${sid}:${i}`, r.texto ?? r.error ?? '');
+  } catch { logs.set(`${sid}:${i}`, 'No pude leer el log.'); }
+  vAgente.dataset.lado = ''; // fuerza el repintado del panel con el log nuevo
+  renderAgente();
+}
+function tarjetaProceso(s, p, i) {
+  const info = infoProceso(p);
+  const clave = `${s.id}:${i}`;
+  const log = logs.get(clave);
+  const det = el('details', { class: 'proc', open: procAbiertos.has(clave) },
+    el('summary', {}, el('span', { class: `punto ${info.punto}` }),
+      el('span', { class: 'textos' }, el('span', { class: 'nombre', title: info.nombre }, info.nombre), el('span', { class: 'sub', title: info.sub }, info.sub)),
+      el('span', { class: 'marca' }, info.marca), icono('abajo')),
+    el('div', { class: 'detalle' },
+      info.comando && info.comando !== info.nombre && el('pre', { class: 'consola' }, info.comando),
+      info.log && (log != null ? el('pre', { class: 'consola' }, log || '(log vacío)') : el('p', { class: 'meta', style: 'margin:0' }, 'Cargando su log…')),
+      info.log && el('div', { class: 'acciones' },
+        el('button', { type: 'button', class: 'boton-chico', onclick: () => cargarLog(s.id, i, 400) }, 'Ver log completo'),
+        el('button', { type: 'button', class: 'boton-chico', onclick: () => cargarLog(s.id, i) }, 'Actualizar')),
+      !info.log && !info.comando && el('p', { class: 'meta', style: 'margin:0' }, 'Sin más detalle: Claude Code no expone su salida.')));
+  det.querySelector('summary .icono').classList.add('giro');
+  det.addEventListener('toggle', () => {
+    if (det.open) { procAbiertos.add(clave); if (info.log && !logs.has(clave)) cargarLog(s.id, i); } else procAbiertos.delete(clave);
+  });
+  return det;
+}
+function filaSubagente(a) {
+  return el('div', { class: 'proc' }, el('div', { class: 'proc-fila' }, el('span', { class: `punto ${a.estado === 'trabajando' ? 'azul' : ''}` }),
+    el('span', { class: 'textos' }, el('span', { class: 'nombre' }, a.descripcion || a.tipo || 'subagente'),
+      el('span', { class: 'sub' }, `${a.tipo ?? 'subagente'} · ${a.estado === 'trabajando' ? `trabajando · ${duracion(a.inicio_ts)}` : `terminó ${hace(a.fin_ts ?? a.inicio_ts)}`}`)),
+    el('span', { class: 'marca' }, a.en_fondo ? 'fondo' : 'agente'), el('span')));
+}
+function bloqueTarea(s, d, t) {
+  return el('div', { style: 'display:grid;gap:8px' }, s.tarea_id
+    ? [t ? resumenTarea(t) : el('div', {}, s.tarea_id),
+      el('div', { class: 'fila' }, el('span', { class: 'meta' }, `ligada por ${s.tarea_origen}`),
+        el('button', { class: 'boton-chico', type: 'button', onclick: () => abrirAsignacion(s, d) }, 'Cambiar'),
+        el('button', { class: 'boton-chico', type: 'button', onclick: () => postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/tarea`, { tarea_id: null }) }, 'Desligar'))]
+    : [el('p', { class: 'meta', style: 'margin:0' }, 'Sin tarea ligada.'),
+      el('button', { class: 'primario', type: 'button', onclick: () => abrirAsignacion(s, d) }, 'Asignar tarea')],
+    el('p', { class: 'meta', style: 'margin:0' }, `Última actividad ${hace(s.ultimo_evento_ts)} · sesión ${s.id.slice(0, 8)}`));
+}
+// Panel (completa) y chips con menús (reducida). Solo se repintan si cambió algo: así no se cierran el menú abierto
+// ni el proceso desplegado mientras llegan eventos.
+let pestana = (() => { try { return localStorage.getItem('ov-pestana') || 'procesos'; } catch { return 'procesos'; } })();
+let sinLado = (() => { try { return localStorage.getItem('ov-sin-lado') === '1'; } catch { return false; } })();
+function pintarLado(s, d, t, procesos, espera) {
   const subs = d.subagentes.filter((a) => a.sesion_id === s.id);
   const vivos = subs.filter((a) => a.estado === 'trabajando');
-  reemplazar(contexto,
-    el('section', { class: 'bloque' }, el('h4', {}, 'Tarea'),
-      s.tarea_id
-        ? [t ? resumenTarea(t) : el('div', {}, s.tarea_id),
-          el('div', { class: 'fila' }, el('span', { class: 'meta' }, `ligada por ${s.tarea_origen}`),
-            el('button', { class: 'boton-chico', type: 'button', onclick: () => abrirAsignacion(s, d) }, 'Cambiar'),
-            el('button', { class: 'boton-chico', type: 'button', onclick: () => postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/tarea`, { tarea_id: null }) }, 'Desligar'))]
-        : [el('p', { class: 'meta', style: 'margin:0' }, 'Sin tarea ligada.'),
-          el('button', { class: 'primario', type: 'button', onclick: () => abrirAsignacion(s, d) }, 'Asignar tarea')]),
-    el('section', { class: 'bloque' }, el('h4', {}, 'Dónde trabaja'),
-      s.rama_git && el('div', { class: 'fila' }, icono('rama'), s.rama_git),
-      el('div', { class: 'fila', style: 'overflow-wrap:anywhere' }, icono('carpeta'), s.cwd ?? '')),
-    procesos.length > 0 && el('section', { class: 'bloque' }, el('h4', {}, `En segundo plano · ${procesos.length}`),
-      el('ul', { class: 'lista-simple' }, procesos.map((p) => el('li', { class: 'fila' }, icono(p.tipo === 'shell' ? 'terminal' : 'robot'),
-        el('span', { style: 'min-width:0' }, p.descripcion || (p.tipo === 'shell' ? 'comando' : 'subagente')))))),
-    subs.length > 0 && el('section', { class: 'bloque' }, el('h4', {}, `Subagentes · ${vivos.length} trabajando`),
-      el('ul', { class: 'lista-simple' }, [...vivos, ...subs.filter((a) => a.estado !== 'trabajando').reverse().slice(0, 4)].map((a) =>
-        el('li', { class: 'fila' }, icono('robot'), el('b', {}, a.tipo ?? 'subagente'), el('span', {}, a.descripcion ?? ''),
-          a.estado === 'trabajando' ? chip('trabajando', 'verde') : el('span', { class: 'meta' }, hace(a.fin_ts ?? a.inicio_ts)))))),
-    el('p', { class: 'meta', style: 'margin:0' }, `Última actividad ${hace(s.ultimo_evento_ts)} · sesión ${s.id.slice(0, 8)}`));
+  const listaSubs = [...vivos, ...subs.filter((a) => a.estado !== 'trabajando').reverse().slice(0, 6)];
+  const clave = JSON.stringify([s.id, procesos, listaSubs.map((a) => [a.id, a.estado]), s.tarea_id, t?.estado, t?.due_ts, pestana, sinLado, espera,
+    [...procAbiertos], [...logs.entries()].filter(([k]) => k.startsWith(s.id)), Math.floor(Date.now() / 60000)]);
+  if (vAgente.dataset.lado === clave) return;
+  vAgente.dataset.lado = clave;
+  vAgente.classList.toggle('sin-lado', sinLado);
+  const nota = () => espera && el('div', { class: 'aviso-caja', style: 'margin:0' }, 'Espera a que terminen sus procesos; después sigue solo.');
+  const procs = () => (procesos.length ? [nota(), procesos.map((p, i) => tarjetaProceso(s, p, i))] : el('p', { class: 'vacio' }, 'Nada corre en segundo plano.'));
+  const agentes = () => (listaSubs.length ? listaSubs.map(filaSubagente) : el('p', { class: 'vacio' }, 'No ha usado subagentes.'));
+  const tab = (id, texto, n, aviso) => el('button', { type: 'button', role: 'tab', 'aria-selected': String(pestana === id), onclick: () => {
+    pestana = id; try { localStorage.setItem('ov-pestana', id); } catch {} renderAgente();
+  } }, texto, n != null && el('span', { class: `cuenta ${aviso ? 'aviso' : ''}` }, String(n)));
+  reemplazar(document.getElementById('va-tabs'),
+    tab('procesos', 'Procesos', procesos.length, espera), tab('subagentes', 'Subagentes', vivos.length || subs.length), tab('tarea', 'Tarea', s.tarea_id ? 1 : 0),
+    el('button', { type: 'button', class: 'icono-boton chico plegar', 'aria-label': sinLado ? 'Mostrar panel' : 'Ocultar panel', title: sinLado ? 'Mostrar panel' : 'Ocultar panel',
+      onclick: () => { sinLado = !sinLado; try { localStorage.setItem('ov-sin-lado', sinLado ? '1' : '0'); } catch {} renderAgente(); } },
+      icono(sinLado ? 'izquierda' : 'flecha')));
+  reemplazar(document.getElementById('va-contexto'), pestana === 'subagentes' ? agentes() : pestana === 'tarea' ? el('div', { class: 'proc', style: 'padding:12px' }, bloqueTarea(s, d, t)) : procs());
+  // Reducida: tres chips; cada uno abre su menú (popover nativo, anclado al chip).
+  const menu = (id, contenido) => el('div', { id, popover: 'auto', class: 'va-pop', style: `position-anchor:--${id}` }, contenido);
+  const chipMenu = (id, partes) => el('button', { type: 'button', class: 'va-chip', popovertarget: id, style: `anchor-name:--${id}` }, partes, icono('abajo'));
+  const abiertos = [...document.querySelectorAll('#va-chips [popover]:popover-open')].map((p) => p.id);
+  reemplazar(document.getElementById('va-chips'),
+    chipMenu('va-pop-proc', [el('span', { class: `punto ${espera ? 'naranja' : procesos.length ? 'verde' : ''}` }), `${procesos.length} proceso${procesos.length === 1 ? '' : 's'}`]),
+    menu('va-pop-proc', procs()),
+    chipMenu('va-pop-sub', [el('span', { class: `punto ${vivos.length ? 'azul' : ''}` }), vivos.length ? `${vivos.length} subagente${vivos.length > 1 ? 's' : ''} trabajando` : `${subs.length} subagente${subs.length === 1 ? '' : 's'}`]),
+    menu('va-pop-sub', agentes()),
+    chipMenu('va-pop-tarea', t ? `${t.nombre.length > 28 ? `${t.nombre.slice(0, 28)}…` : t.nombre}${t.lista ? ` · ${t.lista}` : ''}` : 'Sin tarea'),
+    menu('va-pop-tarea', bloqueTarea(s, d, t)));
+  for (const id of abiertos) document.getElementById(id)?.showPopover?.();
 }
 // Qué permiso pide y dónde se aprueba: en su terminal (o la app). Un mensaje desde la oficina no lo aprueba.
 const permisoPendiente = (sid) => (datos?.permisos ?? []).filter((p) => p.sid === sid).at(-1) ?? null;
 const ETIQUETAS_CAMPO = { command: 'Comando', file_path: 'Archivo', url: 'URL', pattern: 'Patrón', path: 'Ruta', description: 'Para qué',
   old_string: 'Texto actual', new_string: 'Texto nuevo', content: 'Contenido', prompt: 'Indicación' };
-async function decidirPermiso(id, decision, motivo, estado) {
-  try { await post(`/api/permisos/${id}`, { decision, motivo }); if (estado) estado.textContent = decision === 'allow' ? 'Aprobado.' : 'Rechazado.'; }
+async function decidirPermiso(id, decision, motivo, estado, siempre = false) {
+  try { await post(`/api/permisos/${id}`, { decision, motivo, siempre }); if (estado) estado.textContent = decision === 'allow' ? (siempre ? 'Aprobado y guardado.' : 'Aprobado.') : 'Rechazado.'; }
   catch (err) { if (estado) estado.textContent = err.message; else alert(err.message); }
 }
 // Petición pendiente: qué herramienta, con qué datos, cuánto falta para que pase a su terminal, y aprobar o rechazar.
+const DESTINOS_REGLA = { localSettings: 'la configuración local del proyecto (.claude/settings.local.json)', projectSettings: 'la configuración del proyecto (.claude/settings.json)', userSettings: 'tu configuración global (~/.claude/settings.json)', session: 'esta sesión' };
 function decisionPermiso(p, { compacto = false } = {}) {
   const estado = el('span', { class: 'meta', role: 'status' });
   const motivo = el('input', { type: 'text', placeholder: 'Motivo del rechazo (opcional; se lo dice al agente)', 'aria-label': 'Motivo del rechazo' });
   const campos = compacto ? p.campos.slice(0, 2) : p.campos;
   return el('div', { style: 'display:grid;gap:8px' },
     el('p', { style: 'margin:0' }, el('b', {}, `Pide permiso para ${p.herramienta}. `),
-      'Decide aquí en ', el('b', { 'data-vence': p.vence }, ''), '; si no, aparece en su terminal.'),
+      'Decide aquí en ', el('b', { 'data-vence': p.vence }, ''), ' o pásalo a su terminal; si no decides, aparece allá.'),
     campos.map(([k, v]) => el('div', { class: 'permiso-campo' }, el('span', {}, ETIQUETAS_CAMPO[k] ?? k), el('pre', {}, v))),
     !compacto && motivo,
+    p.reglas?.length > 0 && el('div', { class: 'permiso-campo' }, el('span', {}, `«Permitir siempre» guarda en ${DESTINOS_REGLA[p.destino] ?? p.destino}`),
+      el('pre', {}, p.reglas.join('\n'))),
     el('div', { class: 'acciones' },
       el('button', { type: 'button', class: 'aprobar', onclick: () => decidirPermiso(p.id, 'allow', undefined, estado) }, icono('listo'), 'Aprobar'),
+      p.reglas?.length > 0 && el('button', { type: 'button', class: 'boton-chico', onclick: () => decidirPermiso(p.id, 'allow', undefined, estado, true) }, 'Permitir siempre'),
       el('button', { type: 'button', class: 'peligro', onclick: () => decidirPermiso(p.id, 'deny', motivo.value.trim() || undefined, estado) }, 'Rechazar'),
+      el('button', { type: 'button', class: 'boton-chico', onclick: () => post(`/api/permisos/${p.id}/terminal`).then(() => { estado.textContent = 'Ya está en su terminal.'; }, (e) => { estado.textContent = e.message; }) }, 'Decidir en la terminal'),
       estado));
 }
 // Pregunta con opciones (AskUserQuestion): eliges como en la app y la respuesta le llega al agente sin pasar por su terminal.
@@ -1178,25 +1466,49 @@ function avisoPermiso(s, viva) {
   return el('div', { class: 'aviso-caja rojo' },
     el('p', { style: 'margin:0 0 6px' }, el('b', {}, 'Pide permiso'), permiso ? ` para ${permiso.herramienta}:` : '.'),
     permiso?.detalle && el('pre', { style: 'margin:0 0 8px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12.5px' }, permiso.detalle),
-    el('p', { style: 'margin:0 0 8px' }, viva?.tipo === 'background'
+    s.tmux ? pantallaTmux(s) : el('p', { style: 'margin:0 0 8px' }, viva?.tipo === 'background'
       ? 'Apruébalo en su terminal: ábrela y elige «Yes». Escribirle un mensaje no lo aprueba; queda en cola hasta después.'
       : `Apruébalo en su terminal o en la app (${carpeta(s.cwd)}). Escribirle un mensaje no lo aprueba; queda en cola hasta después.`),
-    viva?.tipo === 'background' && el('button', { type: 'button', class: 'boton-chico', onclick: () => postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/terminal`) },
-      icono('terminal'), 'Abrir su terminal para aprobar'));
+    (viva?.tipo === 'background' || s.tmux) && el('button', { type: 'button', class: 'boton-chico', onclick: () => postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/terminal`) },
+      icono('terminal'), 'Abrir su terminal'));
+}
+// Sesión en tmux con un diálogo en su terminal: ves su pantalla y contestas con las teclas del diálogo, como si estuvieras ahí.
+function pantallaTmux(s) {
+  const pre = el('pre', { style: 'margin:0 0 8px;max-height:260px;overflow:auto;font-size:12px;white-space:pre' }, 'Cargando su pantalla…');
+  const cargar = () => fetch(`/api/sesiones/${encodeURIComponent(s.id)}/pantalla`).then((r) => r.json())
+    .then((r) => { pre.textContent = (r.texto ?? r.error ?? '').replace(/\s+$/, ''); pre.scrollTop = pre.scrollHeight; }, () => { pre.textContent = 'No pude leer su pantalla.'; });
+  cargar();
+  const tecla = (t, etiqueta = t) => el('button', { type: 'button', class: 'boton-chico', onclick: async () => {
+    await postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/tecla`, { tecla: t });
+    setTimeout(cargar, 400);
+  } }, etiqueta);
+  return el('div', {},
+    el('p', { style: 'margin:0 0 6px' }, 'Su terminal muestra este diálogo. Elige la opción con su número, igual que en la terminal:'),
+    pre,
+    el('div', { class: 'acciones' }, tecla('1'), tecla('2'), tecla('3'), tecla('4'), tecla('Escape', 'Esc'), el('button', { type: 'button', class: 'boton-chico', onclick: cargar }, 'Actualizar')));
 }
 const PEDIR_TRASPASO = 'Tu ventana de contexto está casi llena. Escribe un resumen de traspaso para seguir en una sesión nueva: objetivo, '
   + 'estado actual, archivos tocados, decisiones tomadas, qué falta y el siguiente paso concreto. Termina con la rama y la carpeta.';
 function pintarAvisos(s, viva, tareas, espera, nivel) {
+  const terminal = (viva?.tipo === 'background' || s.tmux) && (() => postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/terminal`));
+  const continuar = () => continuarEnNueva(s, tareas);
+  const pedirCierre = viva && (() => { confirmandoCierre = true; renderAgente(); });
+  const iconoBoton = (nombre, etiqueta, accion, clase = '') => el('button', { type: 'button', class: `icono-boton ${clase}`, 'aria-label': etiqueta, title: etiqueta, onclick: accion }, icono(nombre));
+  const opcion = (texto, accion, clase = '') => el('button', { type: 'button', class: `opcion ${clase}`, onclick: () => { document.getElementById('va-pop-mas').hidePopover(); accion(); } }, texto);
   reemplazar(document.getElementById('va-acciones'),
-    viva?.tipo === 'background' && el('button', { type: 'button', onclick: () => postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/terminal`) },
-      icono('terminal'), 'Abrir en terminal'),
-    el('button', { type: 'button', onclick: () => continuarEnNueva(s, tareas) }, 'Continuar en sesión nueva'),
-    viva && el('button', { type: 'button', class: 'peligro', onclick: () => { confirmandoCierre = true; renderAgente(); } }, 'Cerrar sesión'));
+    terminal && iconoBoton('terminal', 'Abrir en terminal', terminal),
+    iconoBoton('recargar', 'Continuar en sesión nueva', continuar, 'solo-ancho'),
+    pedirCierre && el('button', { type: 'button', class: 'contorno-rojo solo-ancho', onclick: pedirCierre }, 'Cerrar sesión'),
+    el('button', { type: 'button', class: 'icono-boton solo-angosto', popovertarget: 'va-pop-mas', 'aria-label': 'Más acciones', title: 'Más acciones', style: 'anchor-name:--va-pop-mas' }, icono('mas')),
+    el('div', { id: 'va-pop-mas', popover: 'auto', class: 'va-pop', style: 'position-anchor:--va-pop-mas;width:240px;position-area:bottom span-left' },
+      opcion('Continuar en sesión nueva', continuar),
+      pedirCierre && opcion('Cerrar sesión', pedirCierre, 'peligro-texto')),
+    el('span', { class: 'va-sep solo-ancho' }));
   reemplazar(document.getElementById('va-aviso'),
     confirmandoCierre && viva && el('div', { class: 'aviso-caja rojo', role: 'alertdialog', 'aria-label': 'Confirmar cierre' },
       el('p', { style: 'margin:0 0 8px' }, el('b', {}, `¿Cerrar «${nombreSesion(s, tareas)}»? `),
         viva.ocupada ? 'Está trabajando ahora: se corta lo que esté haciendo. ' : '',
-        `La conversación queda guardada; la retomas con claude --resume ${s.id.slice(0, 8)}…${viva.tipo === 'background' ? ` o claude attach ${viva.corto}` : ''}.`),
+        `La conversación queda guardada; la retomas con claude --resume ${s.id.slice(0, 8)}… o con «Retomar» en Pendientes.`),
       el('div', { class: 'acciones' },
         el('button', { type: 'button', class: 'primario', style: 'background:#b3261e;color:#fff', onclick: async () => {
           confirmandoCierre = false;
@@ -1227,7 +1539,13 @@ function abrirAsignacion(s, d) {
     await postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/tarea`, { tarea_id: t.id });
     renderAgente();
   } });
-  reemplazar(document.getElementById('va-contexto'), el('section', { class: 'bloque' },
+  // Completa: en la pestaña Tarea del panel. Reducida (panel oculto): dentro del menú de la tarea.
+  const enPanel = document.getElementById('va-lado').offsetParent !== null;
+  if (enPanel) pestana = 'tarea';
+  vAgente.dataset.lado = ''; // al terminar (elegir o cancelar) el panel y los chips se vuelven a pintar
+  const destino = enPanel ? document.getElementById('va-contexto') : document.getElementById('va-pop-tarea');
+  if (!enPanel) destino?.showPopover?.();
+  reemplazar(destino, el('section', { class: 'bloque' },
     el('div', { class: 'fila' }, el('h4', { style: 'margin-right:auto' }, 'Elige su tarea'),
       el('button', { class: 'boton-chico', type: 'button', onclick: () => { asignando = false; renderAgente(); } }, 'Cancelar')),
     selector));
@@ -1236,12 +1554,13 @@ function abrirAsignacion(s, d) {
 
 // ── Nueva sesión: tarea opcional, carpeta, indicación, nombre y permisos ──
 let nueva = { tarea: null, auto: { prompt: '', nombre: '' }, carpetas: [], cerrar: null };
-async function abrirNueva({ tareaId = null, cwd = null, prompt = '', nombre = '', cerrar = null } = {}) {
+async function abrirNueva({ tareaId = null, cwd = null, prompt = '', nombre = '', cerrar = null, modelo = '' } = {}) {
   const d = datos;
   if (!d) return;
   nueva = { tarea: null, auto: { prompt: '', nombre: '' }, carpetas: [], cerrar }; // cerrar: sesión que se traspasa
   for (const id of ['vs-cwd', 'vs-prompt', 'vs-nombre']) document.getElementById(id).value = '';
   document.getElementById('vs-donde').value = 'fondo';
+  document.getElementById('vs-modelo').value = '';
   document.getElementById('vs-estado').textContent = '';
   document.getElementById('vs-empezar').disabled = false;
   try { nueva.carpetas = await (await fetch('/api/carpetas')).json(); } catch { nueva.carpetas = []; }
@@ -1250,19 +1569,56 @@ async function abrirNueva({ tareaId = null, cwd = null, prompt = '', nombre = ''
   const selector = selectorTarea(d, { seleccionada: tareaId, alElegir: (t) => elegirParaNueva(t, d) });
   reemplazar(document.getElementById('vs-tareas'), selector);
   const t = d.tareas.find((x) => x.id === tareaId);
-  if (t) elegirParaNueva(t, d); else pintarElegida(null);
-  // Lo que venga explícito (por ejemplo, un traspaso) manda sobre lo que se rellena solo.
-  if (cwd) document.getElementById('vs-cwd').value = cwd;
+  document.getElementById('vs-ubicacion').value = '';
+  if (t) elegirParaNueva(t, d); else { pintarElegida(null); pintarUbicacion(); }
+  // Lo que venga explícito (por ejemplo, un traspaso) manda sobre lo que se rellena solo: sigue en su misma carpeta.
+  if (cwd) {
+    document.getElementById('vs-cwd').value = cwd;
+    document.getElementById('vs-ubicacion').value = 'carpeta';
+    pintarUbicacion();
+  }
+  if (modelo) document.getElementById('vs-modelo').value = modelo;
   if (prompt) document.getElementById('vs-prompt').value = prompt;
   if (nombre) document.getElementById('vs-nombre').value = nombre;
   if (!vNueva.open) vNueva.showModal();
   if (prompt) document.getElementById('vs-prompt').focus();
   else if (!t) selector.enfocar();
 }
+// Dónde trabaja la sesión nueva: con tarea, su propio worktree (el que ya tenga o uno nuevo); sin tarea, una carpeta
+// aparte en ~/Agentes para que nada de otro trabajo llegue a un repo. «Otra carpeta» deja escribir la ruta.
+// claude-opus-5-5 → «Opus 5.5»; lo que no siga ese formato se muestra tal cual.
+const nombreModelo = (id) => {
+  const m = id.match(/^claude-([a-z]+)-(\d+)-(\d+)/);
+  return m ? `${m[1][0].toUpperCase()}${m[1].slice(1)} ${m[2]}.${m[3]}` : id;
+};
+function pintarUbicacion() {
+  const sel = document.getElementById('vs-ubicacion');
+  const antes = sel.value;
+  const t = nueva.tarea;
+  // La raíz del worktree (la ruta más corta con el ID), no una subcarpeta donde haya trabajado una sesión.
+  const propia = t && nueva.carpetas.filter((c) => c.includes(t)).sort((x, y) => x.length - y.length)[0];
+  const opciones = t
+    ? [['worktree', propia ? `Su worktree: ${carpeta(propia)}` : 'Worktree nuevo para la tarea (desde origin/develop o su rama)'], ['carpeta', 'Otra carpeta']]
+    : [['aparte', 'Carpeta aparte nueva en ~/Agentes (fuera de cualquier repo)'], ['carpeta', 'Otra carpeta']];
+  reemplazar(sel, opciones.map(([v, txt]) => el('option', { value: v }, txt)));
+  sel.value = opciones.some(([v]) => v === antes) ? antes : opciones[0][0];
+  const modo = sel.value;
+  document.getElementById('vs-cwd-campo').hidden = modo === 'aparte';
+  document.getElementById('vs-cwd-t').textContent = modo === 'worktree' ? 'Repositorio de la tarea' : 'Carpeta';
+  document.getElementById('vs-cwd').required = modo !== 'aparte';
+  document.getElementById('vs-cwd-nota').textContent = modo === 'worktree'
+    ? (propia ? `Usará ${propia}.` : 'Se crea en <repo>.worktrees/<ID>, como en el turno nocturno, con los enlaces al arnés.')
+    : '';
+  if (modo === 'worktree') {
+    const cwd = document.getElementById('vs-cwd');
+    if (propia) cwd.value = propia;
+  }
+}
+document.getElementById('vs-ubicacion').addEventListener('change', pintarUbicacion);
 function pintarElegida(t) {
   reemplazar(document.getElementById('vs-elegida'), t
     ? [el('div', { class: 'fila' }, el('h4', { style: 'margin-right:auto' }, 'Tarea elegida'),
-      el('button', { class: 'boton-chico', type: 'button', onclick: () => { nueva.tarea = null; pintarElegida(null); reemplazar(document.getElementById('vs-tareas'), selectorTarea(datos, { alElegir: (x) => elegirParaNueva(x, datos) })); } }, 'Quitar')),
+      el('button', { class: 'boton-chico', type: 'button', onclick: () => { nueva.tarea = null; pintarElegida(null); pintarUbicacion(); reemplazar(document.getElementById('vs-tareas'), selectorTarea(datos, { alElegir: (x) => elegirParaNueva(x, datos) })); } }, 'Quitar')),
       resumenTarea(t)]
     : [el('h4', {}, 'Sin tarea'), el('p', { class: 'meta', style: 'margin:0' }, 'Elige una a la izquierda para ligarla desde el inicio, o empieza sin tarea.')]);
 }
@@ -1275,9 +1631,7 @@ function elegirParaNueva(t, d) {
   if (!prompt.value || prompt.value === nueva.auto.prompt) prompt.value = nueva.auto.prompt = `/agil ${t.id}`;
   const corto = `${t.id} · ${t.nombre.replace(/^.*?·\s*/, '')}`.slice(0, 60);
   if (!nombre.value || nombre.value === nueva.auto.nombre) nombre.value = nueva.auto.nombre = corto;
-  // Si alguna carpeta conocida lleva el ID (worktree de la tarea), se propone.
-  const propia = nueva.carpetas.find((c) => c.includes(t.id));
-  if (propia) document.getElementById('vs-cwd').value = propia;
+  pintarUbicacion();
 }
 document.getElementById('vs-form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
@@ -1288,10 +1642,14 @@ document.getElementById('vs-form').addEventListener('submit', async (ev) => {
     const r = await post('/api/sesiones/nueva', {
       cwd: document.getElementById('vs-cwd').value.trim(), prompt: document.getElementById('vs-prompt').value,
       nombre: document.getElementById('vs-nombre').value, permiso: document.getElementById('vs-permiso').value, tarea_id: nueva.tarea,
-      donde: document.getElementById('vs-donde').value,
+      donde: document.getElementById('vs-donde').value, modelo: document.getElementById('vs-modelo').value,
+      ubicacion: document.getElementById('vs-ubicacion').value,
     });
-    estado.textContent = r.terminal ? 'Se abrió en una terminal nueva; aparece en la oficina en cuanto arranque.'
-      : `Sesión ${r.id} iniciada; aparece en el Taller en unos segundos.`;
+    const donde = r.worktree?.creado ? `Worktree nuevo en ${r.cwd}${r.worktree.rama ? ` (rama ${r.worktree.rama})` : ` (desde ${r.worktree.base})`}. `
+      : r.cwd ? `Trabaja en ${r.cwd}. ` : '';
+    estado.textContent = donde + (r.terminal ? 'Se abrió en una terminal nueva; aparece en la oficina en cuanto arranque.'
+      : r.confianza ? 'Claude Code aún no confía en esa carpeta: se abrió su terminal para que aceptes el aviso; después aparece en el Taller.'
+      : 'Sesión iniciada; aparece en el Taller en unos segundos.');
     // Traspaso: con la nueva ya arrancada, la anterior se cierra sola (su conversación queda guardada).
     if (nueva.cerrar && datos?.vivas?.[nueva.cerrar]) {
       try { await post(`/api/sesiones/${encodeURIComponent(nueva.cerrar)}/cerrar`); estado.textContent += ' La sesión anterior se cerró.'; }
@@ -1310,7 +1668,7 @@ function continuarEnNueva(s, tareas) {
   const nombre = nombreSesion(s, tareas);
   const resumen = s.ultimo_mensaje ? `\n\nSu último mensaje (resumen de traspaso si se lo pediste):\n\n${s.ultimo_mensaje}` : '';
   vAgente.close();
-  abrirNueva({ tareaId: s.tarea_id, cwd: s.cwd, nombre: `${nombre} · continuación`.slice(0, 80),
+  abrirNueva({ tareaId: s.tarea_id, cwd: s.cwd, nombre: `${nombre} · continuación`.slice(0, 80), modelo: datos?.contexto?.[s.id]?.modelo ?? '',
     prompt: `Retoma el trabajo de la sesión «${nombre}» (id ${s.id}), que se cerró o se quedó sin contexto.${resumen}`, cerrar: s.id });
 }
 
@@ -1339,7 +1697,7 @@ const base64De = (f) => new Promise((ok, falla) => {
   lector.onerror = () => falla(new Error('no se pudo leer la imagen'));
   lector.readAsDataURL(f);
 });
-reemplazar(document.getElementById('va-adjuntar'), icono('imagen'), 'Imagen');
+reemplazar(document.getElementById('va-adjuntar'), icono('imagen'));
 document.getElementById('va-adjuntar').addEventListener('click', () => document.getElementById('va-archivo').click());
 document.getElementById('va-archivo').addEventListener('change', (ev) => { agregarImagenes(ev.target.files); ev.target.value = ''; });
 const cajaTexto = document.getElementById('va-texto');
@@ -1367,8 +1725,13 @@ document.getElementById('va-form').addEventListener('submit', async (ev) => {
     await post(`/api/sesiones/${encodeURIComponent(abierta)}/mensaje`, { texto, imagenes });
     caja.value = '';
     quitarAdjuntos();
-    estado.textContent = 'Voy en camino; tarda unos segundos.';
-  } catch (err) { estado.textContent = err.message; }
+    estado.textContent = datos?.sesiones.find((x) => x.id === abierta)?.tmux ? 'Escrito en su terminal, como si lo teclearas tú.' : 'Voy en camino; tarda unos segundos.';
+  } catch (err) {
+    // Que no pase desapercibido: queda en la conversación, en rojo, con el motivo. Tu texto sigue en la caja.
+    estado.textContent = '';
+    fallidos.set(abierta, [...(fallidos.get(abierta) ?? []), { ts: Date.now(), texto, motivo: err.message }].slice(-5));
+    renderAgente();
+  }
 });
 document.getElementById('va-texto').addEventListener('keydown', (ev) => {
   if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) document.getElementById('va-form').requestSubmit();
@@ -1378,11 +1741,11 @@ document.getElementById('va-texto').addEventListener('keydown', (ev) => {
 let noche = null;
 const agendaAbierta = new Set(); // tareas desplegadas: sobreviven a las actualizaciones en vivo
 // Sin sección, la oficina completa («Tú · entrar»); con sección, solo esa (las tarjetas, la bandeja y el calendario).
-const SECCIONES_OFICINA = { 'vo-agenda': 'Tu agenda', 'vo-parati': 'Para ti' };
+const SECCIONES_OFICINA = { 'vo-agenda': 'Tu agenda', 'vo-parati': 'Para ti', 'vo-pendientes': 'Pendientes', 'vo-memoria': 'Memoria' };
 async function abrirOficina(seccion) {
   vOficina.classList.toggle('solo', !!seccion);
   document.getElementById('vo-titulo').textContent = SECCIONES_OFICINA[seccion] ?? 'Tu oficina';
-  for (const id of ['vo-agenda', 'vo-parati', 'vo-noche']) document.getElementById(id).hidden = !!seccion && id !== seccion;
+  for (const id of ['vo-agenda', 'vo-memoria', 'vo-pendientes', 'vo-parati', 'vo-noche']) document.getElementById(id).hidden = !!seccion && id !== seccion;
   document.getElementById('vo-lateral').hidden = !!seccion && seccion === 'vo-agenda';
   renderOficina();
   if (!vOficina.open) vOficina.showModal();
@@ -1459,7 +1822,89 @@ function renderOficina() {
     el('ul', { class: 'lista-simple', style: 'margin-top:8px' }, despues.map((t) => el('li', { class: 'fila' },
       el('span', { class: 'meta' }, t.due_ts ? fecha(t.due_ts) : 'sin fecha'), el('a', { href: t.url, target: '_blank', rel: 'noopener' }, t.nombre))))));
   renderParaTi();
+  renderPendientes();
+  renderMemoria();
 }
+// ── Memoria: cuánta queda, cuánto usa cada agente y pausa (SIGSTOP) para que systemd-oomd no los mate ──
+let mem = null;
+const NIVEL_MEM = { bien: ['Memoria bien', 'verde', 'bien'], alto: ['Memoria alta', 'naranja', 'aviso'], critico: ['Memoria casi agotada', 'rojo', 'alerta'] };
+const gb = (kb) => `${(kb / 1048576).toFixed(1)} GB`;
+async function cargarMemoria() {
+  try { mem = await (await fetch('/api/memoria')).json(); } catch { return; }
+  renderTarjetaMemoria();
+  if (vOficina.open) renderMemoria();
+}
+function barraMem(usado, total) {
+  const pct = total ? Math.round((100 * usado) / total) : 0;
+  return el('div', { class: 'fila', style: 'gap:8px' },
+    el('div', { role: 'meter', 'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100, style: 'flex:1;height:8px;border-radius:4px;background:var(--hundido);overflow:hidden' },
+      el('div', { style: `width:${pct}%;height:100%;background:${pct > 85 ? 'var(--rojo)' : pct > 65 ? 'var(--naranja)' : 'var(--verde)'}` })),
+    el('span', { class: 'meta' }, `${gb(usado)} de ${gb(total)}`));
+}
+function renderMemoria() {
+  if (!mem) return;
+  const [texto, color] = NIVEL_MEM[mem.nivel];
+  const accion = (s) => el('button', { class: `boton-chico ${s.pausada ? 'primario' : ''}`, type: 'button',
+    onclick: async (ev) => { ev.currentTarget.disabled = true; await postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/${s.pausada ? 'reanudar' : 'pausar'}`); cargarMemoria(); } },
+    s.pausada ? 'Reanudar' : 'Pausar');
+  const tareas = datos ? tareaPorId(datos) : {};
+  const sesion = (id) => datos?.sesiones.find((x) => x.id === id);
+  reemplazar(document.getElementById('vo-mem'),
+    el('div', { class: 'fila' }, chip(texto, color),
+      el('span', { class: 'meta' }, mem.nivel === 'critico' ? 'No se abren sesiones nuevas. Pausa o cierra un agente.'
+        : mem.nivel === 'alto' ? 'Cuidado al abrir más agentes.' : `${gb(mem.disponible)} disponibles`)),
+    el('div', { class: 'meta', style: 'margin-top:8px' }, 'RAM'), barraMem(mem.total - mem.disponible, mem.total),
+    el('div', { class: 'meta', style: 'margin-top:6px' }, 'Swap'), barraMem(mem.swapTotal - mem.swapLibre, mem.swapTotal),
+    el('div', { class: 'meta', style: 'margin-top:10px' }, 'Por agente (aprox., incluye sus procesos)'),
+    mem.sesiones.length ? el('ul', { class: 'lista-simple' }, mem.sesiones.map((s) => el('li', { class: 'fila' },
+      el('span', { class: 'corto', style: 'flex:1;min-width:0' }, sesion(s.id) ? nombreSesion(sesion(s.id), tareas) : (s.nombre ?? s.id.slice(0, 8))),
+      s.pausada && chip('pausado', 'naranja'), el('span', { class: 'meta' }, `${(s.mb / 1024).toFixed(1)} GB`), accion(s))))
+      : el('p', { class: 'vacio' }, 'No hay agentes abiertos.'));
+}
+function renderTarjetaMemoria() {
+  if (!mem) return;
+  const [texto, , tono] = NIVEL_MEM[mem.nivel];
+  const pausados = mem.sesiones.filter((s) => s.pausada).length;
+  tarjeta('t-memoria', { icon: 'hora', tono: tono === 'bien' ? '' : tono, titulo: texto,
+    detalle: `${gb(mem.disponible)} libres · swap ${Math.round(100 - (100 * mem.swapLibre) / (mem.swapTotal || 1))} %${pausados ? ` · ${pausados} pausados` : ''}`,
+    accion: () => abrirOficina('vo-memoria') });
+}
+cargarMemoria();
+setInterval(cargarMemoria, 10_000);
+// Sesiones que murieron sin cerrarse (OOM, reinicio, kill) y notas sueltas.
+function renderPendientes() {
+  const { sesiones, notas, solicitudes } = datos.pendientes;
+  const tareas = tareaPorId(datos);
+  const accion = (texto, url, primario) => el('button', { class: `boton-chico ${primario ? 'primario' : ''}`, type: 'button',
+    onclick: async (ev) => { ev.currentTarget.disabled = true; await postSeguro(url); } }, texto);
+  const quien = (sid) => { const s = datos.sesiones.find((x) => x.id === sid); return s ? nombreSesion(s, tareas) : 'Un agente'; };
+  reemplazar(document.getElementById('vo-pend-lista'), sesiones.length || notas.length || solicitudes.length ? el('div', {},
+    // Un agente pidió abrir otra sesión: ves exactamente qué abriría y con qué permisos; nada se abre sin tu clic.
+    solicitudes.map((q) => el('div', { class: 'comentario' },
+      el('div', { class: 'fila' }, chip('Quiere abrir una sesión', 'amarillo'), el('b', { class: 'corto' }, q.nombre || 'sin nombre'), el('span', { class: 'meta' }, hace(q.creado_ts))),
+      el('div', { class: 'meta' }, `Pide: ${quien(q.de_sesion)} · carpeta ${q.cwd} · permisos ${q.permiso}${q.modelo ? ` · ${q.modelo}` : ''}${q.tarea_id ? ` · tarea ${q.tarea_id}` : ''}`),
+      el('pre', { style: 'margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12.5px' }, q.prompt),
+      el('div', { class: 'fila' },
+        accion('Abrir', `/api/solicitudes/${q.id}/aprobar`, true),
+        accion('Rechazar', `/api/solicitudes/${q.id}/rechazar`)))),
+    sesiones.map((s) => el('div', { class: 'comentario' },
+      el('div', { class: 'fila' }, chip('Sesión cerrada', 'naranja'), el('b', { class: 'corto' }, nombreSesion(s, tareas)), el('span', { class: 'meta' }, hace(s.terminada_ts))),
+      el('div', { class: 'meta corto' }, carpeta(s.cwd)),
+      s.ultimo_mensaje && el('div', { class: 'mensaje corto3' }, plano(s.ultimo_mensaje)),
+      el('div', { class: 'fila' },
+        accion('Retomar', `/api/sesiones/${encodeURIComponent(s.id)}/retomar`, true),
+        accion('Descartar', `/api/sesiones/${encodeURIComponent(s.id)}/descartar`)))),
+    notas.map((n) => el('div', { class: 'comentario' },
+      el('div', { class: 'mensaje' }, n.texto),
+      el('div', { class: 'fila' }, accion('Hecho', `/api/pendientes/${n.id}/hecho`), el('span', { class: 'meta' }, hace(n.creado_ts))))))
+    : el('p', { class: 'vacio' }, 'Nada pendiente.'));
+}
+document.getElementById('vo-pend-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const caja = document.getElementById('vo-pend-texto');
+  if (!caja.value.trim()) return;
+  try { await post('/api/pendientes', { texto: caja.value }); caja.value = ''; } catch (e) { alert(e.message); }
+});
 function renderParaTi() {
   const d = datos;
   const tareas = tareaPorId(d);
@@ -1502,7 +1947,9 @@ function renderNecesitan() {
       s.estado === 'necesita_permiso' && permisoPendiente(s.id)
         ? decisionPermiso(permisoPendiente(s.id), { compacto: true })
         : s.estado === 'necesita_permiso'
-        ? (d.vivas?.[s.id]?.tipo === 'background'
+        ? (s.tmux
+          ? el('button', { class: 'primario boton-chico', type: 'button', onclick: () => { vNecesitan.close(); abrirAgente(s.id); } }, 'Ver el diálogo y contestar')
+          : d.vivas?.[s.id]?.tipo === 'background'
           ? el('button', { class: 'primario boton-chico', type: 'button', onclick: () => postSeguro(`/api/sesiones/${encodeURIComponent(s.id)}/terminal`) }, icono('terminal'), 'Abrir su terminal para aprobar')
           : el('span', { class: 'aviso-caja rojo', style: 'margin:0;padding:2px 8px' }, `Apruébalo en su terminal o en la app · ${carpeta(s.cwd)}`))
         : el('button', { class: 'primario boton-chico', type: 'button', onclick: () => { vNecesitan.close(); abrirAgente(s.id, { escribir: true }); } }, 'Responder'),
@@ -1536,6 +1983,11 @@ function renderTarjetas(d) {
   const c = proximoCorte();
   tarjeta('t-corte', { icon: 'hora', titulo: c ? `${c.nombre} · ${c.hora}` : 'Sin cortes por hoy',
     detalle: c ? `En ${c.faltan >= 60 ? `${Math.floor(c.faltan / 60)} h ` : ''}${c.faltan % 60} min` : 'La daily es a las 09:00', accion: () => abrirOficina('vo-agenda') });
+  const pend = d.pendientes.sesiones.length + d.pendientes.notas.length + d.pendientes.solicitudes.length;
+  tarjeta('t-pendientes', { icon: 'listo', tono: d.pendientes.sesiones.length || d.pendientes.solicitudes.length ? 'aviso' : '', titulo: pend ? `Pendientes · ${pend}` : 'Sin pendientes',
+    detalle: d.pendientes.solicitudes.length ? `${d.pendientes.solicitudes.length} sesiones por aprobar`
+      : d.pendientes.sesiones.length ? `${d.pendientes.sesiones.length} sesiones por retomar` : d.pendientes.notas[0]?.texto ?? 'Nada por retomar',
+    accion: () => abrirOficina('vo-pendientes') });
   fijos.bandeja.el.querySelector('.insignia span').textContent = String(paraMi.length);
   fijos.bandeja.el.firstChild.classList.toggle('bien', paraMi.length === 0);
   fijos.bandeja.el.setAttribute('aria-label', `Bandeja: ${paraMi.length} comentarios para ti`);

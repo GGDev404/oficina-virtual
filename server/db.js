@@ -32,6 +32,16 @@ CREATE TABLE IF NOT EXISTS comentarios (
   visto_local INTEGER NOT NULL DEFAULT 0,
   tipo TEXT CHECK (tipo IN ('ficha', 'correccion', 'instruccion', 'otro'))
 );
+CREATE TABLE IF NOT EXISTS pendientes (
+  id INTEGER PRIMARY KEY, texto TEXT NOT NULL, creado_ts INTEGER NOT NULL, hecho_ts INTEGER
+);
+-- Navegadores donde entraste con tu frase: solo el sha256 de la cookie.
+CREATE TABLE IF NOT EXISTS web_sesiones (hash TEXT PRIMARY KEY, creado_ts INTEGER NOT NULL, vence_ts INTEGER NOT NULL);
+-- Sesiones que un agente pidió abrir; se abren solo si las apruebas en la página.
+CREATE TABLE IF NOT EXISTS solicitudes (
+  id INTEGER PRIMARY KEY, de_sesion TEXT, nombre TEXT, cwd TEXT NOT NULL, prompt TEXT NOT NULL, permiso TEXT NOT NULL,
+  modelo TEXT, tarea_id TEXT, creado_ts INTEGER NOT NULL, estado TEXT NOT NULL DEFAULT 'pendiente', resuelto_ts INTEGER
+);
 `;
 
 // Columnas agregadas después de la v1: se suman a bases que ya existían.
@@ -40,6 +50,8 @@ const COLUMNAS_NUEVAS = [
   ['sesiones', 'procesos_json TEXT'],
   ['sesiones', 'permiso_json TEXT'],
   ['comentarios', 'para_mi INTEGER NOT NULL DEFAULT 0'],
+  ['sesiones', 'pendiente INTEGER NOT NULL DEFAULT 0'], // murió sin cerrarse: espera Retomar o Descartar
+  ['sesiones', 'tmux TEXT'], // socket de su tmux (`tmux -L`) si la abrió la oficina: ahí se teclean tus mensajes
 ];
 
 export function abrir(ruta) {
@@ -66,5 +78,11 @@ export function estado(db, ahora = Date.now()) {
     subagentes,
     tareas: db.prepare('SELECT * FROM tareas ORDER BY due_ts IS NULL, due_ts').all(),
     comentarios: db.prepare('SELECT * FROM comentarios ORDER BY ts DESC').all(),
+    pendientes: {
+      sesiones: db.prepare(`SELECT id, nombre, cwd, tarea_id, ultimo_mensaje, terminada_ts FROM sesiones
+                            WHERE pendiente = 1 AND estado = 'cerrada' ORDER BY terminada_ts DESC`).all(),
+      notas: db.prepare('SELECT * FROM pendientes WHERE hecho_ts IS NULL ORDER BY creado_ts').all(),
+      solicitudes: db.prepare(`SELECT * FROM solicitudes WHERE estado = 'pendiente' ORDER BY creado_ts`).all(),
+    },
   };
 }

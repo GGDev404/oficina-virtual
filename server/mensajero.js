@@ -41,12 +41,15 @@ export const conImagenes = (texto, rutas) => rutas.length
   ? `${texto}${texto ? '\n\n' : ''}Te mando ${rutas.length === 1 ? 'una imagen' : `${rutas.length} imágenes`}; ábrelas con Read:\n${rutas.map((r) => `- ${r}`).join('\n')}`
   : texto;
 
+// El mensajero es un `claude -p` de un solo uso: cuando la sesión contesta ya no existe. La respuesta va en su chat.
+export const AVISO_RESPUESTA = '(Contesta aquí mismo, en tu propio turno, no con SendMessage: este mensajero ya se cerró y no recibe respuestas. La oficina lee tu respuesta de tu conversación y me avisa.)';
+
 export function promptMensajero({ nombre, cwd, texto, firma = 'el usuario' }) {
   return [
     `Usa ListAgents para encontrar la sesión local de Claude Code cuyo nombre es «${nombre}» y cuyo directorio es ${cwd}.`,
     'Si hay varias con ese nombre, elige la de ese directorio. Envíale con SendMessage exactamente el texto que está entre',
     'las marcas <<<INICIO>>> y <<<FIN>>>, sin las marcas, sin cambiarlo ni agregar nada:',
-    `<<<INICIO>>>\nMensaje de ${firma} desde la oficina virtual:\n${texto}\n<<<FIN>>>`,
+    `<<<INICIO>>>\nMensaje de ${firma} desde la oficina virtual:\n${texto}\n\n${AVISO_RESPUESTA}\n<<<FIN>>>`,
     'Después responde solo ENVIADO, o NO ENVIADO: <motivo en una línea>.',
   ].join('\n');
 }
@@ -89,5 +92,12 @@ export function crearMensajero({ dir, claude = 'claude', firma, alCambiar = () =
     return m;
   }
 
-  return { enviar, mensajes: () => Object.fromEntries(porSesion) };
+  // Mensaje que ya llegó por otro camino (tecleado en su tmux): solo queda en la lista de la ficha.
+  function anotar(sid, texto) {
+    const m = { id: siguienteId++, texto, estado: 'enviado', detalle: null, ts: Date.now() };
+    registrar(sid, m);
+    return m;
+  }
+
+  return { enviar, anotar, mensajes: () => Object.fromEntries(porSesion) };
 }

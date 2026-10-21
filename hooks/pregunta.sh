@@ -6,7 +6,7 @@
 {
   linea=$(timeout 1 cat | timeout 1 jq -c --arg ts "$(date +%FT%T.%3N%:z)" --arg tarea "${CLICKUP_TASK:-}" \
     '{ts:$ts, evento:"PreToolUse", payload:.} + (if $tarea != "" then {tarea_env:$tarea} else {} end)') || exit 0
-  respuesta=$(printf '%s' "$linea" | curl -sf -m 905 -H 'Content-Type: application/json' --data-binary @- \
+  respuesta=$(printf '%s' "$linea" | curl -sf -H "X-Oficina-Token: $(cat "${OFICINA_DATOS:-$HOME/.local/share/oficina-virtual}/token" 2>/dev/null)" -m 905 -H 'Content-Type: application/json' --data-binary @- \
     http://127.0.0.1:4777/api/preguntas) || exit 0
 } 2>/dev/null
 # Solo se imprime una respuesta válida; cualquier otra cosa se descarta.
