@@ -161,16 +161,50 @@
   .dos-col > .partir > * { grid-column: 1; min-width: 0; }
   .dos-col > .partir > .ancho { grid-column: 1 / -1; }
   .dos-col > .lateral { grid-column: 2; grid-row: 1 / span 2; }
-  #v-oficina .dos-col { row-gap: var(--s3); }
   @media (max-width: 860px) {
     .dos-col > .partir > *, .dos-col > .partir > .ancho, .dos-col > .lateral { grid-column: 1; grid-row: auto; }
     .ventana > header { flex-wrap: wrap; }
     .ventana > header .titulos { flex-basis: calc(100% - 52px); }
   }
   /* Abierta desde una tarjeta: solo esa sección, a todo el ancho. */
-  #v-oficina.solo .dos-col { grid-template-columns: minmax(0, 1fr); }
-  #v-oficina.solo .dos-col > .lateral { grid-column: 1; grid-row: auto; }
   #v-oficina [hidden] { display: none !important; }
+  /* Tu día */
+  #v-oficina > header.vo-cabeza { display: flex; align-items: center; gap: var(--s2) var(--s4); flex-wrap: wrap; padding: var(--s4) var(--s5) var(--s2); border-bottom: 0; }
+  .vo-cabeza h2 { font-size: 18px; margin: 0; }
+  .vo-cabeza .cerrar { margin-left: auto; }
+  .vo-tabs { display: flex; gap: var(--s1); padding: 0 var(--s5); border-bottom: 1px solid var(--borde); overflow-x: auto; }
+  .vo-tabs [role=tab] { background: none; border: 0; border-radius: 0; border-bottom: 2px solid transparent; padding: var(--s2) var(--s3); min-height: 42px; color: var(--suave); }
+  .vo-tabs [role=tab][aria-selected=true] { color: var(--texto); border-bottom-color: var(--acento); font-weight: 600; }
+  .cuenta.rojo { background: var(--rojo); color: var(--panel); }
+  #vo-hoy { border: 1px solid var(--borde); border-radius: 12px; }
+  #vo-hoy > .vacio { padding: var(--s3) var(--s4); }
+  .vo-fila { display: grid; grid-template-columns: 84px minmax(0, 1fr) auto; gap: var(--s3); align-items: center; padding: var(--s3) var(--s4); border-top: 1px solid var(--borde); }
+  .vo-fila:first-child { border-top: 0; }
+  .vo-fila .hora { color: var(--naranja); }
+  .vo-fila .hora.vencida { color: var(--rojo); }
+  .vo-tarea { display: grid; gap: 6px; min-width: 0; }
+  .vo-nombre { color: var(--texto); text-decoration: none; font-weight: 600; display: flex; gap: var(--s2); flex-wrap: wrap; align-items: baseline; min-width: 0; }
+  a.vo-nombre:hover > span:last-child, a.vo-tarjeta:hover .vo-nombre > span:last-child { text-decoration: underline; text-underline-offset: 2px; }
+  .codigo { font: 500 12.5px ui-monospace, monospace; color: var(--acento); }
+  .chip.azul-suave { background: var(--acento-suave); color: var(--acento); }
+  .vo-accion { display: flex; flex-direction: column; gap: var(--s1); align-items: flex-end; }
+  .vo-agente { border-color: transparent; font-weight: 600; font-size: 13px; }
+  .vo-agente .punto { background: currentColor; }
+  .vo-dias-fila { margin: var(--s5) 0 var(--s3); gap: var(--s3); }
+  .vo-dia { border-radius: 99px; background: none; font-size: 13px; }
+  .vo-dia[aria-selected=true] { background: var(--gris-bg); border-color: var(--borde-fuerte); font-weight: 600; }
+  .vo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: var(--s2); }
+  .vo-tarjeta { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--s3); padding: var(--s3) var(--s4); border: 1px solid var(--borde);
+    border-radius: 10px; text-decoration: none; color: var(--texto); }
+  .vo-tarjeta:hover { border-color: var(--borde-fuerte); }
+  .vo-tarjeta .hora { color: var(--suave); font-weight: 500; }
+  .vo-tarjeta { align-items: start; align-content: start; }
+  .vo-tarjeta .vo-nombre { display: grid; gap: 2px; font-weight: 400; align-content: start; }
+  @media (max-width: 700px) {
+    .vo-fila { grid-template-columns: 64px minmax(0, 1fr); }
+    .vo-accion { grid-column: 2; align-items: flex-start; }
+    #v-oficina > header.vo-cabeza, .vo-tabs { padding-inline: var(--s4); }
+  }
 
   /* Ficha del agente: completa con panel lateral; reducida (< 900 px de ventana) con chips y menús */
   .oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -386,7 +420,6 @@
   </div>
   <nav class="tarjetas" aria-label="Resumen">
     <button class="tarjeta" id="t-necesitan" type="button" aria-haspopup="dialog"></button>
-    <button class="tarjeta" id="t-hoy" type="button" aria-haspopup="dialog"></button>
     <button class="tarjeta" id="t-parati" type="button" aria-haspopup="dialog"></button>
     <button class="tarjeta" id="t-corte" type="button" aria-haspopup="dialog"></button>
     <button class="tarjeta" id="t-pendientes" type="button" aria-haspopup="dialog"></button>
@@ -429,42 +462,38 @@
   </div>
 </dialog>
 
+<!-- Tu día: una pestaña a la vez (Agenda, Pendientes, Para ti, Memoria). Cada tarjeta y objeto de la escena abre la suya. -->
 <dialog class="ventana" id="v-oficina" aria-labelledby="vo-titulo">
-  <header><div class="titulos"><h2 id="vo-titulo">Tu oficina</h2><div class="fila" id="vo-sub"></div></div>
+  <header class="vo-cabeza"><h2 id="vo-titulo">Tu día</h2><div class="fila" id="vo-sub"></div>
     <button class="cerrar" type="button" data-cerrar aria-label="Cerrar"></button></header>
-  <div class="cuerpo"><div class="dos-col">
-    <section class="partir" aria-labelledby="vo-agenda-t" id="vo-agenda">
-      <h3 id="vo-agenda-t" style="margin:0">Hoy</h3>
-      <ul class="hoy" id="vo-hoy"></ul>
-      <h3 class="ancho" style="margin:var(--s2) 0 0">Próximos días</h3>
-      <div class="dias ancho" id="vo-dias"></div>
-      <div class="ancho" id="vo-despues"></div>
-    </section>
-    <div class="contexto lateral" id="vo-lateral">
-      <section class="bloque" aria-labelledby="vo-memoria-t" id="vo-memoria">
-        <h4 id="vo-memoria-t">Memoria</h4>
-        <div id="vo-mem"><p class="vacio">Cargando…</p></div>
-      </section>
-      <section class="bloque" aria-labelledby="vo-pendientes-t" id="vo-pendientes">
-        <h4 id="vo-pendientes-t">Pendientes</h4>
-        <div id="vo-pend-lista"></div>
-        <form class="fila" id="vo-pend-form" style="margin-top:8px">
-          <label class="meta" for="vo-pend-texto" hidden>Nuevo pendiente</label>
-          <input id="vo-pend-texto" maxlength="500" placeholder="Anota algo pendiente…" style="flex:1;min-width:0">
-          <button class="boton-chico" type="submit">Agregar</button>
-        </form>
-      </section>
-      <section class="bloque" aria-labelledby="vo-parati-t" id="vo-parati">
-        <div class="fila"><h4 id="vo-parati-t" style="margin-right:auto">Para ti</h4>
-          <label class="meta"><input type="checkbox" id="vo-todos"> Todos los comentarios</label></div>
-        <div id="vo-comentarios"></div>
-      </section>
-      <section class="bloque" aria-labelledby="vo-noche-t" id="vo-noche">
+  <nav class="vo-tabs" role="tablist" aria-label="Secciones" id="vo-tabs"></nav>
+  <div class="cuerpo">
+    <section role="tabpanel" aria-label="Agenda" id="vo-agenda">
+      <h3 style="margin-top:0">Hoy</h3>
+      <ul id="vo-hoy"></ul>
+      <div class="fila vo-dias-fila"><h3 style="margin:0">Próximos días</h3><div class="fila" role="tablist" aria-label="Día" id="vo-dias-tabs"></div></div>
+      <div id="vo-dias"></div>
+      <section class="bloque" aria-labelledby="vo-noche-t" id="vo-noche" style="margin-top:var(--s5)">
         <h4 id="vo-noche-t">Turno nocturno</h4>
         <div id="vo-noche-texto"><p class="vacio">Cargando…</p></div>
       </section>
-    </div>
-  </div></div>
+    </section>
+    <section role="tabpanel" aria-label="Pendientes" id="vo-pendientes" hidden>
+      <div id="vo-pend-lista"></div>
+      <form class="fila" id="vo-pend-form" style="margin-top:8px">
+        <label class="meta" for="vo-pend-texto" hidden>Nuevo pendiente</label>
+        <input id="vo-pend-texto" maxlength="500" placeholder="Anota algo pendiente…" style="flex:1;min-width:0">
+        <button class="boton-chico" type="submit">Agregar</button>
+      </form>
+    </section>
+    <section role="tabpanel" aria-label="Para ti" id="vo-parati" hidden>
+      <div class="fila" style="justify-content:flex-end"><label class="meta"><input type="checkbox" id="vo-todos"> Todos los comentarios</label></div>
+      <div id="vo-comentarios"></div>
+    </section>
+    <section role="tabpanel" aria-label="Memoria" id="vo-memoria" hidden>
+      <div id="vo-mem"><p class="vacio">Cargando…</p></div>
+    </section>
+  </div>
 </dialog>
 
 <dialog class="ventana" id="v-necesitan" aria-labelledby="vn-titulo">
@@ -1125,7 +1154,7 @@ for (const v of [vAgente, vOficina, vNecesitan, vNueva, vEntrar]) {
   v.querySelector('[data-cerrar]').addEventListener('click', () => v.close());
   v.addEventListener('click', (ev) => { if (ev.target === v) v.close(); }); // clic en el fondo cierra
 }
-vAgente.addEventListener('close', () => { abierta = null; asignando = false; confirmandoCierre = false; });
+vAgente.addEventListener('close', () => { guardarBorrador(); abierta = null; asignando = false; confirmandoCierre = false; });
 
 // ── Selector de tareas: busca por nombre o ID, agrupa por cuándo vence y muestra lo que importa para elegir ──
 const GRUPOS = ['Vencidas', 'Hoy', 'Mañana', 'Esta semana', 'Después', 'Sin fecha'];
@@ -1200,11 +1229,27 @@ async function cargarConversacion(id) {
   conversacion = nueva;
   renderAgente();
 }
+// Borrador por sesión: al salir del chat (cerrar la ficha o abrir otra) se guardan el texto y las imágenes, y vuelven al
+// regresar. El texto también queda en el navegador (sobrevive a recargar); las imágenes, mientras no recargues.
+const borradores = new Map(); // sesión → { texto, adjuntos }
+const claveBorrador = (sid) => `ov-borrador-${sid}`;
+function guardarBorrador() {
+  if (!abierta) return;
+  const texto = document.getElementById('va-texto').value;
+  if (texto.trim() || adjuntos.length) borradores.set(abierta, { texto, adjuntos }); else borradores.delete(abierta);
+  try { texto.trim() ? localStorage.setItem(claveBorrador(abierta), texto) : localStorage.removeItem(claveBorrador(abierta)); } catch {}
+  adjuntos = []; // sus URLs siguen vivas dentro del borrador
+}
 function abrirAgente(id, { escribir = false } = {}) {
+  if (vAgente.open && abierta !== id) guardarBorrador();
   abierta = id;
   conversacion = []; conversacionTs = 0; asignando = false; confirmandoCierre = false;
-  document.getElementById('va-texto').value = '';
-  quitarAdjuntos();
+  const borrador = borradores.get(id);
+  let texto = borrador?.texto;
+  if (texto == null) { try { texto = localStorage.getItem(claveBorrador(id)) ?? ''; } catch { texto = ''; } }
+  document.getElementById('va-texto').value = texto;
+  adjuntos = borrador?.adjuntos ?? [];
+  pintarAdjuntos();
   document.getElementById('va-estado').textContent = '';
   document.getElementById('va-conversacion').replaceChildren(el('p', { class: 'vacio' }, 'Cargando…'));
   renderAgente();
@@ -1725,6 +1770,8 @@ document.getElementById('va-form').addEventListener('submit', async (ev) => {
     await post(`/api/sesiones/${encodeURIComponent(abierta)}/mensaje`, { texto, imagenes });
     caja.value = '';
     quitarAdjuntos();
+    borradores.delete(abierta);
+    try { localStorage.removeItem(claveBorrador(abierta)); } catch {}
     estado.textContent = datos?.sesiones.find((x) => x.id === abierta)?.tmux ? 'Escrito en su terminal, como si lo teclearas tú.' : 'Voy en camino; tarda unos segundos.';
   } catch (err) {
     // Que no pase desapercibido: queda en la conversación, en rojo, con el motivo. Tu texto sigue en la caja.
@@ -1737,16 +1784,14 @@ document.getElementById('va-texto').addEventListener('keydown', (ev) => {
   if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) document.getElementById('va-form').requestSubmit();
 });
 
-// ── Tu oficina: veredicto, agenda por día, para ti y turno nocturno ──
+// ── Tu día: pestañas Agenda, Pendientes, Para ti y Memoria; cada tarjeta y objeto de la escena abre la suya ──
 let noche = null;
-const agendaAbierta = new Set(); // tareas desplegadas: sobreviven a las actualizaciones en vivo
-// Sin sección, la oficina completa («Tú · entrar»); con sección, solo esa (las tarjetas, la bandeja y el calendario).
-const SECCIONES_OFICINA = { 'vo-agenda': 'Tu agenda', 'vo-parati': 'Para ti', 'vo-pendientes': 'Pendientes', 'vo-memoria': 'Memoria' };
-async function abrirOficina(seccion) {
-  vOficina.classList.toggle('solo', !!seccion);
-  document.getElementById('vo-titulo').textContent = SECCIONES_OFICINA[seccion] ?? 'Tu oficina';
-  for (const id of ['vo-agenda', 'vo-memoria', 'vo-pendientes', 'vo-parati', 'vo-noche']) document.getElementById(id).hidden = !!seccion && id !== seccion;
-  document.getElementById('vo-lateral').hidden = !!seccion && seccion === 'vo-agenda';
+const PESTANAS_OFICINA = [['vo-agenda', 'Agenda'], ['vo-pendientes', 'Pendientes'], ['vo-parati', 'Para ti'], ['vo-memoria', 'Memoria']];
+let pestanaOficina = 'vo-agenda';
+let diaElegido = null; // inicio del día elegido en «Próximos días» (o 'sin-fecha')
+const diasCompletos = new Set(); // días con «Ver N más» abierto
+async function abrirOficina(seccion = 'vo-agenda') {
+  pestanaOficina = seccion;
   renderOficina();
   if (!vOficina.open) vOficina.showModal();
   vOficina.querySelector('.cuerpo').scrollTop = 0;
@@ -1758,7 +1803,7 @@ function veredicto(d) {
   const vencidas = d.tareas.filter((t) => t.due_ts != null && t.due_ts < ahora).sort((a, b) => a.due_ts - b.due_ts);
   const hoy = d.tareas.filter((t) => t.due_ts != null && t.due_ts >= ahora && t.due_ts < finHoy).sort((a, b) => a.due_ts - b.due_ts);
   if (vencidas.length) return { texto: `${vencidas.length} vencida${vencidas.length > 1 ? 's' : ''}`, color: 'rojo', vencidas, hoy };
-  if (hoy.length) return { texto: `${hoy.length} vence${hoy.length > 1 ? 'n' : ''} hoy, la primera a las ${horaDe(hoy[0].due_ts)}`, color: 'naranja', vencidas, hoy };
+  if (hoy.length) return { texto: `${hoy.length} vence${hoy.length > 1 ? 'n' : ''} hoy · la primera a las ${horaDe(hoy[0].due_ts)}`, color: 'naranja', vencidas, hoy };
   return { texto: 'Al día: nada vence hoy', color: 'verde', vencidas, hoy };
 }
 function proximoCorte(ahora = new Date()) {
@@ -1771,20 +1816,29 @@ function proximoCorte(ahora = new Date()) {
   }
   return null;
 }
-function filaTarea(t, d, { conHora = true } = {}) {
+// «F1-COM-07 · C3.5 · Entregas parciales…» → código «F1-COM-07 · C3.5» y nombre «Entregas parciales…».
+function partesTarea(nombre) {
+  const partes = String(nombre ?? '').split(' · ');
+  let n = 0;
+  while (n < partes.length - 1 && partes[n].length <= 16 && /^[\p{L}\d.\-]+( [\p{L}\d.\-]+)?$/u.test(partes[n])) n++;
+  return { codigo: partes.slice(0, n).join(' · '), titulo: partes.slice(n).join(' · ') };
+}
+const nombreTarea = (t) => { const { codigo, titulo } = partesTarea(t.nombre); return [codigo && el('span', { class: 'codigo' }, codigo), el('span', {}, titulo)]; };
+function filaHoy(t, d, ahora) {
   const ses = d.sesiones.filter((s) => s.tarea_id === t.id && ROL[s.estado]);
   const nCom = d.comentarios.filter((c) => c.tarea_id === t.id && !c.es_mio && c.para_mi && !c.respondido && !c.visto_local).length;
-  return [
-    el('a', { href: t.url, target: '_blank', rel: 'noopener', style: 'font-weight:600' }, t.nombre),
-    el('div', { class: 'fila meta' }, chip(t.estado ?? '—'), t.prioridad && chip(...PRIORIDAD[t.prioridad] ?? [t.prioridad]),
-      conHora && t.due_ts && el('span', {}, fecha(t.due_ts)),
-      ses.map((s) => el('button', { class: 'enlace', type: 'button', style: 'gap:4px', onclick: () => { vOficina.close(); abrirAgente(s.id); } },
-        icono('robot'), esperaProcesos(s, d) ? 'esperando proceso' : ESTADOS[s.estado]?.[0])),
-      nCom > 0 && chip(`${nCom} para ti`, 'naranja'),
-      !ses.length && el('button', { class: 'boton-chico', type: 'button', onclick: () => { vOficina.close(); abrirNueva({ tareaId: t.id }); } }, 'Empezar sesión')),
-    t.horario && el('div', { class: 'ficha-tarea' }, el('b', {}, 'Horario: '), t.horario),
-    t.choque && el('div', { class: 'ficha-tarea' }, el('b', {}, 'Choque: '), t.choque),
-  ];
+  return el('li', { class: 'vo-fila' },
+    el('span', { class: `hora ${t.due_ts < ahora ? 'vencida' : ''}` }, t.due_ts < ahora ? 'Vencida' : horaDe(t.due_ts)),
+    el('div', { class: 'vo-tarea' },
+      el('a', { href: t.url, target: '_blank', rel: 'noopener', class: 'vo-nombre' }, nombreTarea(t)),
+      el('div', { class: 'fila' }, el('span', { class: 'chip azul-suave' }, t.estado ?? '—'), t.prioridad && chip(...PRIORIDAD[t.prioridad] ?? [t.prioridad]),
+        t.due_ts < ahora && el('span', { class: 'meta' }, fecha(t.due_ts)), nCom > 0 && chip(`${nCom} para ti`, 'naranja')),
+      t.horario && el('div', { class: 'ficha-tarea' }, el('b', {}, 'Horario: '), t.horario),
+      t.choque && el('div', { class: 'ficha-tarea' }, el('b', {}, 'Choque: '), t.choque)),
+    el('div', { class: 'vo-accion' }, ses.length
+      ? ses.map((s) => el('button', { type: 'button', class: `vo-agente ${ESTADOS[s.estado]?.[1] ?? ''}`, onclick: () => { vOficina.close(); abrirAgente(s.id); } },
+        el('span', { class: 'punto' }), esperaProcesos(s, d) ? 'Agente esperando proceso' : `Agente ${ESTADOS[s.estado]?.[0].toLowerCase() ?? ''}`))
+      : el('button', { type: 'button', class: 'primario', onclick: () => { vOficina.close(); abrirNueva({ tareaId: t.id }); } }, el('span', { 'aria-hidden': 'true' }, '▶'), 'Empezar sesión')));
 }
 function renderOficina() {
   const d = datos;
@@ -1795,32 +1849,35 @@ function renderOficina() {
     corte && el('span', { class: 'meta fila', style: 'gap:4px' }, icono('hora'), `${corte.nombre} a las ${corte.hora}`));
   const ahora = Date.now();
   const hoy = [...v.vencidas, ...v.hoy];
-  reemplazar(document.getElementById('vo-hoy'), hoy.length ? hoy.map((t) => el('li', {},
-    el('span', { class: `hora ${t.due_ts < ahora ? 'vencida' : ''}` }, t.due_ts < ahora ? 'Vencida' : horaDe(t.due_ts)),
-    el('div', { style: 'display:grid;gap:4px;min-width:0' }, filaTarea(t, d, { conHora: t.due_ts < ahora }))))
-    : el('li', { class: 'vacio', style: 'display:block' }, 'Nada vence hoy.'));
-  // Próximos 6 días, uno por columna; cada tarea se despliega con su detalle.
+  const p = d.pendientes;
+  const cuentas = { 'vo-agenda': [hoy.length, v.vencidas.length ? 'rojo' : hoy.length ? 'aviso' : ''], 'vo-pendientes': [p.sesiones.length + p.notas.length + p.solicitudes.length, p.solicitudes.length || p.sesiones.length ? 'aviso' : ''],
+    'vo-parati': [pendientesParaMi(d).length, ''], 'vo-memoria': [null, mem?.nivel === 'critico' ? 'rojo' : mem?.nivel === 'alto' ? 'aviso' : ''] };
+  reemplazar(document.getElementById('vo-tabs'), PESTANAS_OFICINA.map(([id, texto]) => el('button', { type: 'button', role: 'tab', 'aria-selected': String(pestanaOficina === id), 'aria-controls': id,
+    onclick: () => { pestanaOficina = id; renderOficina(); vOficina.querySelector('.cuerpo').scrollTop = 0; } },
+    texto, cuentas[id][0] != null ? el('span', { class: `cuenta ${cuentas[id][1]}` }, String(cuentas[id][0])) : cuentas[id][1] && el('span', { class: 'punto naranja' }))));
+  for (const [id] of PESTANAS_OFICINA) document.getElementById(id).hidden = id !== pestanaOficina;
+
+  reemplazar(document.getElementById('vo-hoy'), hoy.length ? hoy.map((t) => filaHoy(t, d, ahora)) : el('li', { class: 'vacio' }, 'Nada vence hoy.'));
+  // Próximos días: un botón por día con tareas (y «Sin fecha»); el elegido se muestra en tarjetas de dos columnas.
   const desde = inicioDia(ahora) + DIA;
-  const dias = [];
-  for (let k = 0; k < 6; k++) {
-    const ini = desde + k * DIA;
-    const ts = d.tareas.filter((t) => t.due_ts >= ini && t.due_ts < ini + DIA).sort((a, b) => a.due_ts - b.due_ts);
-    if (!ts.length) continue;
-    dias.push(el('section', { class: 'dia' }, el('h4', {}, el('span', {}, k === 0 ? 'Mañana' : diaLargo(ini)), el('span', { class: 'meta' }, String(ts.length))),
-      ts.map((t) => {
-        const det = el('details', { open: agendaAbierta.has(t.id) }, el('summary', {}, el('span', { class: 'hora' }, horaDe(t.due_ts)), el('span', { class: 'corto' }, t.nombre)),
-          el('div', { style: 'display:grid;gap:4px;margin-top:6px' }, filaTarea(t, d, { conHora: false })));
-        det.addEventListener('toggle', () => (det.open ? agendaAbierta.add(t.id) : agendaAbierta.delete(t.id)));
-        return det;
-      })));
-  }
-  reemplazar(document.getElementById('vo-dias'), dias.length ? dias : el('p', { class: 'vacio' }, 'Nada vence en los próximos días.'));
-  const despues = d.tareas.filter((t) => t.due_ts == null || t.due_ts >= desde + 6 * DIA);
-  const plegado = document.querySelector('#vo-despues details')?.open ?? false;
-  reemplazar(document.getElementById('vo-despues'), despues.length > 0 && el('details', { style: 'margin-top:12px', open: plegado },
-    el('summary', {}, `Más adelante · ${despues.length} tareas`),
-    el('ul', { class: 'lista-simple', style: 'margin-top:8px' }, despues.map((t) => el('li', { class: 'fila' },
-      el('span', { class: 'meta' }, t.due_ts ? fecha(t.due_ts) : 'sin fecha'), el('a', { href: t.url, target: '_blank', rel: 'noopener' }, t.nombre))))));
+  const porDia = Map.groupBy(d.tareas.filter((t) => t.due_ts == null || t.due_ts >= desde).sort((a, b) => (a.due_ts ?? Infinity) - (b.due_ts ?? Infinity)),
+    (t) => (t.due_ts == null ? 'sin-fecha' : inicioDia(t.due_ts)));
+  const claves = [...porDia.keys()];
+  if (!porDia.has(diaElegido)) diaElegido = claves[0] ?? null;
+  const etiquetaDia = (k) => (k === 'sin-fecha' ? 'Sin fecha' : k === desde ? 'Mañana'
+    : new Date(k).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\.|,/g, '').replace(' de ', ' ').replace(/^./, (c) => c.toUpperCase()));
+  reemplazar(document.getElementById('vo-dias-tabs'), claves.slice(0, 8).map((k) => el('button', { type: 'button', role: 'tab', class: 'vo-dia', 'aria-selected': String(k === diaElegido),
+    onclick: () => { diaElegido = k; renderOficina(); } }, etiquetaDia(k), el('span', { class: 'cuenta' }, String(porDia.get(k).length)))));
+  const delDia = porDia.get(diaElegido) ?? [];
+  const MAX = 8;
+  const visibles = diasCompletos.has(diaElegido) ? delDia : delDia.slice(0, MAX);
+  reemplazar(document.getElementById('vo-dias'), delDia.length ? [
+    el('div', { class: 'vo-grid' }, visibles.map((t) => el('a', { class: 'vo-tarjeta', href: t.url, target: '_blank', rel: 'noopener' },
+      el('span', { class: 'hora' }, t.due_ts ? horaDe(t.due_ts) : '—'), el('span', { class: 'vo-nombre' }, nombreTarea(t))))),
+    delDia.length > MAX && el('button', { type: 'button', class: 'boton-chico', style: 'margin-top:8px', onclick: () => {
+      diasCompletos.has(diaElegido) ? diasCompletos.delete(diaElegido) : diasCompletos.add(diaElegido); renderOficina();
+    } }, diasCompletos.has(diaElegido) ? 'Ver menos' : `Ver ${delDia.length - MAX} más de este día`)]
+    : el('p', { class: 'vacio' }, 'Nada vence en los próximos días.'));
   renderParaTi();
   renderPendientes();
   renderMemoria();
@@ -1974,15 +2031,15 @@ function renderTarjetas(d) {
     accion: () => { renderNecesitan(); vNecesitan.showModal(); },
   });
   const v = veredicto(d);
-  tarjeta('t-hoy', { icon: 'calendario', tono: { rojo: 'alerta', naranja: 'aviso', verde: 'bien' }[v.color],
-    titulo: v.vencidas.length || v.hoy.length ? `Hoy · ${v.texto}` : 'Al día',
-    detalle: v.vencidas[0]?.nombre ?? v.hoy[0]?.nombre ?? 'Nada vence hoy; abre tu agenda para lo que sigue', accion: () => abrirOficina('vo-agenda') });
   const paraMi = pendientesParaMi(d).sort((a, b) => b.ts - a.ts);
   tarjeta('t-parati', { icon: 'arroba', tono: paraMi.some((c) => c.tipo === 'correccion') ? 'aviso' : '', titulo: paraMi.length ? `Para ti · ${paraMi.length}` : 'Nada para ti',
     detalle: paraMi[0] ? `${paraMi[0].autor.split(' ')[0]}: ${paraMi[0].texto.split('\n')[0]}` : 'Sin comentarios dirigidos a ti', accion: () => abrirOficina('vo-parati') });
   const c = proximoCorte();
-  tarjeta('t-corte', { icon: 'hora', titulo: c ? `${c.nombre} · ${c.hora}` : 'Sin cortes por hoy',
-    detalle: c ? `En ${c.faltan >= 60 ? `${Math.floor(c.faltan / 60)} h ` : ''}${c.faltan % 60} min` : 'La daily es a las 09:00', accion: () => abrirOficina('vo-agenda') });
+  // Una sola tarjeta para «Tu día»: el próximo corte y lo que vence hoy.
+  tarjeta('t-corte', { icon: 'calendario', tono: { rojo: 'alerta', naranja: 'aviso', verde: '' }[v.color],
+    titulo: c ? `${c.nombre} · ${c.hora}` : 'Sin cortes por hoy',
+    detalle: [c && `En ${c.faltan >= 60 ? `${Math.floor(c.faltan / 60)} h ` : ''}${c.faltan % 60} min`, v.vencidas.length || v.hoy.length ? v.texto.split(' · ')[0] : 'Al día'].filter(Boolean).join(' · '),
+    accion: () => abrirOficina('vo-agenda') });
   const pend = d.pendientes.sesiones.length + d.pendientes.notas.length + d.pendientes.solicitudes.length;
   tarjeta('t-pendientes', { icon: 'listo', tono: d.pendientes.sesiones.length || d.pendientes.solicitudes.length ? 'aviso' : '', titulo: pend ? `Pendientes · ${pend}` : 'Sin pendientes',
     detalle: d.pendientes.solicitudes.length ? `${d.pendientes.solicitudes.length} sesiones por aprobar`
