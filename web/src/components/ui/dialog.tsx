@@ -37,7 +37,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-[rgba(10,10,14,.55)] duration-150 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:animate-none",
+        "fixed inset-0 isolate z-50 bg-[rgba(10,10,14,.55)] duration-(--dur-media) ease-(--curva-entrada) data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 data-closed:duration-(--dur-rapida) data-closed:ease-(--curva-salida) motion-reduce:animate-none",
         className
       )}
       {...props}
@@ -59,7 +59,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2 duration-150 outline-none data-open:animate-in data-open:slide-in-from-bottom-2 data-open:zoom-in-[.985] data-closed:animate-out data-closed:fade-out-0 motion-reduce:animate-none",
+          "fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2 duration-(--dur-media) ease-(--curva-entrada) outline-none data-open:animate-in data-open:fade-in-0 data-open:slide-in-from-bottom-2 data-open:zoom-in-[.985] data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-[.985] data-closed:duration-(--dur-rapida) data-closed:ease-(--curva-salida) motion-reduce:animate-none",
           className
         )}
         {...props}

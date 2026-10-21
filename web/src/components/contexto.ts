@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react'
 import type { Datos, Memoria, Tarea, Yo } from '@/lib/tipos'
 
-export type Seccion = 'agenda' | 'pendientes' | 'parati' | 'memoria'
+export type Seccion = 'agenda' | 'pendientes' | 'parati' | 'memoria' | 'roles'
 export interface OpcionesNueva {
   tareaId?: string | null
   cwd?: string | null

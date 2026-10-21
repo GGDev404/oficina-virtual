@@ -112,14 +112,16 @@ export function carpetaAparte(nombre, { raiz = APARTE, hoy = new Date() } = {}) 
 }
 
 // `reanudar`: id de una sesión que murió; la retoma con toda su conversación (Claude Code le da un id nuevo).
-export async function nuevaSesion({ cwd, prompt, nombre, permiso, tarea, modelo, reanudar }, { claude = 'claude', ejecutar = enScope(correr) } = {}) {
+export async function nuevaSesion({ cwd, prompt, nombre, permiso, tarea, modelo, reanudar, sistema, rol }, { claude = 'claude', ejecutar = enScope(correr) } = {}) {
   const args = ['--bg', '--permission-mode', permiso];
   if (reanudar) args.push('--resume', reanudar);
   if (modelo) args.push('--model', modelo);
   if (nombre) args.push('--name', nombre);
+  if (sistema) args.push('--append-system-prompt', sistema);
   args.push(prompt);
   const env = { ...process.env };
   if (tarea) env.CLICKUP_TASK = tarea;
+  if (rol) env.OFICINA_ROL = rol;
   const { e, texto } = await ejecutar(claude, args, { cwd, env });
   const id = texto.match(/backgrounded\s*·\s*([0-9a-f]{6,})/)?.[1];
   if (id) return { ok: true, id };
@@ -132,15 +134,16 @@ export async function nuevaSesion({ cwd, prompt, nombre, permiso, tarea, modelo,
 // Sesión interactiva dentro de su propio tmux (sin ventana): la ves en la oficina, le escribes como si tecleras en su
 // terminal y la abres con «Abrir en terminal». Si la carpeta no es de confianza, el aviso sale en el panel: se abre
 // una terminal adjunta para que lo aceptes.
-export async function nuevaEnTmux({ cwd, prompt, nombre, permiso, tarea, modelo, reanudar },
+export async function nuevaEnTmux({ cwd, prompt, nombre, permiso, tarea, modelo, reanudar, sistema, rol },
   { ejecutar = enScope(correr), socket = socketDe(nombre), pantalla = capturar, esperar = 2500, adjuntar = abrirTmux } = {}) {
   const claudeArgs = ['--permission-mode', permiso];
   if (modelo) claudeArgs.push('--model', modelo);
   if (nombre) claudeArgs.push('--name', nombre);
   if (reanudar) claudeArgs.push('--resume', reanudar);
+  if (sistema) claudeArgs.push('--append-system-prompt', sistema);
   claudeArgs.push(prompt);
-  const env = { ...process.env, ...(tarea ? { CLICKUP_TASK: tarea } : {}) };
-  const { e, texto } = await ejecutar('tmux', argsNueva({ socket, cwd, env: { CLICKUP_TASK: tarea }, claudeArgs }), { cwd, env });
+  const env = { ...process.env, ...(tarea ? { CLICKUP_TASK: tarea } : {}), ...(rol ? { OFICINA_ROL: rol } : {}) };
+  const { e, texto } = await ejecutar('tmux', argsNueva({ socket, cwd, env: { CLICKUP_TASK: tarea, OFICINA_ROL: rol }, claudeArgs }), { cwd, env });
   if (e) return { ok: false, motivo: (texto.split('\n').find(Boolean) ?? e.message).slice(0, 300) };
   await new Promise((listo) => setTimeout(listo, esperar));
   const vista = await pantalla(socket).catch(() => '');

@@ -14,6 +14,8 @@ import { crearNotificador, ESTADOS_AVISO } from './notificar.js';
 import { siguiente } from './siguiente.js';
 import { leerVivas, aplicarVivas } from './vivas.js';
 import { leerConversacion, leerContexto, rutaValida } from './conversacion.js';
+import { crearDifusor } from './difusion.js';
+import { ROLES, esRol, listaRoles, crearEncargos, ErrorEncargo } from './encargos.js';
 import { crearMensajero, guardarImagenes, conImagenes, MAX_TEXTO } from './mensajero.js';
 import { PERMISOS, MODELOS, carpetaValida, carpetasConocidas, nuevaSesion, nuevaEnTmux, nuevaEnTerminal, cerrarSesion, abrirTerminal,
   abrirTmux, worktreeDeTarea, carpetaAparte, esClaude } from './control.js';
@@ -143,12 +145,12 @@ function vigilarTranscripts() {
 }
 function transcriptCambio(sid, ruta) {
   const aviso = `event: conversacion\ndata: ${JSON.stringify({ sid })}\n\n`;
-  for (const res of clientes) res.write(aviso);
+  for (const res of difusor.clientes) res.write(aviso);
   const c = leerContexto(ruta);
   if (c && JSON.stringify(c) !== JSON.stringify(contextos[sid])) { contextos = { ...contextos, [sid]: c }; avisar(); }
 }
 
-const estadoCompleto = () => ({ ...estado(db), sync, vivas: Object.fromEntries(vivas), mensajes: mensajero.mensajes(), contexto: contextos, permisos: permisos.lista(), preguntas: preguntas.lista() });
+const estadoCompleto = () => ({ ...estado(db), sync, vivas: Object.fromEntries(vivas), mensajes: mensajero.mensajes(), contexto: contextos, permisos: permisos.lista(), preguntas: preguntas.lista(), roles: listaRoles() });
 
 // Notificación de escritorio cuando una sesión pasa a pedirte algo o llega una corrección de ficha.
 const notificar = crearNotificador();
@@ -199,24 +201,57 @@ function procesarPendientes() {
   if (n) { console.log(`procesados ${n} eventos pendientes`); avisar(); }
 }
 
+// Cada evento avisa a la página al momento (avisar junta ráfagas), sin esperar al ciclo de 5 s.
 function recibir(ev) {
-  avisarCambios(aplicar(db, ev, { rama }));
-  ligar(db, ev.payload?.session_id, ev.tarea_env);
-  if (socketValido(ev.tmux_env) && ev.payload?.session_id) db.prepare('UPDATE sesiones SET tmux = ? WHERE id = ?').run(ev.tmux_env, ev.payload.session_id);
+  const sid = ev.payload?.session_id;
+  avisarCambios(aplicar(db, ev, { rama, porPid: (pid) => [...vivas].find(([, v]) => v.pid === pid)?.[0] }));
+  ligar(db, sid, ev.tarea_env);
+  if (socketValido(ev.tmux_env) && sid) db.prepare('UPDATE sesiones SET tmux = ? WHERE id = ?').run(ev.tmux_env, sid);
+  if (sid && esRol(ev.rol_env)) encargos.alRegistrarRol(sid, ev.rol_env);
+  if (ev.evento === 'Stop' && sid) encargos.alTerminarTurno(sid, ev.payload.last_assistant_message).catch((e) => console.error('encargo:', e.message));
   if (ev.evento === 'SessionStart' || ev.evento === 'UserPromptSubmit' || ev.evento === 'SessionEnd') vigilarTranscripts();
+  avisar();
 }
 
-// SSE: manda el estado completo; los cambios seguidos se juntan en uno cada 200 ms.
-const clientes = new Set();
-let programado = null;
-function avisar() {
-  if (programado || clientes.size === 0) return;
-  programado = setTimeout(() => {
-    programado = null;
-    const datos = `event: estado\ndata: ${JSON.stringify(estadoCompleto())}\n\n`;
-    for (const res of clientes) res.write(datos);
-  }, 200);
+// SSE (ver difusion.js): ráfagas juntas, sin repetir estado idéntico, con keepalive.
+const difusor = crearDifusor({ estado: estadoCompleto });
+const avisar = () => difusor.avisar();
+
+// Quién tiene la terminal libre y cómo llegarle: tmux tecleado si está libre, si no el mensajero (bandeja de Claude Code).
+// Teclear encima de un diálogo lo contestaría por accidente: los diálogos van por sus botones.
+// («duda» por la marca DUDA: es texto y se contesta escribiendo; una pregunta con opciones sí es diálogo.)
+const dialogoAbierto = (sid, s, viva) => s.estado === 'necesita_permiso' ? 'pide un permiso' : viva?.esperando ? 'su terminal muestra un diálogo'
+  : preguntas.lista().some((p) => p.sid === sid) ? 'te hizo una pregunta con opciones' : null;
+const sesionViva = async (sid) => {
+  const s = db.prepare('SELECT tmux FROM sesiones WHERE id = ?').get(sid);
+  return vivas.has(sid) || (!!s?.tmux && await vive(s.tmux));
+};
+
+// Entrega de una sesión a otra (encargos y sus entregas). Segunda y última entrada al teclado, además de /mensaje:
+// el texto lleva siempre su cabecera «Encargo de …» / «Entrega de …», y la audita en `eventos`.
+async function entregar(sid, texto, { de = null, alFallar = () => {} } = {}) {
+  const s = db.prepare('SELECT cwd, estado, tmux FROM sesiones WHERE id = ?').get(sid);
+  const viva = vivas.get(sid);
+  const enTmux = !!s?.tmux && await vive(s.tmux);
+  if (!s || (!viva && !enTmux)) return { ok: false, detalle: 'la sesión no está abierta' };
+  const dialogo = enTmux ? dialogoAbierto(sid, s, viva) : null;
+  const bandeja = !!viva?.bandeja && !!viva.nombre;
+  const via = enTmux && !dialogo && (s.estado !== 'trabajando' || !bandeja) ? 'tmux' : bandeja ? 'mensajero' : null;
+  if (!via) return { ok: false, detalle: dialogo ? `${dialogo}; contéstalo en la oficina y reenvía` : 'sin bandeja de mensajes ni terminal libre' };
+  if (via === 'tmux') {
+    try { await enviarTexto(s.tmux, texto); } catch (e) { return { ok: false, detalle: `no pude teclear en su terminal: ${e.message}` }; }
+    mensajero.anotar(sid, texto);
+  } else {
+    mensajero.enviar(sid, { nombre: viva.nombre, cwd: s.cwd }, texto, (m) => { if (m.estado === 'error') alFallar(m.detalle ?? 'el mensajero falló'); });
+  }
+  db.prepare('INSERT INTO eventos (sesion_id, tipo, ts, payload_json) VALUES (?, ?, ?, ?)')
+    .run(sid, via === 'tmux' ? 'teclado' : 'mensaje_oficina', Date.now(), JSON.stringify({ via, de, texto: texto.slice(0, MAX_TEXTO) }));
+  return { ok: true, via };
 }
+const encargos = crearEncargos({ db, entregar, vivo: sesionViva, etiqueta: etiquetaSesion, alCambiar: () => avisar(),
+  lanzar: async (datos) => nivelMemoria(leerMeminfo()) === 'critico'
+    ? { ok: false, motivo: 'Memoria casi agotada: no abro otra sesión.' }
+    : lanzarSesion({ ...datos, nombre: `rol-${datos.rol}`, tarea: null, modelo: '' }).then((r) => { if (r.ok) actualizarVivas(); return r; }) });
 
 function json(res, codigo, cuerpo) {
   res.writeHead(codigo, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -357,6 +392,29 @@ const servidor = http.createServer(async (req, res) => {
       res.on('close', () => preguntas.abandonar(id));
       return;
     }
+    // Encargos por rol: la sesión fija del rol (o una nueva) lo hace y su ENTREGA: vuelve a la sesión de origen.
+    if (req.method === 'POST' && (m = url.pathname.match(/^\/api\/roles\/([^/]+)\/(encargo|sesion)$/))) {
+      if (!esRol(m[1])) return json(res, 404, { error: `rol desconocido; roles: ${Object.keys(ROLES).join(', ')}` });
+      const { texto, de_sesion = null, cwd = null } = await leerJson(req);
+      if (cwd !== null && !carpetaValida(cwd)) return json(res, 400, { error: 'la carpeta no existe o está fuera de tu home' });
+      if (de_sesion !== null && !(typeof de_sesion === 'string' && /^[0-9a-f-]{36}$/.test(de_sesion))) return json(res, 400, { error: 'de_sesion no válida' });
+      const carpeta = cwd === null ? null : path.resolve(cwd);
+      try {
+        if (m[2] === 'sesion') {
+          if (!carpeta) return json(res, 400, { error: 'falta cwd' });
+          await encargos.abrir({ rol: m[1], cwd: carpeta });
+          return json(res, 201, { rol: m[1] });
+        }
+        const limpio = typeof texto === 'string' ? texto.trim() : '';
+        if (!limpio || limpio.length > MAX_TEXTO) return json(res, 400, { error: `el encargo debe tener entre 1 y ${MAX_TEXTO} caracteres` });
+        const r = await encargos.encargar({ rol: m[1], texto: limpio, de_sesion, cwd: carpeta });
+        avisar();
+        return r.estado === 'error' ? json(res, 502, { error: r.detalle, ...r }) : json(res, 202, r);
+      } catch (e) {
+        if (e instanceof ErrorEncargo) return json(res, e.status, { error: e.message });
+        throw e;
+      }
+    }
     if (req.method === 'GET' && url.pathname === '/api/siguiente') {
       const n = Math.min(Math.max(Number.parseInt(url.searchParams.get('n') ?? '15', 10) || 15, 1), 50);
       res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -367,10 +425,8 @@ const servidor = http.createServer(async (req, res) => {
       return json(res, 202, { corriendo: true });
     }
     if (req.method === 'GET' && url.pathname === '/api/stream') {
-      res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-      res.write(`event: estado\ndata: ${JSON.stringify(estadoCompleto())}\n\n`);
-      clientes.add(res);
-      req.on('close', () => clientes.delete(res));
+      res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
+      difusor.alta(res);
       return;
     }
     if (req.method === 'POST' && (m = url.pathname.match(/^\/api\/comentarios\/([^/]+)\/visto$/))) {
@@ -437,11 +493,8 @@ const servidor = http.createServer(async (req, res) => {
       const enTmux = !!s?.tmux && await vive(s.tmux);
       if (!s || (!viva && !enTmux)) return rechazar(409, 'la sesión no está abierta');
       if (!enTmux && (!viva.bandeja || !viva.nombre)) return rechazar(409, 'esta sesión no tiene bandeja de mensajes; ábrela de nuevo para activarla');
-      // Teclear encima de un diálogo lo contestaría por accidente: los diálogos van por sus botones.
-      // («duda» por la marca DUDA: es texto y se contesta escribiendo; una pregunta con opciones sí es diálogo.)
       if (enTmux) {
-        const dialogo = s.estado === 'necesita_permiso' ? 'pide un permiso' : viva?.esperando ? 'su terminal muestra un diálogo'
-          : preguntas.lista().some((p) => p.sid === m[1]) ? 'te hizo una pregunta con opciones' : null;
+        const dialogo = dialogoAbierto(m[1], s, viva);
         if (dialogo) return rechazar(409, `${dialogo}; contéstalo con los botones de arriba y vuelve a enviar`);
       }
       let rutas;

@@ -1,16 +1,17 @@
-// Tu día: pestañas Agenda, Pendientes, Para ti y Memoria; cada tarjeta y objeto de la escena abre la suya.
+// Tu día: pestañas Agenda, Pendientes, Para ti, Memoria y Roles; cada tarjeta y objeto de la escena abre la suya.
 import { useEffect, useRef, useState } from 'react'
 import { Tabs } from 'radix-ui'
 import { BotonAccion, Chip, ChipPrioridad, Enlace, NombreTarea } from '@/components/comunes'
 import { useOficina, type Seccion } from '@/components/contexto'
 import { Icono } from '@/components/icono'
-import { Cerrar, Titulo, Ventana } from '@/components/ventana'
+import { Cerrar, Descripcion, Titulo, Ventana } from '@/components/ventana'
 import { leer, post, postSeguro, rutaSesion } from '@/lib/api'
 import { DIA, ESTADOS, VIVOS, carpeta, esperaProcesos, fecha, gb, hace, horaDe, inicioDia, nombreSesion, pendientesParaMi, plano, proximoCorte, veredicto } from '@/lib/oficina'
 import type { Datos, Tarea } from '@/lib/tipos'
+import { RolesVista } from './encargos'
 import { NIVEL_MEM } from './tarjetas'
 
-const PESTANAS: [Seccion, string][] = [['agenda', 'Agenda'], ['pendientes', 'Pendientes'], ['parati', 'Para ti'], ['memoria', 'Memoria']]
+const PESTANAS: [Seccion, string][] = [['agenda', 'Agenda'], ['pendientes', 'Pendientes'], ['parati', 'Para ti'], ['memoria', 'Memoria'], ['roles', 'Roles']]
 
 export function TuDia({ seccion: inicial }: { seccion: Seccion }) {
   const { datos: d, mem, cerrarVentana } = useOficina()
@@ -26,10 +27,12 @@ export function TuDia({ seccion: inicial }: { seccion: Seccion }) {
     pendientes: [p.sesiones.length + p.notas.length + p.solicitudes.length, p.solicitudes.length || p.sesiones.length ? 'aviso' : ''],
     parati: [pendientesParaMi(d).length, ''],
     memoria: [null, mem?.nivel === 'critico' ? 'rojo' : mem?.nivel === 'alto' ? 'aviso' : ''],
+    roles: [d.encargos?.filter((e) => e.estado === 'arrancando' || e.estado === 'entregando').length || null, ''],
   }
   return (
     <Ventana alCerrar={cerrarVentana} id="v-oficina">
       <header className="vo-cabeza"><Titulo>Tu día</Titulo>
+        <Descripcion oculta>Tu agenda, lo pendiente, los comentarios para ti y la memoria de la computadora.</Descripcion>
         <div className="fila">
           <span className={`chip ${v.color} veredicto`}>{v.texto}</span>
           {corte && <span className="meta fila" style={{ gap: 4 }}><Icono n="hora" />{corte.nombre} a las {corte.hora}</span>}
@@ -48,6 +51,7 @@ export function TuDia({ seccion: inicial }: { seccion: Seccion }) {
           <Tabs.Content value="pendientes"><Pendientes /></Tabs.Content>
           <Tabs.Content value="parati"><ParaTi /></Tabs.Content>
           <Tabs.Content value="memoria"><MemoriaVista /></Tabs.Content>
+          <Tabs.Content value="roles"><RolesVista /></Tabs.Content>
         </div>
       </Tabs.Root>
     </Ventana>

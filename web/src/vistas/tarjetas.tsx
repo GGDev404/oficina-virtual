@@ -9,7 +9,7 @@ function Tarjeta({ icon, tono = '', titulo, detalle, accion }: { icon: NombreIco
   return (
     <button className={`tarjeta ${tono}`} type="button" aria-haspopup="dialog" onClick={accion}>
       <span className="icono-t"><Icono n={icon} /></span>
-      <span style={{ minWidth: 0 }}><b>{titulo}</b><span className="detalle">{detalle}</span></span>
+      <span style={{ minWidth: 0 }}><b>{titulo}</b><span className="detalle" title={detalle}>{detalle}</span></span>
       <Icono n="flecha" />
     </button>
   )

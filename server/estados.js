@@ -4,13 +4,35 @@ import fs from 'node:fs';
 
 const MIN = 60_000;
 const SIN_SENAL_MS = 15 * MIN;
-const MENSAJE_SISTEMA = /^\s*<(task-notification|agent-message)\b/;
+const MENSAJE_SISTEMA = /^\s*(?:[^<\n]*\n)?\s*<(task-notification|agent-message|cross-session-message)\b/;
+const ENTRE_SESIONES = /<(cross-session-message|agent-message)\b([^>]*)>([\s\S]*?)(?:<\/\1>|$)/;
+// Lo que la oficina misma entrega (tu mensaje, encargos, entregas) ya queda registrado por su cuenta.
+const DE_LA_OFICINA = /^\s*(?:Mensaje de .* desde la oficina virtual|Encargo de |Entrega de )/;
 const INTERRUMPIDO = '[Request interrupted by user for tool use]';
 const tieneMarca = (texto, marca) => new RegExp(`^\\s*${marca}:`, 'm').test(texto ?? '');
 
+// Mensaje de otra sesión en un prompt: <cross-session-message from="uds:…/<pid>.sock" from-name="x"> o, de un subagente,
+// <agent-message from="a…">. Devuelve { tipo, de, nombre, texto } o null.
+export function entreSesiones(prompt) {
+  const m = ENTRE_SESIONES.exec(prompt ?? '');
+  if (!m) return null;
+  const attr = (k) => new RegExp(`\\b${k}="([^"]*)"`).exec(m[2])?.[1] ?? null;
+  return { tipo: m[1], de: attr('from'), nombre: attr('from-name'), texto: m[3].trim() };
+}
+
+function registrarEntreSesiones(db, sid, prompt, t, porPid) {
+  const m = entreSesiones(prompt);
+  if (!m || !m.texto || DE_LA_OFICINA.test(m.texto)) return;
+  const pid = /\/(\d+)\.sock$/.exec(m.de ?? '')?.[1];
+  const origen = (pid && porPid(Number(pid))) || db.prepare('SELECT id FROM sesiones WHERE id = ? OR nombre = ?').get(m.de ?? '', m.nombre ?? m.de ?? '')?.id || null;
+  if (m.tipo === 'agent-message' && !origen) return; // sin origen conocido es el aviso de un subagente
+  db.prepare('INSERT INTO entre_sesiones (ts, de, de_sesion, a_sesion, texto) VALUES (?, ?, ?, ?, ?)')
+    .run(t, m.nombre ?? m.de, origen === sid ? null : origen, sid, m.texto.slice(0, 1000));
+}
+
 // Aplica un evento {evento, ts, payload}. Devuelve los cambios de estado de sesión.
 // `rama(cwd)` se inyecta para no llamar a git en las pruebas.
-export function aplicar(db, { evento, ts, payload: p }, { rama = () => null } = {}) {
+export function aplicar(db, { evento, ts, payload: p }, { rama = () => null, porPid = () => null } = {}) {
   const t = typeof ts === 'number' ? ts : Date.parse(ts);
   const sid = p?.session_id;
   if (!sid || Number.isNaN(t)) return [];
@@ -41,7 +63,7 @@ export function aplicar(db, { evento, ts, payload: p }, { rama = () => null } = 
       nuevo = 'trabajando';
       if (p.prompt && !MENSAJE_SISTEMA.test(p.prompt)) {
         db.prepare('UPDATE sesiones SET ultimo_prompt = ? WHERE id = ?').run(p.prompt, sid);
-      }
+      } else if (p.prompt) registrarEntreSesiones(db, sid, p.prompt, t, porPid);
       break;
     case 'PreToolUse':
       nuevo = 'trabajando';
@@ -198,6 +220,8 @@ export function revisar(db, ahora = Date.now(), { mtime = mtimeArchivo, cola = c
     }
   }
   db.prepare('DELETE FROM eventos WHERE ts < ?').run(ahora - 7 * 24 * 60 * MIN);
+  db.prepare('DELETE FROM entre_sesiones WHERE ts < ?').run(ahora - 7 * 24 * 60 * MIN);
+  db.prepare('DELETE FROM encargos WHERE creado_ts < ?').run(ahora - 7 * 24 * 60 * MIN);
   return cambios;
 }
 

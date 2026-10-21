@@ -10,15 +10,20 @@ const usos = (patron) => fs.readdirSync(SERVER).filter((f) => f.endsWith('.js'))
   .flatMap((f) => fs.readFileSync(path.join(SERVER, f), 'utf8').split('\n').map((l, i) => ({ f, i, l })))
   .filter(({ l }) => patron.test(l) && !/^\s*(\/\/|export )/.test(l) && !/^import /.test(l));
 
-test('enviarTexto solo se llama desde la ruta /mensaje de index.js, una vez', () => {
+test('enviarTexto solo se llama desde index.js: la ruta /mensaje y la entrega de encargos', () => {
   const llamadas = usos(/\benviarTexto\(/);
-  assert.equal(llamadas.length, 1, llamadas.map((u) => `${u.f}:${u.i + 1}`).join(', '));
-  assert.equal(llamadas[0].f, 'index.js');
+  assert.equal(llamadas.length, 2, llamadas.map((u) => `${u.f}:${u.i + 1}`).join(', '));
+  assert.ok(llamadas.every((u) => u.f === 'index.js'));
   const index = fs.readFileSync(path.join(SERVER, 'index.js'), 'utf8');
   const ruta = index.indexOf("/mensaje$/");
   const siguiente = index.indexOf("/pantalla$/");
-  const pos = index.indexOf('enviarTexto(s.tmux');
-  assert.ok(ruta > 0 && pos > ruta && pos < siguiente, 'la llamada debe estar dentro del handler de /mensaje');
+  const pos = index.indexOf('enviarTexto(s.tmux', ruta);
+  assert.ok(ruta > 0 && pos > ruta && pos < siguiente, 'una llamada debe estar dentro del handler de /mensaje');
+  // La otra, en entregar(): solo la usan encargos.js (por inyección) y su texto siempre lleva cabecera.
+  const entregar = index.indexOf('async function entregar(');
+  assert.ok(entregar > 0 && index.indexOf('enviarTexto(s.tmux', entregar) < index.indexOf('const encargos = crearEncargos'));
+  assert.equal(usos(/\bentregar\(/).filter((u) => u.f !== 'index.js' && u.f !== 'encargos.js').length, 0);
+  assert.match(fs.readFileSync(path.join(SERVER, 'encargos.js'), 'utf8'), /textoEncargo\(de, texto\)/);
 });
 
 test('enviarTecla solo se llama desde la ruta /tecla', () => {

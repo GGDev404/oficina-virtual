@@ -2,7 +2,7 @@
 // capa HTML con los personajes (botones), letreros e insignias. Es dibujo imperativo con su propio bucle de animación:
 // React solo monta el contenedor (Escena.tsx) y le pasa los datos con actualizar().
 import { ESTADOS, MAX_ACTIVOS, base, esperaProcesos, nivelContexto, nombreSesion, pendientesParaMi, procesosDe, tareaPorId, textoSobre, veredicto } from '@/lib/oficina'
-import type { Datos, Sesion } from '@/lib/tipos'
+import type { Datos, EntreSesiones, RolId, Sesion } from '@/lib/tipos'
 
 const W = 480, H = 272
 
@@ -43,7 +43,7 @@ type Sala = 'taller' | 'puerta' | 'bloqueados' | 'descanso' | 'oficina'
 const SALAS: Record<Sala, { titulo: string; x: number; y: number; w: number; h: number; piso: string[]; puerta: number; abajo: boolean }> = {
   taller: { titulo: 'Taller', x: 0, y: 0, w: 272, h: 128, piso: ['#a8754a', '#9d6c44'], puerta: 248, abajo: true },
   puerta: { titulo: 'Tu puerta', x: 304, y: 0, w: 176, h: 128, piso: ['#6e4f80', '#674a78'], puerta: 392, abajo: true },
-  bloqueados: { titulo: 'Bloqueados', x: 0, y: 160, w: 112, h: 112, piso: ['#71757f', '#696d77'], puerta: 56, abajo: false },
+  bloqueados: { titulo: 'Bloqueados', x: 0, y: 160, w: 112, h: 112, piso: ['#71757f', '#696d77'], puerta: 82, abajo: false },
   descanso: { titulo: 'Descanso', x: 112, y: 160, w: 160, h: 112, piso: ['#d2ab72', '#c8a16a'], puerta: 196, abajo: false },
   oficina: { titulo: 'Tu oficina', x: 304, y: 160, w: 176, h: 112, piso: ['#4f7d5c', '#4a7657'], puerta: 392, abajo: false },
 }
@@ -72,18 +72,29 @@ function lugar(sala: Sala, i: number): Lugar {
     return { x: xs[i % 4], y: [112, 74, 38][Math.floor(i / 4) % 3] }
   }
   const s = SALAS[sala]
-  const cols = Math.floor((s.w - 16) / 32)
-  return { x: s.x + 22 + (i % cols) * 32, y: s.y + 58 + (Math.floor(i / cols) % 2) * 36 }
+  const paso = sala === 'descanso' ? 36 : 32 // más aire entre sillones: caben nombres más largos
+  const cols = Math.floor((s.w - 16) / paso)
+  return { x: s.x + 22 + (i % cols) * paso, y: s.y + 58 + (Math.floor(i / cols) % 2) * 36 }
 }
 const entrada = (sala: Sala) => { const s = SALAS[sala]; return { x: s.puerta, y: s.abajo ? s.y + s.h - 6 : s.y + 26 } }
 const enPasillo = (sala: Sala) => ({ x: SALAS[sala].puerta, y: 146 })
 const SALIDA = { x: -8, y: 146 } // orilla izquierda del pasillo: por ahí entran y salen las sesiones
+// Cuarto donde está parado (null en el pasillo): las rutas salen de ahí aunque vaya a medio camino.
+const salaEn = (p: Punto) => (Object.keys(SALAS) as Sala[]).find((k) => {
+  const s = SALAS[k]
+  return p.x >= s.x && p.x < s.x + s.w && p.y >= s.y && p.y < s.y + s.h && (p.y < 128 || p.y >= 160)
+}) ?? null
+const rutaA = (desde: Punto, sala: Sala | null, fin: Punto[]) => {
+  const ahi = salaEn(desde)
+  if (ahi && ahi === sala) return fin
+  return [...(ahi ? [entrada(ahi), enPasillo(ahi)] : [{ x: desde.x, y: 146 }]), ...(sala ? [enPasillo(sala), entrada(sala)] : []), ...fin]
+}
 
 // Aspecto estable por sesión (pelo, piel y camisa salen del id).
 function hash(t: string) { let h = 2166136261; for (const c of t) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0 }
 const PELOS = ['#2b1d14', '#5a3a1e', '#c99a3e', '#161616', '#8a3b2a', '#d8d2c4', '#3b2a4a']
-const CAMISAS = [['#3a7bd5', '#2c5fa8'], ['#d5573a', '#a8432c'], ['#3aa66b', '#2b8053'], ['#9b59b6', '#7a4590'],
-  ['#e0a526', '#b78516'], ['#2bb3b3', '#1f8a8a'], ['#e05f8f', '#b54670'], ['#6c7a89', '#55606c']]
+const CAMISAS = [['#336fc6', '#2c5fa8'], ['#c94b30', '#a8432c'], ['#3aa66b', '#2b8053'], ['#9b59b6', '#7a4590'],
+  ['#e0a526', '#b78516'], ['#2bb3b3', '#1f8a8a'], ['#e05f8f', '#b54670'], ['#616e7c', '#55606c']]
 const PIELES = ['#f1c7a3', '#dcae84', '#b07a52', '#7d5135']
 interface Aspecto { pelo: string; piel: string; camisa: string; sombra: string }
 function aspecto(id: string): Aspecto {
@@ -102,10 +113,19 @@ interface Actor extends Punto {
 }
 interface Entrega extends Punto { sid: string; id: number; fase: 'espera' | 'va' | 'entrega' | 'regresa'; ruta: Punto[]; regreso?: Punto[]; llego?: number; resultado?: string }
 
+// Sobre que viaja entre dos sesiones (mensaje, encargo o entrega) y destello al llegar (o en su lugar con movimiento reducido).
+interface Sobre extends Punto { ruta: Punto[]; tipo: EntreSesiones['tipo'] }
+interface Destello extends Punto { t0: number; tipo: EntreSesiones['tipo'] }
+const COLOR_SOBRE = { mensaje: '#fffdf5', encargo: '#ffb347', entrega: '#6fe39a' }
+const ROL_CORTO: Record<RolId, string> = { 'analisis-plan': 'PLAN', implementacion: 'IMPL', 'revision-qa': 'QA', 'docs-entrega': 'DOCS', diseno: 'DISEÑO' }
+
 export interface Acciones { abrirAgente: (id: string) => void; abrirOficina: (seccion?: string) => void }
 
 export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, capa: HTMLElement, acciones: Acciones) {
-  const reducido = matchMedia('(prefers-reduced-motion: reduce)').matches
+  const movimiento = matchMedia('(prefers-reduced-motion: reduce)')
+  let reducido = movimiento.matches
+  const alCambiarMovimiento = () => { reducido = movimiento.matches }
+  movimiento.addEventListener('change', alCambiarMovimiento)
   let ctx = lienzo.getContext('2d')! // contexto donde pintan r() y los sprites
   const r = (x: number, y: number, w: number, h: number, c: string) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h) }
   const en = (c: CanvasRenderingContext2D, fn: () => void) => { const previo = ctx; ctx = c; fn(); ctx = previo }
@@ -204,8 +224,8 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
       if (s.abajo) { r(px, s.y + s.h - 2, 24, 2, s.piso[0]); r(px - 2, s.y + s.h - 5, 2, 5, PAL.marco); r(px + 24, s.y + s.h - 5, 2, 5, PAL.marco) }
       else { r(px, s.y, 24, 14, PAL.pasillo[0]); r(px - 2, s.y, 2, 14, PAL.marco); r(px + 24, s.y, 2, 14, PAL.marco) }
     }
-    r(78, 3, 52, 9, '#f2f2ee'); r(78, 3, 52, 1, '#9a9a96'); r(81, 5, 18, 1, '#3a7bd5'); r(81, 7, 26, 1, '#d5573a'); r(81, 9, 14, 1, '#3aa66b')
-    r(140, 4, 9, 7, '#e9d9a6'); r(152, 5, 9, 6, '#a6d9e9'); r(164, 4, 9, 7, '#f0b7ca')
+    r(150, 3, 52, 9, '#f2f2ee'); r(150, 3, 52, 1, '#9a9a96'); r(153, 5, 18, 1, '#3a7bd5'); r(153, 7, 26, 1, '#d5573a'); r(153, 9, 14, 1, '#3aa66b')
+    r(208, 4, 9, 7, '#e9d9a6'); r(220, 5, 9, 6, '#a6d9e9'); r(232, 4, 9, 7, '#f0b7ca')
     for (const e of ESCRITORIOS) escritorio(e.dx, e.dy)
     planta(4, 104); planta(224, 18)
     const p = SALAS.puerta
@@ -220,8 +240,8 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
     r(d.x + 104, d.y + 18, 14, 10, '#8a5a33'); r(d.x + 107, d.y + 16, 4, 3, '#f4f1ea')
     planta(d.x + d.w - 18, d.y + d.h - 22)
     const o = SALAS.oficina
-    r(o.x + 10, o.y + 2, 30, 12, '#6e4626');
-    ['#d5573a', '#3a7bd5', '#e0a526', '#3aa66b', '#9b59b6', '#f4f1ea'].forEach((c, k) => r(o.x + 12 + k * 4, o.y + 4, 3, 8, c))
+    r(o.x + 106, o.y + 2, 30, 12, '#6e4626');
+    ['#d5573a', '#3a7bd5', '#e0a526', '#3aa66b', '#9b59b6', '#f4f1ea'].forEach((c, k) => r(o.x + 108 + k * 4, o.y + 4, 3, 8, c))
     r(o.x + 140, o.y + 2, 18, 11, '#f4f1ea'); r(o.x + 140, o.y + 2, 18, 3, '#d5573a')
     for (let k = 0; k < 8; k++) r(o.x + 142 + (k % 4) * 4, o.y + 6 + Math.floor(k / 4) * 3, 2, 2, '#9a9a96')
     r(MESA_YO.dx - 10, MESA_YO.dy - 18, 60, 44, '#3e6b4b'); r(MESA_YO.dx - 8, MESA_YO.dy - 16, 56, 40, '#457656')
@@ -234,11 +254,13 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
   let e = 1 // escala: px de pantalla por px lógico
   function crearBoton(id: string, look: Aspecto) {
     // Cada agente lleva su etiqueta del color de su camisa, para reconocerlo de un vistazo.
-    const etiqueta = el('span', { class: 'etiqueta' }, el('span', { class: 'txt' }), el('span', { class: 'ctx' }))
+    const etiqueta = el('span', { class: 'etiqueta' }, el('span', { class: 'txt' }), el('span', { class: 'ctx' }), el('span', { class: 'rol' }))
     etiqueta.style.background = look.camisa
     etiqueta.style.color = textoSobre(look.camisa)
     const b = el('button', { class: 'agente', type: 'button', 'aria-haspopup': 'dialog', onclick: () => acciones.abrirAgente(id) },
       el('span', { class: 'burbuja' }), el('span', { class: 'caja' }), etiqueta) as HTMLButtonElement
+    // El nombre se despliega completo al señalarlo o enfocarlo: se vuelve a medir para que no se salga de la escena.
+    for (const ev of ['mouseenter', 'mouseleave', 'focus', 'blur']) b.addEventListener(ev, () => { const a = actores.get(id); if (a) a.anchoEtiqueta = null })
     capa.append(b)
     return b
   }
@@ -274,8 +296,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
         if (a.destinoClave !== `${sala}:${i}`) {
           a.destinoClave = `${sala}:${i}`
           if (reducido || primeraCarga) { a.x = destino.x; a.y = destino.y; a.ruta = [] }
-          else if (a.sala === sala) a.ruta = [destino]
-          else a.ruta = [...(a.sala ? [entrada(a.sala), enPasillo(a.sala)] : []), enPasillo(sala), entrada(sala), destino]
+          else a.ruta = rutaA(a, sala, [destino])
           a.sala = sala
         }
         a.lugar = destino
@@ -289,6 +310,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
           burbuja.dataset.clave = clave
           burbuja.replaceChildren(...(typeof contenido === 'string' ? [contenido] : [icono(contenido.icono), contenido.texto ?? '']))
           burbuja.className = `burbuja ${color}`
+          burbuja.style.animation = 'none'; void burbuja.offsetWidth; burbuja.style.animation = '' // brota de nuevo con el estado nuevo
         }
         const nombre = s.nombre ?? s.tarea_id ?? base(s.cwd)
         const etiqueta = a.boton.querySelector<HTMLElement>('.etiqueta')!
@@ -296,18 +318,27 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
         if (txt.textContent !== nombre) { txt.textContent = nombre; a.anchoEtiqueta = null }
         const ctxNivel = nivelContexto(d.contexto?.[s.id])
         const claveCtx = ctxNivel ? `${Math.round(ctxNivel.pct * 100)}${ctxNivel.clase}` : ''
-        if (barra.dataset.clave !== claveCtx) {
+        if (barra.dataset.clave !== claveCtx) { // la misma barra cambia de ancho (con transición), no se rehace
           barra.dataset.clave = claveCtx
-          const i = ctxNivel && el('i', { class: ctxNivel.clase, style: `width:${Math.min(100, Math.round(ctxNivel.pct * 100))}%` })
-          barra.replaceChildren(...(i ? [i] : []))
+          if (!ctxNivel) barra.replaceChildren()
+          else {
+            const i = (barra.firstElementChild as HTMLElement | null) ?? barra.appendChild(el('i'))
+            i.className = ctxNivel.clase
+            i.style.width = `${Math.min(100, Math.round(ctxNivel.pct * 100))}%`
+          }
         }
+        const rol = etiqueta.querySelector<HTMLElement>('.rol')!
+        const corto = s.rol ? ROL_CORTO[s.rol] ?? s.rol : ''
+        if (rol.textContent !== corto) { rol.textContent = corto; a.anchoEtiqueta = null }
         // Ancho máximo según el espacio entre lugares del cuarto; el nombre completo va en el título y en la ficha.
-        const maximo = ({ taller: 56, puerta: 42 } as Record<string, number>)[sala] ?? 30
+        const maximo = ({ taller: 56, puerta: 42, descanso: 34 } as Record<string, number>)[sala] ?? 30
         if (a.maximo !== maximo) { a.maximo = maximo; etiqueta.style.maxWidth = `calc(var(--e) * ${maximo}px)`; a.anchoEtiqueta = null }
+        const tituloRol = s.rol ? d.roles?.find((x) => x.id === s.rol)?.titulo ?? s.rol : ''
         const estadoTexto = a.espera ? `esperando ${n} proceso${n > 1 ? 's' : ''}` : ESTADOS[s.estado]?.[0] ?? s.estado
         const conCtx = ctxNivel ? ` · contexto ${Math.round(ctxNivel.pct * 100)} %` : ''
-        a.boton.setAttribute('aria-label', `${nombreSesion(s, tareas)}: ${estadoTexto}${conCtx}`)
-        a.boton.title = `${nombreSesion(s, tareas)} · ${estadoTexto}${conCtx}`
+        const conRol = tituloRol ? ` (rol ${tituloRol})` : ''
+        a.boton.setAttribute('aria-label', `${nombreSesion(s, tareas)}${conRol}: ${estadoTexto}${conCtx}`)
+        a.boton.title = `${nombreSesion(s, tareas)}${conRol} · ${estadoTexto}${conCtx}`
       })
     }
     // La sesión que se cierra sale caminando por el pasillo y desaparece al llegar a la orilla.
@@ -317,7 +348,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
       a.saliendo = true
       a.boton.disabled = true
       a.boton.classList.add('saliendo')
-      a.ruta = [entrada(a.sala), enPasillo(a.sala), SALIDA]
+      a.ruta = rutaA(a, null, [SALIDA])
     }
     primeraCarga = false
     const activos = (porSala.taller ?? []).length + (porSala.puerta ?? []).length + (porSala.bloqueados ?? []).length
@@ -407,6 +438,45 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
     }
   }
 
+  // ── Sobres entre sesiones: salen del origen (o de la orilla) y llegan al destino ──
+  const sobres: Sobre[] = []
+  const destellos: Destello[] = []
+  const filasVistas = new Set<number>()
+  let filasIniciadas = false
+  function despacharEntreSesiones(d: Datos) {
+    for (const f of d.entre_sesiones ?? []) {
+      if (filasVistas.has(f.id)) continue
+      filasVistas.add(f.id)
+      const dest = actores.get(f.a_sesion)
+      if (!filasIniciadas || !dest || dest.saliendo || !dest.sala) continue // lo anterior a abrir la página no se anima
+      const fin = { x: dest.x + 12, y: dest.y - 6 }
+      if (reducido) { destellos.push({ ...fin, t0: reloj, tipo: f.tipo }); continue }
+      const ori = f.de_sesion ? actores.get(f.de_sesion) : undefined
+      const desde = ori && !ori.saliendo ? { x: ori.x + 12, y: ori.y - 6 } : { ...SALIDA }
+      sobres.push({ ...desde, tipo: f.tipo, ruta: rutaA(desde, dest.sala, [fin]) })
+    }
+    filasIniciadas = true
+  }
+  function moverSobres(dt: number) {
+    for (const o of sobres) avanzar(o, dt * 1.8)
+    for (let i = sobres.length - 1; i >= 0; i--) if (!sobres[i].ruta.length) { destellos.push({ x: sobres[i].x, y: sobres[i].y, t0: reloj, tipo: sobres[i].tipo }); sobres.splice(i, 1) }
+    for (let i = destellos.length - 1; i >= 0; i--) if (reloj - destellos[i].t0 > 0.9) destellos.splice(i, 1)
+  }
+  function dibujarSobre(x: number, y: number, tipo: EntreSesiones['tipo']) {
+    const ox = Math.round(x) - 5, oy = Math.round(y) - 4
+    r(ox - 1, oy - 1, 12, 9, '#1a1922'); r(ox, oy, 10, 7, COLOR_SOBRE[tipo])
+    r(ox, oy, 10, 1, 'rgba(0,0,0,.25)'); r(ox + 1, oy + 1, 2, 1, 'rgba(0,0,0,.25)'); r(ox + 7, oy + 1, 2, 1, 'rgba(0,0,0,.25)'); r(ox + 3, oy + 2, 4, 1, 'rgba(0,0,0,.25)')
+    if (tipo === 'encargo') { r(ox + 4, oy + 3, 2, 3, '#1a1922') } // rayita de "pendiente"
+    else if (tipo === 'entrega') { r(ox + 3, oy + 4, 1, 1, '#1a1922'); r(ox + 4, oy + 5, 1, 1, '#1a1922'); r(ox + 5, oy + 4, 1, 1, '#1a1922'); r(ox + 6, oy + 3, 1, 1, '#1a1922') } // palomita
+  }
+  function dibujarDestello(o: Destello) {
+    const k = Math.min(1, (reloj - o.t0) / 0.9), c = COLOR_SOBRE[o.tipo]
+    const rad = reducido ? 7 : 3 + Math.round(k * 8)
+    ctx.globalAlpha = 1 - k
+    r(o.x - rad, o.y - rad, rad * 2, 2, c); r(o.x - rad, o.y + rad - 2, rad * 2, 2, c); r(o.x - rad, o.y - rad, 2, rad * 2, c); r(o.x + rad - 2, o.y - rad, 2, rad * 2, c)
+    ctx.globalAlpha = 1
+  }
+
   // ── Bucle de animación ──
   let reloj = 0, previo = performance.now(), cuadroId = 0
   function cuadro(ahora: number) {
@@ -417,11 +487,15 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
       avanzar(a, dt)
     }
     moverMensajeros(dt)
+    moverSobres(dt)
     dibujar(Math.floor(reloj * 4), Math.floor(reloj * 8))
     const ancho = W * e
     for (const a of actores.values()) {
-      const x = a.x * e
-      a.boton.style.transform = `translate(${x}px, ${a.y * e}px)`
+      // Mismo redondeo que el sprite: la etiqueta no se despega del personaje al caminar. Al frente, el que está más abajo.
+      const x = Math.round(a.x) * e
+      a.boton.style.transform = `translate(${x}px, ${Math.round(a.y) * e}px)`
+      const z = String(Math.round(a.y) + 10)
+      if (a.boton.style.zIndex !== z) a.boton.style.zIndex = z
       const etiqueta = a.boton.lastElementChild as HTMLElement // se recorre para no salirse por los bordes de la escena
       a.anchoEtiqueta ??= etiqueta.offsetWidth
       const mitad = a.anchoEtiqueta / 2 + 2
@@ -435,7 +509,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
     const sentado = (a: Actor) => !a.ruta.length && a.lugar?.escritorio != null && a.s!.estado === 'trabajando'
     for (const a of lista) if (sentado(a)) { const d = ESCRITORIOS[a.lugar!.escritorio!]; pantalla(d.dx, d.dy, f + a.lugar!.escritorio! * 3, !!a.espera) }
     if (lista.some((a) => a.s!.estado === 'bloqueado' && !a.ruta.length)) {
-      const b = SALAS.bloqueados; r(b.x + 90, b.y + 3, 10, 6, f % 2 ? '#ff4d3d' : '#7a1e18'); r(b.x + 92, b.y + 9, 6, 2, '#2b2b33')
+      const b = SALAS.bloqueados; r(b.x + 98, b.y + 3, 10, 6, reducido || f % 2 ? '#ff4d3d' : '#7a1e18'); r(b.x + 100, b.y + 9, 6, 2, '#2b2b33')
     }
     for (const a of lista) {
       if (sentado(a)) personaje(a.x, a.y, a.aspecto, a.espera ? 'espera' : 'teclea', f, 'espalda')
@@ -444,6 +518,8 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
       subs.forEach((_, k) => robot(a.x + (sentado(a) ? 23 : 13) + k * 10, a.y - (sentado(a) ? 6 : 0) - (k % 2) * 3, f, k))
     }
     if (entregas[0]) dibujarMensajero(entregas[0], f, fCamina)
+    for (const o of sobres) dibujarSobre(o.x, o.y, o.tipo)
+    for (const o of destellos) dibujarDestello(o)
     const m = MESA_YO
     if (!entregas.length) personaje(EN_MESA.x, EN_MESA.y, YO, 'parado', f) // si va a entregar, su lugar queda vacío
     r(m.dx, m.dy, 40, 10, '#c88d55'); r(m.dx, m.dy, 40, 1, '#dba06a'); r(m.dx, m.dy + 10, 40, 6, '#8a5a33')
@@ -453,10 +529,20 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
     for (let k = 0; k < Math.min(n, 6); k++) r(m.dx + 3, m.dy + 5 - k, 7, 1, k % 2 ? '#e8e4da' : '#ffffff')
   }
 
+  // Pestaña oculta: el bucle se detiene; al volver sigue desde donde iba, sin un salto de tiempo.
+  const arrancar = () => { if (!cuadroId && !document.hidden) { previo = performance.now(); cuadroId = requestAnimationFrame(cuadro) } }
+  const alCambiarVisibilidad = () => { if (document.hidden) { cancelAnimationFrame(cuadroId); cuadroId = 0 } else arrancar() }
+  document.addEventListener('visibilitychange', alCambiarVisibilidad)
+
   escalar()
-  cuadroId = requestAnimationFrame(cuadro)
+  arrancar()
   return {
-    actualizar(d: Datos) { datos = d; actualizarActores(d); despacharMensajeros(d) },
-    destruir() { cancelAnimationFrame(cuadroId); observador.disconnect(); capa.replaceChildren() },
+    actualizar(d: Datos) { datos = d; actualizarActores(d); despacharMensajeros(d); despacharEntreSesiones(d) },
+    destruir() {
+      cancelAnimationFrame(cuadroId); cuadroId = 0
+      document.removeEventListener('visibilitychange', alCambiarVisibilidad)
+      movimiento.removeEventListener('change', alCambiarMovimiento)
+      observador.disconnect(); capa.replaceChildren()
+    },
   }
 }

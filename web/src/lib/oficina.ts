@@ -1,5 +1,5 @@
 // Datos y utilidades de la oficina, sin DOM: lo mismo que usaba public/index.html.
-import type { Contexto, Datos, Sesion, Tarea } from './tipos'
+import type { Contexto, Datos, RolId, Sesion, Tarea } from './tipos'
 
 export const ESTADOS: Record<string, [string, string]> = {
   necesita_permiso: ['Necesita permiso', 'rojo'], bloqueado: ['Bloqueado', 'rojo'],
@@ -128,3 +128,7 @@ export function infoProceso(p: Proceso) {
   return { nombre: comando ? base(d.split(/\s+/)[0]) : d || 'comando', sub: log ? `Escribe en ${base(log)}` : comando ? d : 'Comando en segundo plano',
     marca: 'shell', punto: 'verde', log, comando: d }
 }
+
+// Encargos donde la sesión es origen o destino (más nuevos primero) y nombre legible de un rol.
+export const encargosDe = (d: Datos, sid: string) => (d.encargos ?? []).filter((e) => e.de_sesion === sid || e.a_sesion === sid).reverse()
+export const tituloRol = (d: Datos, id: RolId | null) => (id ? d.roles?.find((r) => r.id === id)?.titulo ?? id : '')

@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react'
 import { ResumenTarea } from '@/components/comunes'
 import { useOficina, type OpcionesNueva } from '@/components/contexto'
-import { Cerrar, Titulo, Ventana } from '@/components/ventana'
+import { Cerrar, Descripcion, Titulo, Ventana } from '@/components/ventana'
 import { post } from '@/lib/api'
 import { carpeta } from '@/lib/oficina'
 import type { Tarea } from '@/lib/tipos'
@@ -97,7 +97,7 @@ export function NuevaSesion({ opciones: o, carpetas }: { opciones: OpcionesNueva
     <Ventana alCerrar={cerrarVentana} id="v-nueva"
       enfocar={() => (o.prompt ? cajaPrompt.current : !t ? columna.current?.querySelector<HTMLInputElement>('[data-buscar-tarea]') : null)}>
       <header><div className="titulos"><Titulo>Nueva sesión</Titulo>
-        <div className="meta">Para una tarea de ClickUp o para cualquier otra cosa (un traspaso, una investigación): la tarea es opcional.</div></div>
+        <Descripcion>Para una tarea de ClickUp o para cualquier otra cosa (un traspaso, una investigación): la tarea es opcional.</Descripcion></div>
         <Cerrar etiqueta="Cerrar ventana" /></header>
       <div className="cuerpo"><form className="dos-col" onSubmit={empezar}>
         <section aria-labelledby="vs-tareas-t" ref={columna}><h3 id="vs-tareas-t" style={{ marginTop: 0 }}>Tarea (opcional)</h3>

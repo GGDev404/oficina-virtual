@@ -20,6 +20,7 @@ export interface Sesion {
   procesos_json: string | null
   permiso_json: string | null
   tmux: string | null
+  rol: RolId | null
 }
 
 export interface Tarea {
@@ -123,6 +124,40 @@ export interface Solicitud {
   creado_ts: number
 }
 
+export type RolId = 'analisis-plan' | 'implementacion' | 'revision-qa' | 'docs-entrega' | 'diseno'
+
+export interface Rol {
+  id: RolId
+  titulo: string
+}
+
+// Mensaje o encargo entre dos sesiones (últimos 50). `de_sesion` es null si el origen no es una sesión conocida (o es la oficina).
+export interface EntreSesiones {
+  id: number
+  ts: number
+  de: string | null
+  de_sesion: string | null
+  a_sesion: string
+  texto: string
+  tipo: 'mensaje' | 'encargo' | 'entrega'
+}
+
+// Encargo a la sesión de un rol (últimos 30). `a_sesion` es null mientras la sesión del rol arranca.
+export interface Encargo {
+  id: number
+  rol: RolId
+  de_sesion: string | null
+  a_sesion: string | null
+  cwd: string | null
+  texto: string
+  estado: 'arrancando' | 'entregando' | 'entregado' | 'respondido' | 'error'
+  via: 'tmux' | 'mensajero' | 'nueva' | null
+  detalle: string | null
+  resultado: string | null
+  creado_ts: number
+  resuelto_ts: number | null
+}
+
 export interface Datos {
   sesiones: Sesion[]
   tareas: Tarea[]
@@ -135,6 +170,9 @@ export interface Datos {
   contexto: Record<string, Contexto>
   permisos: Permiso[]
   preguntas: Pregunta[]
+  roles: Rol[]
+  encargos: Encargo[]
+  entre_sesiones: EntreSesiones[]
 }
 
 export interface Intercambio {

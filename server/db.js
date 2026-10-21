@@ -42,6 +42,15 @@ CREATE TABLE IF NOT EXISTS solicitudes (
   id INTEGER PRIMARY KEY, de_sesion TEXT, nombre TEXT, cwd TEXT NOT NULL, prompt TEXT NOT NULL, permiso TEXT NOT NULL,
   modelo TEXT, tarea_id TEXT, creado_ts INTEGER NOT NULL, estado TEXT NOT NULL DEFAULT 'pendiente', resuelto_ts INTEGER
 );
+-- Mensajes entre sesiones (cross-session-message / agent-message) y encargos a las sesiones por rol.
+CREATE TABLE IF NOT EXISTS entre_sesiones (
+  id INTEGER PRIMARY KEY, ts INTEGER NOT NULL, de TEXT, de_sesion TEXT, a_sesion TEXT NOT NULL, texto TEXT,
+  tipo TEXT NOT NULL DEFAULT 'mensaje'
+);
+CREATE TABLE IF NOT EXISTS encargos (
+  id INTEGER PRIMARY KEY, rol TEXT NOT NULL, de_sesion TEXT, a_sesion TEXT, cwd TEXT, texto TEXT NOT NULL,
+  estado TEXT NOT NULL, via TEXT, detalle TEXT, resultado TEXT, creado_ts INTEGER NOT NULL, resuelto_ts INTEGER
+);
 `;
 
 // Columnas agregadas después de la v1: se suman a bases que ya existían.
@@ -52,6 +61,7 @@ const COLUMNAS_NUEVAS = [
   ['comentarios', 'para_mi INTEGER NOT NULL DEFAULT 0'],
   ['sesiones', 'pendiente INTEGER NOT NULL DEFAULT 0'], // murió sin cerrarse: espera Retomar o Descartar
   ['sesiones', 'tmux TEXT'], // socket de su tmux (`tmux -L`) si la abrió la oficina: ahí se teclean tus mensajes
+  ['sesiones', 'rol TEXT'], // sesión fija de un rol (agentes/<rol>.md): recibe encargos
 ];
 
 export function abrir(ruta) {
@@ -78,6 +88,9 @@ export function estado(db, ahora = Date.now()) {
     subagentes,
     tareas: db.prepare('SELECT * FROM tareas ORDER BY due_ts IS NULL, due_ts').all(),
     comentarios: db.prepare('SELECT * FROM comentarios ORDER BY ts DESC').all(),
+    entre_sesiones: db.prepare('SELECT id, ts, de, de_sesion, a_sesion, substr(texto, 1, 300) AS texto, tipo FROM entre_sesiones ORDER BY id DESC LIMIT 50').all().reverse(),
+    encargos: db.prepare(`SELECT id, rol, de_sesion, a_sesion, cwd, substr(texto, 1, 300) AS texto, estado, via, detalle,
+                          substr(resultado, 1, 600) AS resultado, creado_ts, resuelto_ts FROM encargos ORDER BY id DESC LIMIT 30`).all().reverse(),
     pendientes: {
       sesiones: db.prepare(`SELECT id, nombre, cwd, tarea_id, ultimo_mensaje, terminada_ts FROM sesiones
                             WHERE pendiente = 1 AND estado = 'cerrada' ORDER BY terminada_ts DESC`).all(),

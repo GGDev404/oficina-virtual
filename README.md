@@ -56,13 +56,15 @@ npm test    # máquina de estados con los eventos reales de test/eventos-fase1.j
 ```
 
 SQLite con `node:sqlite` (incluido en Node ≥ 22.13, sin dependencias) en `~/.local/share/oficina-virtual/oficina.db`.
-Si el servidor no responde, `hook.sh` deja el evento en `pendientes.jsonl` y el servidor lo procesa al arrancar y cada 5 s.
+Cada evento de los hooks avisa a la página al momento (no espera al ciclo de 5 s). Si el servidor no responde, `hook.sh` deja el evento en `pendientes.jsonl` y el servidor lo procesa al arrancar y cada 5 s.
 
 | Endpoint | Uso |
 |---|---|
 | `POST /api/eventos` | lo llama `hook.sh` con `{ts, evento, payload}` |
 | `GET /api/estado` | sesiones (las cerradas, solo 2 h), subagentes, tareas y comentarios |
-| `GET /api/stream` | SSE `event: estado` con el estado completo en cada cambio |
+| `GET /api/stream` | SSE `event: estado` con el estado completo en cada cambio (ráfagas juntas en ~60 ms, sin repetir un estado idéntico), `retry: 3000` y un comentario `: ka` cada 15 s |
+| `POST /api/roles/:rol/encargo` | `{texto, de_sesion?, cwd?}`: encarga trabajo a la sesión de un rol (ver «Roles y encargos») |
+| `POST /api/roles/:rol/sesion` | `{cwd}`: abre la sesión de un rol sin encargo (solo con tu cookie) |
 | `POST /api/comentarios/:id/visto` | marca un comentario como visto |
 | `POST /api/sesiones/:id/tarea` | `{tarea_id}` liga la sesión a mano (`null` la desliga) |
 
@@ -155,7 +157,16 @@ la hace un `claude -p` corto que no aparece como agente y no espera a la animaci
 **Mensajes a los agentes.** `server/mensajero.js` lanza `claude -p --model haiku` con solo `ListAgents` y
 `SendMessage` (sin tus hooks ni plugins: `--setting-sources project`) que entrega tu texto con la mensajería entre
 sesiones de Claude Code. Sesión libre: arranca un turno; ocupada: lo lee entre herramientas. Llega como «mensaje de otra
-sesión»: no aprueba permisos ni cambia configuración. Cuesta una llamada corta a Haiku por mensaje.
+sesión»: no aprueba permisos ni cambia configuración. Cuesta una llamada corta a Haiku por mensaje. Cada sesión destino tiene su propia cola (varias se entregan en
+paralelo; a una sola, en orden) y el límite es 60 s. `claude 2.1.307` no trae un comando para mandar mensajes entre
+sesiones sin pasar por un modelo (`claude agents` solo lista; las bandejas son sockets `cc-socks/<pid>.sock` sin
+protocolo documentado): lo más rápido es tmux, que no usa LLM.
+
+**Entre sesiones.** Los mensajes que una sesión recibe de otra (`<cross-session-message from-name=…>`, y
+`<agent-message from=<sesión>>`; los de subagentes y los que entrega la propia oficina no cuentan) se guardan al llegar
+el `UserPromptSubmit` en la tabla `entre_sesiones` (7 días) con quién, a quién, cuándo y el texto, y salen en
+`entre_sesiones` de `/api/estado` (últimos 50) para dibujar el envío entre personajes. El origen se resuelve por pid
+del socket, nombre o id de sesión; si no se conoce, `de_sesion` es `null` y `de` trae lo que dijo el mensaje.
 
 **Tu oficina**: veredicto (al día / vence hoy / vencidas), agenda con Hoy primero y los próximos 6 días en columnas
 (cada tarea se despliega), «Para ti» (@mención, comentario asignado, tu nombre en el texto o corrección de ficha;
@@ -178,8 +189,8 @@ hazlo» o una duda funciona igual que en la terminal, sin el mensajero. Si tiene
 teclea texto encima (409): la ficha muestra su pantalla (`tmux capture-pane`) y contestas con las teclas **1–4** o
 **Esc**; no hay otras teclas permitidas. Ojo: elegir en la oficina es tan válido como elegir en la terminal, incluida
 la opción de cambiar a modo auto. **Abrir en terminal** hace `tmux -L <socket> attach -t main`; a mano:
-`tmux -L <socket> attach`. **Cerrar** hace `kill-server` (Claude Code guarda la conversación). Lo único que se
-teclea es el texto que escribes en la ficha (`test/teclado.test.js` falla si otra fuente se conecta al teclado).
+`tmux -L <socket> attach`. **Cerrar** hace `kill-server` (Claude Code guarda la conversación). Se teclea el texto que escribes en la ficha y, además,
+los encargos y entregas entre sesiones (con su cabecera «Encargo de …»; ver «Roles y encargos»). `test/teclado.test.js` falla si otra fuente se conecta al teclado.
 
 **Sin tarea y traspasos.** La tarea es opcional. En la ficha, **Continuar en sesión nueva** abre «Nueva sesión» con la
 misma carpeta (y tarea, si tiene) y el último mensaje del agente como indicación: pídele antes un resumen de traspaso.
@@ -228,6 +239,33 @@ antes de los hooks, ignora las de claude-mem y cierra las que ya no tienen proce
 **Notificaciones** (`notify-send`): una sesión pasa a necesita permiso, bloqueada, duda o te espera, o llega una
 corrección nueva. Las del minuto siguiente se juntan; las urgentes no se cierran solas.
 
+## Roles y encargos
+
+Cinco roles fijos: `analisis-plan`, `implementacion`, `revision-qa`, `docs-entrega`, `diseno`. Cada uno es un `.md` en
+`agentes/` con formato de subagente de Claude Code (tools mínimas, modelo, instrucciones y formato de salida;
+`revision-qa` no edita, `implementacion` aplica diff mínimo, `docs-entrega` nunca agrega atribución de IA).
+
+```bash
+node scripts/instalar-agentes.js          # copia agentes/*.md a ~/.claude/agents/ sin pisar los existentes (como cp -n)
+node scripts/instalar-agentes.js --quitar # quita solo los que siguen idénticos a los del repo
+```
+
+Como **sesión fija**: `POST /api/roles/:rol/encargo` con `{texto, de_sesion?, cwd?}` (texto ≤ 4000, rol de la lista fija,
+`cwd` dentro de tu home). Si hay una sesión viva de ese rol (con ese `cwd`, si lo das; nunca la misma sesión que pide)
+le entrega el encargo por la vía más rápida: tmux tecleado si su terminal está libre, si no el mensajero. Si no hay,
+arranca una en su propio tmux (`cwd` explícito o el de `de_sesion`) con el cuerpo del `.md` como prompt de sistema
+(`--append-system-prompt`), el encargo como primer mensaje y `OFICINA_ROL=<rol>`: `hook.sh` lo manda como `rol_env` y
+la sesión queda marcada (`sesiones.rol`). El texto entregado empieza con «Encargo de <origen>: …» y pide que la
+respuesta final empiece con `ENTREGA:`; cuando esa sesión termina el turno (Stop) así, el resultado vuelve a la sesión
+de origen («Entrega de …») por la misma vía y el encargo pasa a `respondido`. Respuestas: 202 `{id, estado, via, sesion}`,
+400 (rol/texto/cwd), 409 (ya está arrancando), 422 (no se pudo abrir), 502 (no se pudo entregar).
+
+`commands/encargar.md` (`cp -n` a `~/.claude/commands/`): `/encargar <rol> <texto>` hace ese POST con el token. Esta ruta
+acepta el token de los agentes **o** tu cookie; abrir la sesión de un rol sin encargo (`/sesion`) solo con tu cookie.
+Ojo: a diferencia de `/api/solicitudes`, un encargo no pasa por tu aprobación: puede teclear en la terminal libre de otra
+sesión y abrir una de rol (a lo más `acceptEdits`, nunca `bypassPermissions`). Queda en `eventos` (`teclado` / `mensaje_oficina`
+con `de`) y no aprueba permisos. En `/api/estado`: `roles`, `encargos` (últimos 30), `Sesion.rol` y los envíos en `entre_sesiones`.
+
 ## Prioridad para los agentes (Fase 6)
 
 - `GET /api/siguiente[?n=15]`: texto plano con las tareas abiertas por vencimiento (`[VENCIDA]`, `[HOY]`),
@@ -247,6 +285,9 @@ mkdir -p ~/.config/oficina-virtual && cp -n .env.example ~/.config/oficina-virtu
 node scripts/instalar-hooks.js
 # 3. Comando /siguiente
 cp -n commands/siguiente.md ~/.claude/commands/siguiente.md
+# 3b. Comando /encargar y subagentes por rol
+cp -n commands/encargar.md ~/.claude/commands/encargar.md
+node scripts/instalar-agentes.js
 # 4. Servicio de usuario (arranca al iniciar sesión y se reinicia si falla)
 systemctl --user enable --now ~/Proyectos/Oficina-virtual/systemd/oficina-virtual.service
 ```
@@ -256,7 +297,8 @@ Desinstalar:
 ```bash
 systemctl --user disable --now oficina-virtual
 node scripts/instalar-hooks.js --quitar   # solo quita los hooks de la oficina, con respaldo
-rm ~/.claude/commands/siguiente.md
+rm ~/.claude/commands/siguiente.md ~/.claude/commands/encargar.md
+node scripts/instalar-agentes.js --quitar
 ```
 
 Problemas comunes:

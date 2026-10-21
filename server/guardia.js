@@ -1,7 +1,7 @@
 // Quién puede hablar con la oficina. Los agentes corren con tu mismo usuario: pueden leer cualquier archivo tuyo y
 // pedir la página. Por eso hay dos llaves:
 // - Hooks y agentes: el token del archivo (0600, nuevo en cada arranque). Solo abre las rutas de los hooks y la de
-//   *solicitar* una sesión (que tú apruebas en la página).
+//   *solicitar* una sesión (que tú apruebas en la página) y la de *encargar* trabajo a una sesión por rol.
 // - Tú: la cookie HttpOnly que da la página al entrar con tu frase. Abre todo lo que actúa en tu nombre: teclear en
 //   sesiones, aprobar permisos, abrir o cerrar sesiones. Un agente no sabe tu frase ni puede sacar la cookie del navegador.
 import crypto from 'node:crypto';
@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export const RUTAS_HOOK = new Set(['/api/eventos', '/api/permisos', '/api/preguntas', '/api/solicitudes']);
+const ENCARGO = /^\/api\/roles\/[a-z-]+\/encargo$/;
 export const COOKIE = 'ov_sesion';
 export const DURACION_MS = 30 * 86_400_000;
 
@@ -55,6 +56,7 @@ export function autorizar({ method, headers, url }, { hosts, token, sesionValida
   if (!(headers['content-type'] ?? '').startsWith('application/json')) return { status: 415, error: 'se espera application/json' };
   if (headers.origin && ![...hosts].some((h) => headers.origin === `http://${h}`)) return { status: 403, error: 'origen no permitido' };
   const ruta = (url ?? '').split('?')[0];
+  if (ENCARGO.test(ruta) && igual(headers['x-oficina-token'], token)) return null; // o tu cookie, abajo
   if (RUTAS_HOOK.has(ruta)) return igual(headers['x-oficina-token'], token) ? null : { status: 403, error: 'falta el token de la oficina' };
   if (ruta === '/api/entrar') return null;
   const cookie = leerCookie(headers);

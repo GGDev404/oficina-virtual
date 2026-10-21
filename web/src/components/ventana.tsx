@@ -16,7 +16,7 @@ export function Ventana({ alCerrar, id, className, style, enfocar, children }: {
 }) {
   return (
     <Dialog open onOpenChange={(abierta) => { if (!abierta) alCerrar() }}>
-      <DialogContent id={id} className={cn('ventana', className)} style={style} aria-describedby={undefined}
+      <DialogContent id={id} className={cn('ventana', className)} style={style}
         onOpenAutoFocus={(ev) => { const n = enfocar?.(); if (n) { ev.preventDefault(); n.focus() } }}>
         {children}
       </DialogContent>
@@ -25,6 +25,9 @@ export function Ventana({ alCerrar, id, className, style, enfocar, children }: {
 }
 
 export const Titulo = ({ id, children }: { id?: string; children: ReactNode }) => <DialogPrimitive.Title id={id}>{children}</DialogPrimitive.Title>
+// Toda ventana lleva descripción (la lee el lector de pantalla al abrirla); oculta si la vista ya se explica sola.
+export const Descripcion = ({ oculta = false, children }: { oculta?: boolean; children: ReactNode }) =>
+  <DialogPrimitive.Description className={oculta ? 'oculto' : 'meta'}>{children}</DialogPrimitive.Description>
 
 export function Cerrar({ etiqueta = 'Cerrar' }: { etiqueta?: string }) {
   return <DialogClose asChild><button className="cerrar" type="button" aria-label={etiqueta}><Icono n="cerrar" /></button></DialogClose>

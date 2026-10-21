@@ -5,16 +5,17 @@ import { Tabs } from 'radix-ui'
 import { ResumenTarea } from '@/components/comunes'
 import { useOficina } from '@/components/contexto'
 import { Icono } from '@/components/icono'
-import { Cerrar, Titulo, Ventana } from '@/components/ventana'
+import { Cerrar, Descripcion, Titulo, Ventana } from '@/components/ventana'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { leer, post, postSeguro, rutaSesion } from '@/lib/api'
 import { alEscribirConversacion } from '@/lib/estado'
 import { Markdown } from '@/lib/markdown'
 import {
-  ESTADOS, carpeta, diaLargo, duracion, esperaProcesos, hace, horaDe, infoProceso, inicioDia, miles, nivelContexto, nombreModelo,
-  nombreSesion, permisoPendiente, preguntaPendiente, procesosDe, type Proceso,
+  ESTADOS, carpeta, diaLargo, duracion, encargosDe, esperaProcesos, hace, horaDe, infoProceso, inicioDia, miles, nivelContexto, nombreModelo,
+  nombreSesion, permisoPendiente, preguntaPendiente, procesosDe, tituloRol, type Proceso,
 } from '@/lib/oficina'
 import type { Datos, Intercambio, Sesion, Subagente, Tarea, Viva } from '@/lib/tipos'
+import { PanelEncargos } from './encargos'
 import { DecisionPermiso, FormularioPregunta, PantallaTmux } from './permisos'
 import { SelectorTarea } from './selector-tarea'
 
@@ -192,16 +193,18 @@ function Contenido({ s, d, tareas, iniciales, caja, abrirNueva }: {
   const cambiarPestana = (p: string) => { setPestana(p); guardar('ov-pestana', p) }
   const plegar = () => { setSinLado(!sinLado); guardar('ov-sin-lado', sinLado ? '0' : '1') }
 
+  const encargos = encargosDe(d, s.id)
   const subs = d.subagentes.filter((a) => a.sesion_id === s.id)
   const vivos = subs.filter((a) => a.estado === 'trabajando')
   const listaSubs = [...vivos, ...subs.filter((a) => a.estado !== 'trabajando').reverse().slice(0, 6)]
   const bloqueTarea = <BloqueTarea s={s} d={d} t={t} asignando={asignando} asignar={asignar} terminar={() => setAsignando(false)} />
   const procs = procesos.length ? <>{espera && <div className="aviso-caja" style={{ margin: 0 }}>Espera a que terminen sus procesos; después sigue solo.</div>}
     {procesos.map((p, i) => <TarjetaProceso key={i} sid={s.id} p={p} i={i} />)}</> : <p className="vacio">Nada corre en segundo plano.</p>
+  const panelEncargos = <PanelEncargos s={s} />
   const agentes = listaSubs.length ? listaSubs.map((a) => <FilaSubagente key={a.id} a={a} />) : <p className="vacio">No ha usado subagentes.</p>
-  const chip = (clave: string, partes: ReactNode, contenido: ReactNode) => (
+  const chip = (clave: string, partes: ReactNode, contenido: ReactNode, titulo?: string) => (
     <Popover open={menu === clave} onOpenChange={(o) => { setMenu(o ? clave : null); if (!o && clave === 'tarea') setAsignando(false) }}>
-      <PopoverTrigger asChild><button type="button" className="va-chip">{partes}<Icono n="abajo" /></button></PopoverTrigger>
+      <PopoverTrigger asChild><button type="button" className="va-chip" title={titulo}>{partes}<Icono n="abajo" /></button></PopoverTrigger>
       <PopoverContent align="start" className={MENU}>{contenido}</PopoverContent>
     </Popover>
   )
@@ -209,6 +212,7 @@ function Contenido({ s, d, tareas, iniciales, caja, abrirNueva }: {
   return <>
     <header className="va-cabeza">
       <Titulo>{nombreSesion(s, tareas)}</Titulo>
+      <Descripcion oculta>Conversación con el agente, cuadro para escribirle y su contexto: procesos, subagentes y tarea.</Descripcion>
       <div className="va-botones"><div className="acciones">
         {terminal && <button type="button" className="icono-boton" aria-label="Abrir en terminal" title="Abrir en terminal" onClick={terminal}><Icono n="terminal" /></button>}
         <button type="button" className="icono-boton solo-ancho" aria-label="Continuar en sesión nueva" title="Continuar en sesión nueva" onClick={continuar}><Icono n="recargar" /></button>
@@ -224,8 +228,9 @@ function Contenido({ s, d, tareas, iniciales, caja, abrirNueva }: {
       </div><Cerrar etiqueta="Cerrar ventana" /></div>
       <div className="va-sub">
         <span className={`chip ${colorEstado}`}>{viva ? `${textoEstado} · ${duracion(s.estado_desde_ts)}` : 'Sesión cerrada'}</span>
+        {s.rol && <span className="chip amarillo" title="Sesión fija de este rol">Rol: {tituloRol(d, s.rol)}</span>}
         {ctx?.modelo && <span className="dato"><Icono n="chip" />{nombreModelo(ctx.modelo)}</span>}
-        {s.rama_git && <span className="dato"><Icono n="rama" /><span className="mono">{s.rama_git}</span></span>}
+        {s.rama_git && <span className="dato"><Icono n="rama" /><span className="mono" title={s.rama_git}>{s.rama_git}</span></span>}
         {s.cwd && <span className="dato carpeta-dato"><Icono n="carpeta" /><span className="mono" title={s.cwd}>…/{carpeta(s.cwd)}</span>
           <button type="button" className="icono-boton chico" aria-label="Copiar ruta" title="Copiar ruta"
             onClick={(ev) => { const b = ev.currentTarget; navigator.clipboard?.writeText(s.cwd!).then(() => { b.title = 'Copiada' }) }}><Icono n="copiar" /></button></span>}
@@ -239,7 +244,8 @@ function Contenido({ s, d, tareas, iniciales, caja, abrirNueva }: {
     <div className="va-chips">
       {chip('proc', <><span className={`punto ${espera ? 'naranja' : procesos.length ? 'verde' : ''}`} />{procesos.length} proceso{procesos.length === 1 ? '' : 's'}</>, procs)}
       {chip('sub', <><span className={`punto ${vivos.length ? 'azul' : ''}`} />{vivos.length ? `${vivos.length} subagente${vivos.length > 1 ? 's' : ''} trabajando` : `${subs.length} subagente${subs.length === 1 ? '' : 's'}`}</>, agentes)}
-      {chip('tarea', t ? `${t.nombre.length > 28 ? `${t.nombre.slice(0, 28)}…` : t.nombre}${t.lista ? ` · ${t.lista}` : ''}` : 'Sin tarea', bloqueTarea)}
+      {chip('enc', <span className="txt">{encargos.length} encargo{encargos.length === 1 ? '' : 's'}</span>, panelEncargos)}
+      {chip('tarea', <span className="txt">{t ? `${t.nombre}${t.lista ? ` · ${t.lista}` : ''}` : 'Sin tarea'}</span>, bloqueTarea, t?.nombre)}
     </div>
     <div className={`va-cuerpo ${sinLado ? 'sin-lado' : ''}`}>
       <section className="va-chat" aria-label="Conversación">
@@ -276,6 +282,7 @@ function Contenido({ s, d, tareas, iniciales, caja, abrirNueva }: {
             <Tabs.List aria-label="Panel" className="contents">
               <Tabs.Trigger value="procesos">Procesos<span className={`cuenta ${espera ? 'aviso' : ''}`}>{procesos.length}</span></Tabs.Trigger>
               <Tabs.Trigger value="subagentes">Subagentes<span className="cuenta">{vivos.length || subs.length}</span></Tabs.Trigger>
+              <Tabs.Trigger value="encargos">Encargos<span className={`cuenta ${encargos.some((e) => e.estado === 'error') ? 'aviso' : ''}`}>{encargos.length}</span></Tabs.Trigger>
               <Tabs.Trigger value="tarea">Tarea<span className="cuenta">{s.tarea_id ? 1 : 0}</span></Tabs.Trigger>
             </Tabs.List>
             <button type="button" className="icono-boton chico plegar" aria-label={sinLado ? 'Mostrar panel' : 'Ocultar panel'} title={sinLado ? 'Mostrar panel' : 'Ocultar panel'}
@@ -283,6 +290,7 @@ function Contenido({ s, d, tareas, iniciales, caja, abrirNueva }: {
           </div>
           <Tabs.Content value="procesos" className="va-panel">{procs}</Tabs.Content>
           <Tabs.Content value="subagentes" className="va-panel">{agentes}</Tabs.Content>
+          <Tabs.Content value="encargos" className="va-panel">{panelEncargos}</Tabs.Content>
           <Tabs.Content value="tarea" className="va-panel"><div className="proc" style={{ padding: 12 }}>{bloqueTarea}</div></Tabs.Content>
         </Tabs.Root>
       </aside>

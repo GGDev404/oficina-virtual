@@ -1,6 +1,6 @@
 // Entra a tu oficina: una vez por navegador (30 días). Sin esto, nada actúa en tu nombre.
 import { useRef, useState } from 'react'
-import { Cerrar, Titulo, Ventana } from '@/components/ventana'
+import { Cerrar, Descripcion, Titulo, Ventana } from '@/components/ventana'
 import type { Yo } from '@/lib/tipos'
 
 export function Entrar({ yo, alCerrar, alEntrar }: { yo: Yo; alCerrar: () => void; alEntrar: () => void }) {
@@ -16,7 +16,7 @@ export function Entrar({ yo, alCerrar, alEntrar }: { yo: Yo; alCerrar: () => voi
   return (
     <Ventana alCerrar={alCerrar} id="v-entrar" style={{ maxWidth: 440 }} enfocar={() => caja.current}>
       <header><div className="titulos"><Titulo>Entra a tu oficina</Titulo>
-        <div className="meta">Una vez en este navegador; dura 30 días. Así ningún agente puede aprobar ni teclear en tu nombre.</div></div>
+        <Descripcion>Una vez en este navegador; dura 30 días. Así ningún agente puede aprobar ni teclear en tu nombre.</Descripcion></div>
         <Cerrar /></header>
       <div className="cuerpo">
         <form onSubmit={entrar} style={{ display: 'grid', gap: 8 }}>

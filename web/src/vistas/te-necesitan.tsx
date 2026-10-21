@@ -2,7 +2,7 @@
 import { ChipEstado } from '@/components/comunes'
 import { useOficina } from '@/components/contexto'
 import { Icono } from '@/components/icono'
-import { Cerrar, Titulo, Ventana } from '@/components/ventana'
+import { Cerrar, Descripcion, Titulo, Ventana } from '@/components/ventana'
 import { postSeguro, rutaSesion } from '@/lib/api'
 import { carpeta, colaUrgente, hace, nombreSesion, permisoPendiente, plano } from '@/lib/oficina'
 import { DecisionPermiso } from './permisos'
@@ -12,7 +12,7 @@ export function TeNecesitan() {
   const cola = colaUrgente(d)
   return (
     <Ventana alCerrar={cerrarVentana} id="v-necesitan">
-      <header><div className="titulos"><Titulo>Te necesitan</Titulo><div className="meta">Agentes que esperan algo de ti, el más urgente primero.</div></div>
+      <header><div className="titulos"><Titulo>Te necesitan</Titulo><Descripcion>Agentes que esperan algo de ti, el más urgente primero.</Descripcion></div>
         <Cerrar /></header>
       <div className="cuerpo"><ul>
         {cola.length ? cola.map((s) => {

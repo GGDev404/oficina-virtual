@@ -27,6 +27,16 @@ test('autorizar: rutas de hooks y solicitudes con el token del archivo', () => {
   }
 });
 
+test('autorizar: encargos por rol con el token de los agentes o con tu cookie; abrir la sesión del rol solo con la cookie', () => {
+  const e = '/api/roles/diseno/encargo';
+  assert.equal(autorizar(post(e, { 'x-oficina-token': token }), opciones), null);
+  assert.equal(autorizar(post(e, { cookie: `ov_sesion=${cookie}` }), opciones), null);
+  assert.equal(autorizar(post(e), opciones).status, 401);
+  assert.equal(autorizar(post(e, { 'x-oficina-token': 'x'.repeat(64) }), opciones).status, 401);
+  assert.equal(autorizar(post('/api/roles/diseno/sesion', { 'x-oficina-token': token }), opciones).status, 401);
+  assert.equal(autorizar(post('/api/roles/diseno/sesion', { cookie: `ov_sesion=${cookie}` }), opciones), null);
+});
+
 test('autorizar: lo que actúa en tu nombre exige la cookie; el token de los hooks NO sirve', () => {
   for (const ruta of ['/api/sesiones/abc/mensaje', '/api/sesiones/abc/tecla', '/api/permisos/3', '/api/sesiones/nueva', '/api/solicitudes/1/aprobar']) {
     assert.equal(autorizar(post(ruta, { 'x-oficina-token': token }), opciones).status, 401, `${ruta} con token`);

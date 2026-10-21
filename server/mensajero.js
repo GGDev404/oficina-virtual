@@ -61,11 +61,11 @@ export function interpretar(salida) {
   return { ok: false, detalle: ultima.slice(0, 200) || 'el mensajero no respondió' };
 }
 
-// Cola de uno en uno; `alCambiar` avisa a la página cada que un mensaje cambia de estado.
+// Cola por sesión destino (varias sesiones se entregan en paralelo; a una sola, en orden); `alCambiar` avisa a la página cada que un mensaje cambia de estado.
 export function crearMensajero({ dir, claude = 'claude', firma, alCambiar = () => {}, ejecutar = execFile }) {
   fs.mkdirSync(dir, { recursive: true });
   const porSesion = new Map(); // sesión → últimos 20 mensajes
-  let cola = Promise.resolve();
+  const colas = new Map(); // sesión → cola de entregas
   let siguienteId = 1;
 
   function registrar(sid, m) {
@@ -75,20 +75,24 @@ export function crearMensajero({ dir, claude = 'claude', firma, alCambiar = () =
     alCambiar();
   }
 
-  function enviar(sid, destino, texto) {
+  function enviar(sid, destino, texto, alTerminar = () => {}) {
     const m = { id: siguienteId++, texto, estado: 'enviando', detalle: null, ts: Date.now() };
     registrar(sid, m);
-    cola = cola.then(() => new Promise((listo) => {
+    const previa = colas.get(sid) ?? Promise.resolve();
+    const esta = previa.then(() => new Promise((listo) => {
       ejecutar(claude, ['-p', '--model', 'haiku', '--setting-sources', 'project', '--allowedTools=ListAgents,SendMessage',
         promptMensajero({ ...destino, texto, firma })],
-      { cwd: dir, timeout: 120_000, maxBuffer: 1024 * 1024 }, (e, salida = '') => {
-        const r = e && !salida ? { ok: false, detalle: e.killed ? 'tardó más de 2 min' : e.message.split('\n')[0] } : interpretar(salida);
+      { cwd: dir, timeout: 60_000, maxBuffer: 1024 * 1024 }, (e, salida = '') => {
+        const r = e && !salida ? { ok: false, detalle: e.killed ? 'tardó más de 1 min' : e.message.split('\n')[0] } : interpretar(salida);
         m.estado = r.ok ? 'enviado' : 'error';
         m.detalle = r.detalle;
         alCambiar();
+        alTerminar(m);
         listo();
       }).stdin?.end();
     }));
+    colas.set(sid, esta);
+    esta.then(() => { if (colas.get(sid) === esta) colas.delete(sid); });
     return m;
   }
 

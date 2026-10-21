@@ -58,12 +58,13 @@ export default function App() {
   const acciones = useMemo(() => ({ abrirAgente: (id: string) => abrirAgente(id), abrirOficina: (s?: string) => abrirOficina(s as Seccion | undefined) }), [abrirAgente, abrirOficina])
 
   const sync = datos?.sync
+  const textoSync = !sync ? 'Sin sincronizar' : sync.corriendo ? 'Sincronizando ClickUp…'
+    : sync.error ? `ClickUp: ${sync.error}` : sync.ultima_ts ? `ClickUp ${hace(sync.ultima_ts)}` : 'Sin sincronizar'
   return <>
     <header className="barra" ref={barra}>
       <h1>Oficina virtual</h1>
       <button className="primario" type="button" aria-haspopup="dialog" onClick={() => abrirNueva()} disabled={!datos}>Nueva sesión</button>
-      <div className="sync"><span>{!sync ? 'Sin sincronizar' : sync.corriendo ? 'Sincronizando ClickUp…'
-        : sync.error ? `ClickUp: ${sync.error}` : sync.ultima_ts ? `ClickUp ${hace(sync.ultima_ts)}` : 'Sin sincronizar'}</span>
+      <div className="sync"><span title={textoSync}>{textoSync}</span>
         <button type="button" disabled={!!sync?.corriendo} onClick={() => postSeguro('/api/sincronizar')}>Sincronizar ahora</button>
         <span className={`chip ${conectado ? 'verde' : conectado === false ? 'rojo' : ''}`}>{conectado ? 'en vivo' : conectado === false ? 'desconectado' : 'conectando…'}</span></div>
     </header>
