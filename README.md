@@ -98,7 +98,22 @@ se reintenta con las sesiones sin ligar.
 
 ## La página
 
-`http://127.0.0.1:4777`: un solo `public/index.html` sin compilación ni imágenes externas, en vivo por SSE.
+`http://127.0.0.1:4777`, en vivo por SSE. Está en `web/`: Vite + React 19 + TypeScript, Tailwind CSS 4 y shadcn/ui (Radix).
+El servidor sirve el build (`web/dist`) y solo los archivos de esa carpeta.
+
+```bash
+npm --prefix web install   # una vez
+npm run build              # compila web/ a web/dist; basta recargar la página, sin reiniciar el servicio
+npm --prefix web run dev   # desarrollo en :5173 con recarga al momento; /api va al servidor en :4777
+```
+
+- `web/src/oficina.css`: los estilos y tokens de la oficina, en la capa `components` de Tailwind (las utilidades y los
+  componentes de shadcn los pueden sobrescribir). `web/src/index.css` apunta los tokens de shadcn (`--primary`,
+  `--background`, …) a los de la oficina, así que un componente nuevo de shadcn sale con sus colores, en claro y oscuro.
+- Componentes nuevos: `cd web && npx shadcn@latest add <componente>` (quedan en `web/src/components/ui/`). Las ventanas
+  usan su Dialog (`components/ventana.tsx`) y los menús de la ficha su Popover; las pestañas, Tabs de Radix.
+- La escena (`web/src/escena/escena.ts`) es dibujo en `<canvas>` con su propio bucle; React solo la monta y le pasa los datos.
+- Los textos de agentes y comentarios nunca van como HTML: el markdown (`web/src/lib/markdown.tsx`) arma elementos de React.
 
 **Vista general.** La oficina en pixel art ocupa la pantalla y debajo van cuatro tarjetas de un solo ítem:
 Te necesitan · Hoy (o «Al día») · Para ti · Próximo corte (daily 9:00, seguimientos 9:35/13:35/17:35,
@@ -222,7 +237,7 @@ corrección nueva. Las del minuto siguiente se juntan; las urgentes no se cierra
 
 ## Instalación y operación (Fase 7)
 
-Requisitos: Node ≥ 22.13 (mise), `curl`, `jq`, `notify-send`.
+Requisitos: Node ≥ 22.13 (mise), `curl`, `jq`, `notify-send`. La página se compila una vez: `npm --prefix web install && npm run build`.
 
 ```bash
 # 1. Token de ClickUp (solo lectura). Regenerarlo: ClickUp → avatar → Settings → Apps → API Token → Regenerate,
@@ -253,4 +268,5 @@ Problemas comunes:
 | "ClickUp: HTTP 401" arriba a la derecha | Token vencido o mal copiado: regenerarlo y `systemctl --user restart oficina-virtual` |
 | Una sesión no se liga a su tarea | La tarea debe estar abierta y vencer en ≤ 30 días; si no, asígnala a mano en la página |
 | No llegan notificaciones | `notify-send prueba` desde una terminal; el servicio usa el bus de la sesión (`/run/user/1000/bus`) |
-| Cambié el código | `systemctl --user restart oficina-virtual` (no recarga solo) |
+| Cambié el código | `server/`: `systemctl --user restart oficina-virtual` (no recarga solo). `web/`: `npm run build` y recarga la página |
+| «falta compilar la página» | `npm --prefix web install && npm run build` |

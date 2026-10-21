@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { crearToken, autorizar, hashFrase, fraseCorrecta, leerCookie, crearLimite } from '../server/guardia.js';
+import { crearToken, autorizar, hashFrase, fraseCorrecta, leerCookie, crearLimite, archivoWeb } from '../server/guardia.js';
 
 const hosts = new Set(['127.0.0.1:4777', 'localhost:4777']);
 const token = 'a'.repeat(64);
@@ -69,4 +69,13 @@ test('crearToken: 64 hex, archivo 0600 y nuevo en cada arranque', () => {
   assert.equal(fs.readFileSync(path.join(dir, 'token'), 'utf8'), t1);
   assert.notEqual(crearToken(dir), t1);
   fs.rmSync(dir, { recursive: true });
+});
+
+test('la página solo sirve archivos de web/dist', () => {
+  const raiz = '/srv/web/dist';
+  assert.equal(archivoWeb(raiz, '/'), '/srv/web/dist/index.html');
+  assert.equal(archivoWeb(raiz, '/assets/index-abc.js'), '/srv/web/dist/assets/index-abc.js');
+  assert.equal(archivoWeb(raiz, '/../server/guardia.js'), null);
+  assert.equal(archivoWeb(raiz, '/assets/../../.env'), null);
+  assert.equal(archivoWeb(raiz, '/%2e%2e/secreto'), '/srv/web/dist/%2e%2e/secreto'); // sin decodificar: no sube
 });

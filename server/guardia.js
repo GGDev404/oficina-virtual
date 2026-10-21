@@ -60,3 +60,9 @@ export function autorizar({ method, headers, url }, { hosts, token, sesionValida
   const cookie = leerCookie(headers);
   return cookie && sesionValida(cookie) ? null : { status: 401, error: 'entra con tu frase para hacer esto' };
 }
+
+// Archivos de la página (web/dist, el build de Vite): solo los de esa carpeta; '/' es index.html. null = no existe ahí.
+export function archivoWeb(raiz, pathname) {
+  const archivo = path.resolve(raiz, `.${pathname === '/' ? '/index.html' : pathname}`);
+  return archivo.startsWith(raiz + path.sep) ? archivo : null;
+}

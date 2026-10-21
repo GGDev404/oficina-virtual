@@ -19,7 +19,7 @@ import { PERMISOS, MODELOS, carpetaValida, carpetasConocidas, nuevaSesion, nueva
   abrirTmux, worktreeDeTarea, carpetaAparte, esClaude } from './control.js';
 import { enviarTexto, enviarTecla, capturar, vive, cerrar as cerrarTmux, socketValido } from './tmux.js';
 import { memoria, leerMeminfo, nivelMemoria, pausar } from './memoria.js';
-import { crearToken, autorizar, crearLimite, fraseCorrecta, hashCookie, leerCookie, COOKIE, DURACION_MS } from './guardia.js';
+import { crearToken, autorizar, crearLimite, fraseCorrecta, hashCookie, leerCookie, archivoWeb, COOKIE, DURACION_MS } from './guardia.js';
 
 const PUERTO = Number(process.env.OFICINA_PUERTO ?? 4777);
 const DATOS = process.env.OFICINA_DATOS ?? path.join(os.homedir(), '.local', 'share', 'oficina-virtual');
@@ -29,6 +29,10 @@ const MAX_CUERPO = 8 * 1024 * 1024;
 // Sesiones nuevas y retomadas: en su propio tmux (tus mensajes cuentan como tecleados); OFICINA_LANZADOR=bg vuelve a `claude --bg`.
 const lanzarSesion = process.env.OFICINA_LANZADOR === 'bg' ? nuevaSesion : nuevaEnTmux;
 const RAIZ = path.resolve(import.meta.dirname, '..');
+// La página: el build de web/ (cd web && npm run build). Los nombres en assets/ llevan hash: se guardan para siempre.
+const WEB = path.join(RAIZ, 'web', 'dist');
+const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
+  '.png': 'image/png', '.woff2': 'font/woff2', '.ico': 'image/x-icon', '.json': 'application/json' };
 // Resumen del turno nocturno del ERP (solo lectura).
 
 fs.mkdirSync(DATOS, { recursive: true });
@@ -569,11 +573,15 @@ const servidor = http.createServer(async (req, res) => {
       abrirTerminal(viva.corto);
       return json(res, 204);
     }
-    if (req.method === 'GET' && url.pathname === '/') {
-      const html = path.join(RAIZ, 'public', 'index.html');
-      if (!fs.existsSync(html)) return json(res, 404, { error: 'la página llega en la Fase 5' });
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      return fs.createReadStream(html).pipe(res); // sin token: la página actúa con tu cookie, no con la llave de los hooks
+    if (req.method === 'GET' && !url.pathname.startsWith('/api/')) {
+      const archivo = archivoWeb(WEB, url.pathname);
+      if (!archivo || !fs.statSync(archivo, { throwIfNoEntry: false })?.isFile()) {
+        if (url.pathname === '/') return json(res, 503, { error: 'falta compilar la página: npm --prefix web install && npm run build' });
+        return json(res, 404, { error: 'no existe' });
+      }
+      res.writeHead(200, { 'Content-Type': TIPOS[path.extname(archivo)] ?? 'application/octet-stream', 'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': url.pathname.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache' });
+      return fs.createReadStream(archivo).pipe(res); // sin token: la página actúa con tu cookie, no con la llave de los hooks
     }
     json(res, 404, { error: 'no existe' });
   } catch (e) {
