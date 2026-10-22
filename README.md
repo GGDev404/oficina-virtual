@@ -241,12 +241,24 @@ corrección nueva. Las del minuto siguiente se juntan; las urgentes no se cierra
 
 ## Roles y encargos
 
-Cinco roles fijos: `analisis-plan`, `implementacion`, `revision-qa`, `docs-entrega`, `diseno`. Cada uno es un `.md` en
-`agentes/` con formato de subagente de Claude Code (tools mínimas, modelo, instrucciones y formato de salida;
-`revision-qa` no edita, `implementacion` aplica diff mínimo, `docs-entrega` nunca agrega atribución de IA).
+Seis roles fijos: `analisis-plan`, `implementacion`, `revision-qa`, `docs-entrega`, `diseno`, `integracion`. Cada uno es
+un `.md` en `agentes/` con formato de subagente de Claude Code (tools mínimas, modelo, instrucciones y formato de salida;
+`revision-qa` no edita, `implementacion` aplica diff mínimo, `integracion` nunca llama sistemas externos reales). Los
+prompts siguen las guías de Anthropic (porqué de cada regla, condición de cierre, reversibilidad, cuándo no delegar;
+ver `docs/investigacion.md`).
+
+- **Modelo por rol**: el `model:` del frontmatter (opus, sonnet, haiku) se usa también al lanzar la sesión fija del rol:
+  plan con Opus, documentación con Haiku, el resto con Sonnet. Así no todo gasta tokens del modelo más caro.
+- **Equipo**: `equipo:` del frontmatter lista las skills que el rol usa; el cuerpo dice cuándo cargar cada una (no se
+  precargan: solo cuestan tokens cuando hacen falta). La Armería las muestra como barra de 9 casillas.
+- **Misiones**: un encargo puede llevar `cadena` (hasta 4 roles más). Cada `ENTREGA:` pasa sola al rol siguiente con el
+  objetivo y la entrega anterior; solo la del último paso vuelve a quien pidió. Si QA responde «Veredicto: rechazado»,
+  la misión regresa una vez a implementación y luego vuelve a QA. En la ficha: Encargos → «Después (misión)».
 
 ```bash
 node scripts/instalar-agentes.js          # copia agentes/*.md a ~/.claude/agents/ sin pisar los existentes (como cp -n)
+node scripts/instalar-agentes.js --forzar # reemplaza los que difieren y deja el anterior como .md.bak
+node scripts/instalar-skills.js <repo>/.claude/skills   # skills del ERP Millet (skills/millet-*) en ese repo, sin pisar
 node scripts/instalar-agentes.js --quitar # quita solo los que siguen idénticos a los del repo
 ```
 
@@ -265,6 +277,21 @@ acepta el token de los agentes **o** tu cookie; abrir la sesión de un rol sin e
 Ojo: a diferencia de `/api/solicitudes`, un encargo no pasa por tu aprobación: puede teclear en la terminal libre de otra
 sesión y abrir una de rol (a lo más `acceptEdits`, nunca `bypassPermissions`). Queda en `eventos` (`teclado` / `mensaje_oficina`
 con `de`) y no aprueba permisos. En `/api/estado`: `roles`, `encargos` (últimos 30), `Sesion.rol` y los envíos en `entre_sesiones`.
+
+## Armería, temas y juego
+
+- **Armería** (botón de la barra o el escudo de la ficha): equipo de cada personaje: clase (Spartan de Halo, Netrunner
+  de Cyberpunk, Doom Slayer, Bloque de Minecraft o Civil), colores y apodo, con vista previa animada. Se guarda por rol
+  (lo heredan sus sesiones), por sesión (manda sobre su rol) o para ti, en la tabla `aspectos`
+  (`POST /api/aspectos/rol:<id>|sesion:<uuid>|yo`, solo con tu cookie; cuerpo `null` lo quita).
+- **Nivel por rol**: 100 XP por encargo entregado, −25 por fallido; logros (Primera entrega, Veterano, Impecable, Leyenda).
+  Al entregar o subir de nivel sale un aviso arriba a la derecha.
+- **Temas**: automático, claro, oscuro, Halo, Cyberpunk, DOOM y Minecraft, por navegador. Cambian la página y la
+  paleta de la escena. Referencia de tokens y piezas: `docs/design-system.md`.
+- **Gasto de tokens**: cada sesión suma el `usage` de su transcript (entrada, caché leída y creada, salida) en `gastos`
+  de `/api/estado`. La ficha muestra el total y el porcentaje de caché (naranja bajo 60 %); la tarjeta «Tokens» suma la
+  oficina y abre al que más gasta; al señalar a un agente se ven su modelo y sus tokens.
+- **Escena**: quieta se pinta 4 veces por segundo (el cuadro de animación) en vez de a cada refresco de pantalla.
 
 ## Prioridad para los agentes (Fase 6)
 
