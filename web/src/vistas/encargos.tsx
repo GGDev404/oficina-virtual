@@ -40,7 +40,8 @@ function FilaEncargo({ e }: { e: Encargo }) {
   const [txt, color] = ESTADO_ENCARGO[e.estado]
   return (
     <div className="proc" style={{ padding: 'var(--s2) var(--s3)', display: 'grid', gap: 4 }}>
-      <div className="fila"><b>{tituloRol(d, e.rol)}</b><Chip color={color}>{txt}</Chip>{e.via && <span className="meta">{VIA[e.via] ?? e.via}</span>}
+      <div className="fila"><b>{tituloRol(d, e.rol)}</b><Chip color={color}>{txt}</Chip>
+        {(e.mision || e.cadena) && <span className="chip azul-suave">misión #{e.mision ?? e.id}{e.intento ? ` · reintento ${e.intento}` : ''}</span>}{e.via && <span className="meta">{VIA[e.via] ?? e.via}</span>}
         <span className="meta">{hace(e.creado_ts)}</span></div>
       <div className="meta">{quien(e.de_sesion, 'Oficina')} → {e.a_sesion ? quien(e.a_sesion) : 'sesión del rol (arrancando)'}</div>
       <div className="corto3" title={e.texto}>{e.texto}</div>
@@ -50,11 +51,19 @@ function FilaEncargo({ e }: { e: Encargo }) {
   )
 }
 
+// Misiones: después del primer rol, la entrega pasa sola a los siguientes (server/encargos.js); si QA rechaza,
+// vuelve una vez a implementación. Solo la entrega del último paso regresa a esta sesión.
+const MISIONES: [string, string[]][] = [
+  ['Solo este rol', []], ['→ Revisión y QA', ['revision-qa']], ['→ QA → Documentación', ['revision-qa', 'docs-entrega']],
+  ['→ Implementación → QA → Documentación', ['implementacion', 'revision-qa', 'docs-entrega']],
+]
+
 // Encargo a un rol: la sesión fija del rol lo hace y su entrega vuelve a la sesión de origen.
 function FormEncargo({ s }: { s: Sesion }) {
   const { datos: d } = useOficina()
   const [rol, setRol] = useState<string>('')
   const [texto, setTexto] = useState('')
+  const [mision, setMision] = useState(0)
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -64,7 +73,7 @@ function FormEncargo({ s }: { s: Sesion }) {
     if (!texto.trim() || !elegido) return
     setEnviando(true); setError(''); setOk('')
     try {
-      await post(`/api/roles/${encodeURIComponent(elegido)}/encargo`, { texto: texto.trim(), de_sesion: s.id, cwd: s.cwd })
+      await post(`/api/roles/${encodeURIComponent(elegido)}/encargo`, { texto: texto.trim(), de_sesion: s.id, cwd: s.cwd, cadena: MISIONES[mision][1].filter((r) => r !== elegido) })
       setTexto(''); setOk('Encargo enviado; su avance aparece arriba.')
     } catch (err) { setError((err as Error).message) } finally { setEnviando(false) }
   }
@@ -74,6 +83,8 @@ function FormEncargo({ s }: { s: Sesion }) {
       <h4>Encargar a un rol</h4>
       <label className="campo"><span>Rol</span>
         <select value={elegido} onChange={(e) => setRol(e.target.value)}>{d.roles.map((r) => <option key={r.id} value={r.id}>{r.titulo}</option>)}</select></label>
+      <label className="campo"><span>Después (misión)</span>
+        <select value={mision} onChange={(e) => setMision(Number(e.target.value))}>{MISIONES.map(([t], i) => <option key={t} value={i}>{t}</option>)}</select></label>
       <label className="campo"><span>Qué debe hacer</span>
         <textarea rows={3} maxLength={4000} required placeholder="Describe el encargo; su entrega vuelve a esta sesión." value={texto} onChange={(e) => setTexto(e.target.value)}
           onKeyDown={(ev) => { if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); ev.currentTarget.form?.requestSubmit() } }} /></label>

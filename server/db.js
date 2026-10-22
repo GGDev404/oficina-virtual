@@ -64,6 +64,9 @@ const COLUMNAS_NUEVAS = [
   ['sesiones', 'pendiente INTEGER NOT NULL DEFAULT 0'], // murió sin cerrarse: espera Retomar o Descartar
   ['sesiones', 'tmux TEXT'], // socket de su tmux (`tmux -L`) si la abrió la oficina: ahí se teclean tus mensajes
   ['sesiones', 'rol TEXT'], // sesión fija de un rol (agentes/<rol>.md): recibe encargos
+  ['encargos', 'cadena TEXT'], // misión: JSON con los roles que siguen después de este encargo
+  ['encargos', 'mision INTEGER'], // id del primer encargo de la misión
+  ['encargos', 'intento INTEGER NOT NULL DEFAULT 0'], // veces que QA la regresó a implementación
 ];
 
 export function abrir(ruta) {
@@ -91,7 +94,7 @@ export function estado(db, ahora = Date.now()) {
     tareas: db.prepare('SELECT * FROM tareas ORDER BY due_ts IS NULL, due_ts').all(),
     comentarios: db.prepare('SELECT * FROM comentarios ORDER BY ts DESC').all(),
     entre_sesiones: db.prepare('SELECT id, ts, de, de_sesion, a_sesion, substr(texto, 1, 300) AS texto, tipo FROM entre_sesiones ORDER BY id DESC LIMIT 50').all().reverse(),
-    encargos: db.prepare(`SELECT id, rol, de_sesion, a_sesion, cwd, substr(texto, 1, 300) AS texto, estado, via, detalle,
+    encargos: db.prepare(`SELECT id, rol, de_sesion, a_sesion, cwd, substr(texto, 1, 300) AS texto, estado, via, detalle, cadena, mision, intento,
                           substr(resultado, 1, 600) AS resultado, creado_ts, resuelto_ts FROM encargos ORDER BY id DESC LIMIT 30`).all().reverse(),
     // Experiencia de cada rol (la Armería la convierte en nivel): encargos entregados y fallidos.
     experiencia: db.prepare(`SELECT rol, SUM(estado = 'respondido') AS hechos, SUM(estado = 'error') AS fallos,

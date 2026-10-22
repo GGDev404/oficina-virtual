@@ -81,7 +81,6 @@
   :root[data-tema=minecraft] { /* Bloques: pasto, tierra y piedra con letra de píxel */
     --fondo: #e9e3d3; --panel: #f7f3e8; --hundido: #ece5d3; --borde: #cfc5ad; --borde-fuerte: #ab9f84; --borde-control: #7d725c;
     --texto: #1f1a12; --suave: #5b5242; --acento: #3f7a1f; --acento-suave: #e1eed4; --acento-texto: #ffffff;
-    --letra: 'Pixelify Sans', system-ui, sans-serif;
     --escenario: #7fb1e8; --esc-resalte: #ffe066;
     --esc-pasillo: #8a8a8a; --esc-pasillo-2: #7d7d7d; --esc-linea: #9c9c9c; --esc-muro: #6b4a2f; --esc-muro-alto: #4d3420; --esc-zocalo: #3a2716;
     --esc-taller: #b8945f; --esc-taller-2: #a8854f; --esc-puerta: #6a8d3a; --esc-puerta-2: #5f8034;
@@ -89,6 +88,8 @@
     --esc-oficina: #5b8731; --esc-oficina-2: #527a2c;
   }
   :root[data-tema=minecraft] { --r1: 0; --r2: 0; --r3: 0; --r4: 0; --r5: 0; --r-pill: 0; } /* todo en bloques */
+  /* Letra de píxel solo en títulos: en el cuerpo cansa y baja la legibilidad. */
+  :root[data-tema] :is(.barra h1, .ventana h2) { font-family: var(--pixel); letter-spacing: .02em; }
 
   @media (prefers-reduced-motion: reduce) {
     :root { --dur-rapida: 0ms; --dur-media: 0ms; --dur-lenta: 0ms; }

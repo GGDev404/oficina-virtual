@@ -133,6 +133,8 @@ export interface AspectoGuardado { clase?: Clase; camisa?: string; pelo?: string
 export interface Rol {
   id: RolId
   titulo: string
+  modelo?: string
+  equipo?: string[]
 }
 
 // Mensaje o encargo entre dos sesiones (últimos 50). `de_sesion` es null si el origen no es una sesión conocida (o es la oficina).
@@ -160,6 +162,9 @@ export interface Encargo {
   resultado: string | null
   creado_ts: number
   resuelto_ts: number | null
+  cadena: string | null // misión: JSON con los roles que siguen
+  mision: number | null
+  intento: number
 }
 
 export interface Datos {

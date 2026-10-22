@@ -252,7 +252,7 @@ async function entregar(sid, texto, { de = null, alFallar = () => {} } = {}) {
 const encargos = crearEncargos({ db, entregar, vivo: sesionViva, etiqueta: etiquetaSesion, alCambiar: () => avisar(),
   lanzar: async (datos) => nivelMemoria(leerMeminfo()) === 'critico'
     ? { ok: false, motivo: 'Memoria casi agotada: no abro otra sesión.' }
-    : lanzarSesion({ ...datos, nombre: `rol-${datos.rol}`, tarea: null, modelo: '' }).then((r) => { if (r.ok) actualizarVivas(); return r; }) });
+    : lanzarSesion({ ...datos, nombre: `rol-${datos.rol}`, tarea: null, modelo: datos.modelo ?? '' }).then((r) => { if (r.ok) actualizarVivas(); return r; }) });
 
 function json(res, codigo, cuerpo) {
   res.writeHead(codigo, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -396,7 +396,7 @@ const servidor = http.createServer(async (req, res) => {
     // Encargos por rol: la sesión fija del rol (o una nueva) lo hace y su ENTREGA: vuelve a la sesión de origen.
     if (req.method === 'POST' && (m = url.pathname.match(/^\/api\/roles\/([^/]+)\/(encargo|sesion)$/))) {
       if (!esRol(m[1])) return json(res, 404, { error: `rol desconocido; roles: ${Object.keys(ROLES).join(', ')}` });
-      const { texto, de_sesion = null, cwd = null } = await leerJson(req);
+      const { texto, de_sesion = null, cwd = null, cadena = [] } = await leerJson(req);
       if (cwd !== null && !carpetaValida(cwd)) return json(res, 400, { error: 'la carpeta no existe o está fuera de tu home' });
       if (de_sesion !== null && !(typeof de_sesion === 'string' && /^[0-9a-f-]{36}$/.test(de_sesion))) return json(res, 400, { error: 'de_sesion no válida' });
       const carpeta = cwd === null ? null : path.resolve(cwd);
@@ -408,7 +408,7 @@ const servidor = http.createServer(async (req, res) => {
         }
         const limpio = typeof texto === 'string' ? texto.trim() : '';
         if (!limpio || limpio.length > MAX_TEXTO) return json(res, 400, { error: `el encargo debe tener entre 1 y ${MAX_TEXTO} caracteres` });
-        const r = await encargos.encargar({ rol: m[1], texto: limpio, de_sesion, cwd: carpeta });
+        const r = await encargos.encargar({ rol: m[1], texto: limpio, de_sesion, cwd: carpeta, cadena });
         avisar();
         return r.estado === 'error' ? json(res, 502, { error: r.detalle, ...r }) : json(res, 202, r);
       } catch (e) {

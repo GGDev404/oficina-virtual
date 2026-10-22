@@ -11,9 +11,19 @@ export const ROLES = {
   'revision-qa': { titulo: 'Revisión y QA', permiso: 'manual' },
   'docs-entrega': { titulo: 'Documentación y entrega', permiso: 'acceptEdits' },
   diseno: { titulo: 'Diseño', permiso: 'acceptEdits' },
+  integracion: { titulo: 'Integración', permiso: 'acceptEdits' },
 };
 export const esRol = (rol) => typeof rol === 'string' && Object.hasOwn(ROLES, rol);
-export const listaRoles = () => Object.entries(ROLES).map(([id, { titulo }]) => ({ id, titulo }));
+// Del frontmatter del .md: `model` (alias opus/sonnet/haiku → id completo) y `equipo` (skills que el rol usa).
+// Cada rol corre con su modelo: plan con Opus, docs con Haiku; así no todo gasta tokens del modelo más caro.
+const MODELO_ALIAS = { opus: 'claude-opus-5-5', sonnet: 'claude-sonnet-5-5', haiku: 'claude-haiku-5-5', fable: 'claude-fable-5-1' };
+export function fichaRol(rol, dir = AGENTES) {
+  let cabeza = '';
+  try { cabeza = /^---\n([\s\S]*?)\n---\n/.exec(fs.readFileSync(path.join(dir, `${rol}.md`), 'utf8'))?.[1] ?? ''; } catch { /* sin .md: valores vacíos */ }
+  const campo = (k) => new RegExp(`^${k}:\\s*(.+)$`, 'm').exec(cabeza)?.[1].trim() ?? '';
+  return { modelo: MODELO_ALIAS[campo('model')] ?? '', equipo: campo('equipo').split(',').map((x) => x.trim()).filter(Boolean) };
+}
+export const listaRoles = () => Object.entries(ROLES).map(([id, { titulo }]) => ({ id, titulo, ...fichaRol(id) }));
 
 // Cuerpo del .md del rol (sin el frontmatter): es el prompt de sistema de su sesión.
 export const cuerpoRol = (rol, dir = AGENTES) => fs.readFileSync(path.join(dir, `${rol}.md`), 'utf8').replace(/^---\n[\s\S]*?\n---\n/, '').trim();
@@ -21,6 +31,14 @@ export const cuerpoRol = (rol, dir = AGENTES) => fs.readFileSync(path.join(dir, 
 export const textoEncargo = (origen, texto) =>
   `Encargo de ${origen}: ${texto}\n\nCuando termines, tu respuesta final debe empezar con \`ENTREGA:\` seguida del resultado (breve, con rutas y lo pendiente); la oficina se la reenvía a ${origen}.`;
 export const entregaDe = (mensaje) => /^\s*ENTREGA:\s*([\s\S]*)$/.exec(mensaje ?? '')?.[1].trim() || null;
+
+// Misión: un encargo que pasa de rol en rol (plan → implementación → QA → docs). Cada paso recibe el objetivo y la
+// entrega del paso anterior; solo la entrega del último vuelve a quien la pidió. Si QA rechaza, regresa una vez a
+// implementación con los defectos y después vuelve a QA.
+export const MAX_PASOS = 5, MAX_REINTENTOS = 1;
+export const rechazado = (resultado) => /veredicto\W{0,4}\s*rechazad/i.test(resultado ?? '');
+export const textoPaso = (mision, rol, objetivo, anterior, resultado) =>
+  `Misión #${mision}, paso de ${rol}. Objetivo: ${objetivo.slice(0, 1200)}\n\nEntrega anterior (${anterior}):\n${resultado.slice(0, 2400)}`;
 
 export class ErrorEncargo extends Error {
   constructor(status, mensaje) { super(mensaje); this.status = status; }
@@ -39,9 +57,10 @@ export function crearEncargos({ db, entregar, vivo, lanzar, etiqueta, alCambiar 
       .run(estado, campos.via ?? null, campos.detalle ?? null, campos.resultado ?? null, ahora(), id);
     alCambiar();
   };
-  const arrancar = (rol, cwd, prompt) => lanzar({ rol, cwd, prompt, sistema: cuerpo(rol), permiso: ROLES[rol].permiso });
+  const arrancar = (rol, cwd, prompt) => lanzar({ rol, cwd, prompt, sistema: cuerpo(rol), permiso: ROLES[rol].permiso, modelo: fichaRol(rol).modelo });
 
-  async function encargar({ rol, texto, de_sesion = null, cwd = null }) {
+  async function encargar({ rol, texto, de_sesion = null, cwd = null, cadena = [], mision = null, intento = 0 }) {
+    if (!Array.isArray(cadena) || cadena.length > MAX_PASOS - 1 || !cadena.every(esRol)) throw new ErrorEncargo(400, `cadena: hasta ${MAX_PASOS - 1} roles de la lista`);
     const origen = de_sesion ? db.prepare('SELECT cwd FROM sesiones WHERE id = ?').get(de_sesion) : null;
     if (de_sesion && !origen) throw new ErrorEncargo(400, 'la sesión de origen no existe');
     const de = de_sesion ? etiqueta(de_sesion) : 'la oficina';
@@ -54,8 +73,8 @@ export function crearEncargos({ db, entregar, vivo, lanzar, etiqueta, alCambiar 
     }
     const dondeArrancar = cwd ?? origen?.cwd ?? null;
     const insertar = (a_sesion, estado) => Number(db.prepare(
-      'INSERT INTO encargos (rol, de_sesion, a_sesion, cwd, texto, estado, creado_ts) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(rol, de_sesion, a_sesion, destino?.cwd ?? dondeArrancar, texto, estado, ahora()).lastInsertRowid);
+      'INSERT INTO encargos (rol, de_sesion, a_sesion, cwd, texto, estado, creado_ts, cadena, mision, intento) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(rol, de_sesion, a_sesion, destino?.cwd ?? dondeArrancar, texto, estado, ahora(), cadena.length ? JSON.stringify(cadena) : null, mision, intento).lastInsertRowid);
     if (destino) {
       const id = insertar(destino.id, 'entregando');
       const r = await entregar(destino.id, cuerpoEncargo, { de, alFallar: (detalle) => cerrar(id, 'error', { detalle }) });
@@ -98,6 +117,20 @@ export function crearEncargos({ db, entregar, vivo, lanzar, etiqueta, alCambiar 
     const e = resultado && db.prepare(`SELECT * FROM encargos WHERE a_sesion = ? AND estado = 'entregado' ORDER BY id LIMIT 1`).get(sid);
     if (!e) return;
     cerrar(e.id, 'respondido', { resultado });
+    const cadena = JSON.parse(e.cadena ?? '[]');
+    const mision = e.mision ?? e.id;
+    const objetivo = db.prepare('SELECT texto FROM encargos WHERE id = ?').get(mision)?.texto ?? e.texto;
+    const volver = e.rol === 'revision-qa' && rechazado(resultado) && e.intento < MAX_REINTENTOS;
+    const siguiente = volver ? { rol: 'implementacion', cadena: ['revision-qa', ...cadena] } : cadena.length ? { rol: cadena[0], cadena: cadena.slice(1) } : null;
+    if (siguiente) {
+      try {
+        await encargar({ rol: siguiente.rol, texto: textoPaso(mision, siguiente.rol, objetivo, e.rol, resultado), de_sesion: e.de_sesion,
+          cwd: e.cwd, cadena: siguiente.cadena, mision, intento: e.intento + (volver ? 1 : 0) });
+        return;
+      } catch (err) { // no se pudo seguir: la entrega vuelve a quien pidió, con el motivo
+        db.prepare('UPDATE encargos SET detalle = ? WHERE id = ?').run(`la misión no pudo pasar a ${siguiente.rol}: ${err.message}`, e.id);
+      }
+    }
     if (!e.de_sesion) return;
     const r = await entregar(e.de_sesion, `Entrega de ${etiqueta(sid)} (rol ${e.rol}, encargo #${e.id}):\n${resultado.slice(0, 4000)}`, { de: etiqueta(sid) });
     if (r.ok) anotar(etiqueta(sid), sid, e.de_sesion, resultado, 'entrega');

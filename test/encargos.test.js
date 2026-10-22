@@ -32,7 +32,7 @@ test('un .md por rol, con frontmatter de subagente y tools mínimas; revision-qa
     assert.ok(cuerpoRol(rol).includes('ENTREGA:'));
   }
   assert.doesNotMatch(fs.readFileSync(path.join(RAIZ, 'agentes', 'revision-qa.md'), 'utf8').match(/^tools: (.*)$/m)[1], /Edit|Write/);
-  assert.match(cuerpoRol('docs-entrega'), /Nunca\*\* agregues «Co-Authored-By»/);
+  assert.match(cuerpoRol("docs-entrega"), /Nunca agregues atribución de IA \(«Co-Authored-By»/);
   assert.equal(esRol('implementacion'), true);
   assert.equal(esRol('__proto__'), false);
   assert.equal(esRol('../x'), false);
@@ -123,9 +123,32 @@ test('instalar-agentes: copia sin pisar, y --quitar solo borra los idénticos (H
   fs.writeFileSync(path.join(destino, 'diseno.md'), 'mío');
   assert.match(correr(), /ya existe diseno\.md/);
   assert.equal(fs.readFileSync(path.join(destino, 'diseno.md'), 'utf8'), 'mío');
-  assert.deepEqual(fs.readdirSync(destino).sort(), ['analisis-plan.md', 'diseno.md', 'docs-entrega.md', 'implementacion.md', 'revision-qa.md']);
+  assert.deepEqual(fs.readdirSync(destino).sort(), ['analisis-plan.md', 'diseno.md', 'docs-entrega.md', 'implementacion.md', 'integracion.md', 'revision-qa.md']);
   assert.match(correr(), /ya existe analisis-plan\.md/); // idempotente
   assert.match(correr('--quitar'), /se queda diseno\.md/);
   assert.deepEqual(fs.readdirSync(destino), ['diseno.md']);
   fs.rmSync(home, { recursive: true });
+});
+
+test('misión: cada ENTREGA pasa al rol siguiente; QA rechaza una vez y vuelve a implementación; el final vuelve al origen', async () => {
+  const I = 'iiiiiiii-iiii-4iii-8iii-iiiiiiiiiiii', D = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  const { db, e, llamadas } = montar({ vivas: [A, I, R, D] });
+  sesion(db, A, '/home/u/p'); sesion(db, I, '/home/u/p', { rol: 'implementacion' });
+  sesion(db, R, '/home/u/p', { rol: 'revision-qa' }); sesion(db, D, '/home/u/p', { rol: 'docs-entrega' });
+  await assert.rejects(e.encargar({ rol: 'implementacion', texto: 'x', de_sesion: A, cadena: ['nadie'] }), (x) => x.status === 400);
+  const { id } = await e.encargar({ rol: 'implementacion', texto: 'arregla el total', de_sesion: A, cadena: ['revision-qa', 'docs-entrega'] });
+  const a = (sid) => llamadas.filter((l) => l.sid === sid).length;
+  await e.alTerminarTurno(I, 'ENTREGA: cambié total.js');
+  assert.equal(a(R), 1); assert.equal(a(A), 0); // el paso intermedio no molesta al origen
+  assert.match(llamadas.at(-1).texto, new RegExp(`Misión #${id}, paso de revision-qa\\. Objetivo: arregla el total[\\s\\S]*cambié total.js`));
+  await e.alTerminarTurno(R, 'ENTREGA: **Veredicto**: rechazado. Falta la prueba.');
+  assert.equal(a(I), 2); // regresó a implementación
+  await e.alTerminarTurno(I, 'ENTREGA: agregué la prueba');
+  await e.alTerminarTurno(R, 'ENTREGA: **Veredicto**: rechazado otra vez'); // ya usó su reintento: sigue a docs
+  assert.equal(a(D), 1);
+  await e.alTerminarTurno(D, 'ENTREGA: README al día');
+  assert.equal(a(A), 1);
+  assert.match(llamadas.at(-1).texto, /README al día/);
+  const pasos = db.prepare('SELECT rol, mision, intento FROM encargos ORDER BY id').all().map((f) => `${f.rol}:${f.mision ?? f.rol}:${f.intento}`);
+  assert.deepEqual(pasos, ['implementacion:implementacion:0', `revision-qa:${id}:0`, `implementacion:${id}:1`, `revision-qa:${id}:1`, `docs-entrega:${id}:1`]);
 });
