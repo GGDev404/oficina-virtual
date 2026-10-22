@@ -11,7 +11,7 @@ export const claveValida = (clave) => typeof clave === 'string' && CLAVE.test(cl
 export function limpiarAspecto(entrada) {
   if (!entrada || typeof entrada !== 'object' || Array.isArray(entrada)) return null;
   const a = {};
-  for (const k of COLORES) if (HEX.test(entrada[k] ?? '')) a[k] = entrada[k].toLowerCase();
+  for (const k of COLORES) if (typeof entrada[k] === 'string' && HEX.test(entrada[k])) a[k] = entrada[k].toLowerCase();
   if (CLASES.includes(entrada.clase)) a.clase = entrada.clase;
   if (typeof entrada.apodo === 'string') {
     const apodo = entrada.apodo.replace(/[\p{C}]/gu, '').trim().slice(0, 24);

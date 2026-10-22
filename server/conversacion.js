@@ -154,7 +154,7 @@ export function leerGasto(ruta, g = gastoVacio()) {
     fs.readSync(fd, buf, 0, n, g.offset);
     const texto = buf.toString('utf8');
     const corte = texto.lastIndexOf('\n'); // la última línea puede estar a medio escribir: espera a la próxima lectura
-    if (corte < 0) return g;
+    if (corte < 0) { if (n === 16 * 1024 * 1024) g.offset += n; return g; } // una sola línea de más de 16 MB (imagen): se salta
     g.offset += Buffer.byteLength(texto.slice(0, corte + 1));
     return sumarUso(g, texto.slice(0, corte).split('\n'));
   } catch {

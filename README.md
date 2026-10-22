@@ -253,11 +253,12 @@ ver `docs/investigacion.md`).
   precargan: solo cuestan tokens cuando hacen falta). La Armería las muestra como barra de 9 casillas.
 - **Misiones**: un encargo puede llevar `cadena` (hasta 4 roles más). Cada `ENTREGA:` pasa sola al rol siguiente con el
   objetivo y la entrega anterior; solo la del último paso vuelve a quien pidió. Si QA responde «Veredicto: rechazado»,
-  la misión regresa una vez a implementación y luego vuelve a QA. En la ficha: Encargos → «Después (misión)».
+  la misión regresa una vez a implementación y luego vuelve a QA (un encargo suelto a QA no arranca a nadie). Hasta 3
+  misiones abiertas a la vez (429 si no). Si un paso no se puede entregar, la entrega vuelve a quien pidió con el motivo. En la ficha: Encargos → «Después (misión)».
 
 ```bash
 node scripts/instalar-agentes.js          # copia agentes/*.md a ~/.claude/agents/ sin pisar los existentes (como cp -n)
-node scripts/instalar-agentes.js --forzar # reemplaza los que difieren y deja el anterior como .md.bak
+node scripts/instalar-agentes.js --forzar # reemplaza los que difieren y deja el anterior como .md.<ts>.bak
 node scripts/instalar-skills.js <repo>/.claude/skills   # skills del ERP Millet (skills/millet-*) en ese repo, sin pisar
 node scripts/instalar-agentes.js --quitar # quita solo los que siguen idénticos a los del repo
 ```

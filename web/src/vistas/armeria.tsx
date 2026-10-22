@@ -33,8 +33,9 @@ export function Armeria({ inicial }: { inicial?: string }) {
     ...d.roles.map((r) => ({ clave: `rol:${r.id}`, titulo: r.titulo, sub: 'Rol: lo heredan sus sesiones', rol: r.id })),
     ...d.sesiones.filter((s) => VIVOS.has(s.estado)).map((s) => ({ clave: `sesion:${s.id}`, titulo: nombreSesion(s, tareas), sub: 'Solo esta sesión', rol: s.rol })),
   ], [d.roles, d.sesiones, tareas])
-  const [clave, setClave] = useState(inicial && objetivos.some((o) => o.clave === inicial) ? inicial : 'yo')
-  const obj = objetivos.find((o) => o.clave === clave) ?? objetivos[0]
+  const [elegida, setClave] = useState(inicial && objetivos.some((o) => o.clave === inicial) ? inicial : 'yo')
+  const obj = objetivos.find((o) => o.clave === elegida) ?? objetivos[0] // si su sesión se cerró, vuelve a «Tú»
+  const clave = obj.clave
   const guardado = d.aspectos?.[clave]
   const [borrador, setBorrador] = useState<AspectoGuardado>(guardado ?? {})
   const [error, setError] = useState('')

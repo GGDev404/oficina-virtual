@@ -8,6 +8,7 @@ test('limpiarAspecto: solo campos conocidos y con forma válida', () => {
     { camisa: '#aabbcc', clase: 'spartan', apodo: 'Jefe Maestro' });
   assert.equal(limpiarAspecto({ clase: 'dragón', camisa: 'url(x)' }), null);
   assert.equal(limpiarAspecto([]), null);
+  assert.equal(limpiarAspecto({ camisa: ['#aabbcc'] }), null); // un arreglo no pasa por cadena
   assert.equal(limpiarAspecto({ apodo: 'x'.repeat(40) }).apodo.length, 24);
 });
 

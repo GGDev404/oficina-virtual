@@ -152,3 +152,28 @@ test('misión: cada ENTREGA pasa al rol siguiente; QA rechaza una vez y vuelve a
   const pasos = db.prepare('SELECT rol, mision, intento FROM encargos ORDER BY id').all().map((f) => `${f.rol}:${f.mision ?? f.rol}:${f.intento}`);
   assert.deepEqual(pasos, ['implementacion:implementacion:0', `revision-qa:${id}:0`, `implementacion:${id}:1`, `revision-qa:${id}:1`, `docs-entrega:${id}:1`]);
 });
+
+test('misión: si el paso siguiente no se puede entregar, la entrega vuelve al origen con el motivo', async () => {
+  const I = 'iiiiiiii-iiii-4iii-8iii-iiiiiiiiiiii';
+  const db = abrir(':memory:');
+  const llamadas = [];
+  const e = crearEncargos({ db, vivo: async () => true, etiqueta: (sid) => sid.slice(0, 1), lanzar: async () => ({ ok: true }),
+    entregar: async (sid, texto) => { llamadas.push({ sid, texto }); return sid === R ? { ok: false, detalle: 'pide un permiso' } : { ok: true, via: 'tmux' }; } });
+  sesion(db, A, '/home/u/p'); sesion(db, I, '/home/u/p', { rol: 'implementacion' }); sesion(db, R, '/home/u/p', { rol: 'revision-qa' });
+  const { id } = await e.encargar({ rol: 'implementacion', texto: 'x', de_sesion: A, cadena: ['revision-qa'] });
+  await e.alTerminarTurno(I, 'ENTREGA: listo');
+  assert.equal(llamadas.at(-1).sid, A);
+  assert.match(llamadas.at(-1).texto, /listo/);
+  assert.match(db.prepare('SELECT detalle FROM encargos WHERE id = ?').get(id).detalle, /no pudo pasar a revision-qa: pide un permiso/);
+});
+
+test('un encargo suelto a QA con «rechazado» vuelve al origen y no arranca implementación; máximo de misiones abiertas', async () => {
+  const { db, e, llamadas, lanzadas } = montar({ vivas: [R, A] });
+  sesion(db, A, '/home/u/p'); sesion(db, R, '/home/u/p', { rol: 'revision-qa' });
+  await e.encargar({ rol: 'revision-qa', texto: 'revisa', de_sesion: A });
+  await e.alTerminarTurno(R, 'ENTREGA: **Veredicto**: rechazado');
+  assert.equal(lanzadas.length, 0);
+  assert.equal(llamadas.at(-1).sid, A);
+  for (let i = 0; i < 3; i++) await e.encargar({ rol: 'revision-qa', texto: `m${i}`, de_sesion: A, cadena: ['docs-entrega'] });
+  await assert.rejects(e.encargar({ rol: 'revision-qa', texto: 'otra', de_sesion: A, cadena: ['docs-entrega'] }), (x) => x.status === 429);
+});

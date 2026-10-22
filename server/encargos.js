@@ -35,7 +35,7 @@ export const entregaDe = (mensaje) => /^\s*ENTREGA:\s*([\s\S]*)$/.exec(mensaje ?
 // Misión: un encargo que pasa de rol en rol (plan → implementación → QA → docs). Cada paso recibe el objetivo y la
 // entrega del paso anterior; solo la entrega del último vuelve a quien la pidió. Si QA rechaza, regresa una vez a
 // implementación con los defectos y después vuelve a QA.
-export const MAX_PASOS = 5, MAX_REINTENTOS = 1;
+export const MAX_PASOS = 5, MAX_REINTENTOS = 1, MAX_MISIONES = 3; // misiones abiertas a la vez (cada una son varios turnos)
 export const rechazado = (resultado) => /veredicto\W{0,4}\s*rechazad/i.test(resultado ?? '');
 export const textoPaso = (mision, rol, objetivo, anterior, resultado) =>
   `Misión #${mision}, paso de ${rol}. Objetivo: ${objetivo.slice(0, 1200)}\n\nEntrega anterior (${anterior}):\n${resultado.slice(0, 2400)}`;
@@ -61,6 +61,10 @@ export function crearEncargos({ db, entregar, vivo, lanzar, etiqueta, alCambiar 
 
   async function encargar({ rol, texto, de_sesion = null, cwd = null, cadena = [], mision = null, intento = 0 }) {
     if (!Array.isArray(cadena) || cadena.length > MAX_PASOS - 1 || !cadena.every(esRol)) throw new ErrorEncargo(400, `cadena: hasta ${MAX_PASOS - 1} roles de la lista`);
+    if (cadena.length && mision === null && db.prepare(`SELECT COUNT(*) n FROM encargos WHERE (cadena IS NOT NULL OR mision IS NOT NULL)
+        AND estado IN ('arrancando', 'entregando', 'entregado')`).get().n >= MAX_MISIONES) {
+      throw new ErrorEncargo(429, `ya hay ${MAX_MISIONES} misiones en curso; espera a que una termine`);
+    }
     const origen = de_sesion ? db.prepare('SELECT cwd FROM sesiones WHERE id = ?').get(de_sesion) : null;
     if (de_sesion && !origen) throw new ErrorEncargo(400, 'la sesión de origen no existe');
     const de = de_sesion ? etiqueta(de_sesion) : 'la oficina';
@@ -120,16 +124,20 @@ export function crearEncargos({ db, entregar, vivo, lanzar, etiqueta, alCambiar 
     const cadena = JSON.parse(e.cadena ?? '[]');
     const mision = e.mision ?? e.id;
     const objetivo = db.prepare('SELECT texto FROM encargos WHERE id = ?').get(mision)?.texto ?? e.texto;
-    const volver = e.rol === 'revision-qa' && rechazado(resultado) && e.intento < MAX_REINTENTOS;
+    // Solo dentro de una misión: un encargo suelto a QA devuelve su veredicto a quien lo pidió, sin arrancar a nadie.
+    const enMision = e.mision !== null || cadena.length > 0;
+    const volver = enMision && e.rol === 'revision-qa' && rechazado(resultado) && e.intento < MAX_REINTENTOS;
     const siguiente = volver ? { rol: 'implementacion', cadena: ['revision-qa', ...cadena] } : cadena.length ? { rol: cadena[0], cadena: cadena.slice(1) } : null;
     if (siguiente) {
+      let motivo;
       try {
-        await encargar({ rol: siguiente.rol, texto: textoPaso(mision, siguiente.rol, objetivo, e.rol, resultado), de_sesion: e.de_sesion,
+        const r = await encargar({ rol: siguiente.rol, texto: textoPaso(mision, siguiente.rol, objetivo, e.rol, resultado), de_sesion: e.de_sesion,
           cwd: e.cwd, cadena: siguiente.cadena, mision, intento: e.intento + (volver ? 1 : 0) });
-        return;
-      } catch (err) { // no se pudo seguir: la entrega vuelve a quien pidió, con el motivo
-        db.prepare('UPDATE encargos SET detalle = ? WHERE id = ?').run(`la misión no pudo pasar a ${siguiente.rol}: ${err.message}`, e.id);
-      }
+        if (r.estado !== 'error') return;
+        motivo = r.detalle ?? 'no se pudo entregar';
+      } catch (err) { motivo = err.message; }
+      // No se pudo seguir: la entrega de este paso vuelve a quien pidió, con el motivo.
+      db.prepare('UPDATE encargos SET detalle = ? WHERE id = ?').run(`la misión no pudo pasar a ${siguiente.rol}: ${motivo}`, e.id);
     }
     if (!e.de_sesion) return;
     const r = await entregar(e.de_sesion, `Entrega de ${etiqueta(sid)} (rol ${e.rol}, encargo #${e.id}):\n${resultado.slice(0, 4000)}`, { de: etiqueta(sid) });

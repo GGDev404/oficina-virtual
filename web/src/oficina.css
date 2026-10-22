@@ -80,7 +80,7 @@
   }
   :root[data-tema=minecraft] { /* Bloques: pasto, tierra y piedra con letra de píxel */
     --fondo: #e9e3d3; --panel: #f7f3e8; --hundido: #ece5d3; --borde: #cfc5ad; --borde-fuerte: #ab9f84; --borde-control: #7d725c;
-    --texto: #1f1a12; --suave: #5b5242; --acento: #3f7a1f; --acento-suave: #e1eed4; --acento-texto: #ffffff;
+    --texto: #1f1a12; --suave: #5b5242; --acento: #33661a; --acento-suave: #e6f0dc; --acento-texto: #ffffff;
     --escenario: #7fb1e8; --esc-resalte: #ffe066;
     --esc-pasillo: #8a8a8a; --esc-pasillo-2: #7d7d7d; --esc-linea: #9c9c9c; --esc-muro: #6b4a2f; --esc-muro-alto: #4d3420; --esc-zocalo: #3a2716;
     --esc-taller: #b8945f; --esc-taller-2: #a8854f; --esc-puerta: #6a8d3a; --esc-puerta-2: #5f8034;
