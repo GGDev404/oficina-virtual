@@ -21,8 +21,8 @@ import { PanelEncargos } from './encargos'
 import { DecisionPermiso, FormularioPregunta, PantallaTmux } from './permisos'
 import { SelectorTarea } from './selector-tarea'
 
-// Pose del retrato según el estado (las mismas que en la escena).
-const POSE: Record<string, Pose> = { trabajando: 'teclea', necesita_permiso: 'mano', duda: 'mano', te_espera: 'parado', bloqueado: 'triste', listo_para_revisar: 'cafe', 'sin_señal': 'duerme' }
+// Pose del retrato según el estado (la escena aún usa 'cafe' para listo_para_revisar hasta que pase al rig vectorial).
+const POSE: Record<string, Pose> = { trabajando: 'teclea', necesita_permiso: 'mano', duda: 'mano', te_espera: 'parado', bloqueado: 'triste', listo_para_revisar: 'entrega', 'sin_señal': 'duerme' }
 
 const PEDIR_TRASPASO = 'Tu ventana de contexto está casi llena. Escribe un resumen de traspaso para seguir en una sesión nueva: objetivo, '
   + 'estado actual, archivos tocados, decisiones tomadas, qué falta y el siguiente paso concreto. Termina con la rama y la carpeta.'

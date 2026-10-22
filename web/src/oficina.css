@@ -94,6 +94,8 @@
   @media (prefers-reduced-motion: reduce) {
     :root { --dur-rapida: 0ms; --dur-media: 0ms; --dur-lenta: 0ms; }
     *, ::before, ::after { animation-duration: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 0ms !important; scroll-behavior: auto !important; }
+    /* Los personajes quedan en la postura de su pose: con duración 0 los keyframes saltarían a su último cuadro. */
+    .pj, .pj * { animation: none !important; }
   }
   * { box-sizing: border-box; }
   html { scrollbar-color: var(--borde-fuerte) transparent; accent-color: var(--acento); }
@@ -494,7 +496,58 @@
   #v-armeria { width: min(1040px, 96vw); }
   input[type=color] { inline-size: 100%; block-size: var(--control-alto); padding: 2px; border: 1px solid var(--borde-control);
     border-radius: var(--r2); background: var(--panel); cursor: pointer; }
-  .retrato { image-rendering: pixelated; display: block; flex: none; background: var(--escenario); border-radius: var(--r3); border: 1px solid var(--borde); }
+  /* Personaje vectorial (escena/personajes.ts). La postura de cada pose es su estilo base y el movimiento son keyframes de
+     transform y opacity: con movimiento reducido (animation: none, más abajo) queda quieto y cada pose se sigue distinguiendo. */
+  .pj :is(.cuerpo, .cabeza, .brazo, .pierna, .ojos, .carpeta, .taza, .zz, .punto, .vapor) { transform-box: fill-box; transform-origin: 50% 50%; }
+  .pj :is(.cuerpo, .cabeza) { transform-origin: 50% 100%; }
+  .pj :is(.brazo, .pierna) { transform-origin: 50% 0; }
+  .pj :is(.carpeta, .taza, .zz, .punto, .ojo-cerrado, .boca-t) { display: none; }
+  .pj .ojos { animation: pj-parpadeo 4s infinite; }
+  .pose-parado .cuerpo { animation: pj-respira 3.2s ease-in-out infinite; }
+  .pose-camina .pierna.i { animation: pj-paso .5s ease-in-out infinite alternate; }
+  .pose-camina .pierna.d { animation: pj-paso .5s ease-in-out infinite alternate-reverse; }
+  .pose-camina .brazo.i { animation: pj-braceo .5s ease-in-out infinite alternate-reverse; }
+  .pose-camina .brazo.d { animation: pj-braceo .5s ease-in-out infinite alternate; }
+  .pose-camina .cuerpo { animation: pj-bote .25s ease-in-out infinite alternate; }
+  :is(.pose-teclea, .pose-espera) .brazo.i { transform: rotate(-14deg); }
+  :is(.pose-teclea, .pose-espera) .brazo.d { transform: rotate(14deg); }
+  .pose-teclea .brazo.i { animation: pj-teclaI .4s ease-in-out infinite alternate; }
+  .pose-teclea .brazo.d { animation: pj-teclaD .4s ease-in-out infinite alternate; }
+  .pose-teclea .cabeza { animation: pj-cabeceo 1.2s ease-in-out infinite alternate; }
+  .pose-espera .cabeza { animation: pj-ladea 3s ease-in-out infinite; }
+  .pose-espera .punto { display: inline; animation: pj-punto 1.2s ease-in-out infinite; }
+  .pose-espera .punto.p1 { animation-delay: .2s; } .pose-espera .punto.p2 { animation-delay: .4s; }
+  .pose-mano .brazo.d { transform: rotate(-142deg); animation: pj-saludo .8s ease-in-out infinite alternate; }
+  .pose-triste .cabeza { transform: translateY(1.2px) rotate(9deg); }
+  .pose-triste .cuerpo { transform: scaleY(.95); animation: pj-balanceo 4s ease-in-out infinite alternate; }
+  .pose-triste .boca-s, .pose-duerme .ojos, .pose-duerme .boca-s { display: none; }
+  .pose-triste .boca-t, .pose-duerme .ojo-cerrado { display: inline; }
+  .pose-duerme .cabeza { transform: rotate(11deg); }
+  .pose-duerme .zz { display: inline; animation: pj-zz 2.4s ease-out infinite; }
+  .pose-duerme .zz.z1 { animation-delay: .8s; } .pose-duerme .zz.z2 { animation-delay: 1.6s; }
+  .pose-entrega .brazo.i { transform: rotate(-58deg); }
+  .pose-entrega .brazo.d { transform: rotate(58deg); }
+  .pose-entrega .carpeta { display: inline; }
+  .pose-entrega :is(.cuerpo, .carpeta) { animation: pj-alza 1.6s ease-in-out infinite alternate; }
+  .pose-cafe .taza, .pose-cafe .taza .vapor { display: inline; }
+  .pose-cafe .vapor { animation: pj-vapor 2.4s ease-out infinite; }
+  .pose-cafe .vapor.v1 { animation-delay: 1.2s; }
+  @keyframes pj-parpadeo { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+  @keyframes pj-respira { 50% { transform: scaleY(1.025); } }
+  @keyframes pj-paso { from { transform: rotate(-22deg); } to { transform: rotate(22deg); } }
+  @keyframes pj-braceo { from { transform: rotate(-16deg); } to { transform: rotate(16deg); } }
+  @keyframes pj-bote { to { transform: translateY(-.7px); } }
+  @keyframes pj-teclaI { from { transform: rotate(-14deg); } to { transform: rotate(-3deg); } }
+  @keyframes pj-teclaD { from { transform: rotate(3deg); } to { transform: rotate(14deg); } }
+  @keyframes pj-cabeceo { to { transform: translateY(.8px); } }
+  @keyframes pj-ladea { 50% { transform: rotate(6deg); } }
+  @keyframes pj-punto { 0%, 100% { opacity: .25; } 40% { opacity: 1; } }
+  @keyframes pj-saludo { from { transform: rotate(-142deg); } to { transform: rotate(-118deg); } }
+  @keyframes pj-balanceo { from { transform: scaleY(.95) rotate(-1.5deg); } to { transform: scaleY(.95) rotate(1.5deg); } }
+  @keyframes pj-zz { 0% { transform: translate(0, 2px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translate(2px, -3px); opacity: 0; } }
+  @keyframes pj-alza { to { transform: translateY(-.8px); } }
+  @keyframes pj-vapor { 0% { transform: translateY(1px); opacity: 0; } 40% { opacity: .8; } 100% { transform: translateY(-2px); opacity: 0; } }
+  .retrato { display: block; flex: none; background: var(--escenario); border-radius: var(--r3); border: 1px solid var(--borde); }
   .arm-escaparate { display: flex; gap: var(--s4); align-items: center; flex-wrap: wrap; }
   .arm-ficha { display: grid; gap: var(--s1); min-width: 0; flex: 1; }
   .arm-nombre { margin: 0; font: 700 var(--t-xl)/1.2 var(--pixel); letter-spacing: .02em; }

@@ -3,7 +3,7 @@
 import type { AspectoGuardado, Clase, RolId } from '@/lib/tipos'
 
 export interface Aspecto { pelo: string; piel: string; camisa: string; sombra: string; pantalon: string; clase: Clase; brillo: string; rol?: RolId }
-export type Pose = 'teclea' | 'mano' | 'parado' | 'triste' | 'cafe' | 'duerme' | 'camina' | 'espera'
+export type Pose = 'teclea' | 'mano' | 'parado' | 'triste' | 'cafe' | 'duerme' | 'camina' | 'espera' | 'entrega'
 export type Pintar = (x: number, y: number, w: number, h: number, c: string) => void
 
 function hash(t: string) { let h = 2166136261; for (const c of t) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0 }
@@ -41,11 +41,12 @@ export const RASGOS: Record<RolId, { titulo: string; dibujar: (p: Pintar) => voi
 
 // Equipo final: lo guardado sobre su base (el rol para una sesión, lo de fábrica para ti), sobre lo que sale del id.
 // Los colores de armadura de la base solo valen si la clase es la misma: al cambiar de clase manda la de fábrica.
-export function aspecto(id: string, guardado?: AspectoGuardado | null, base?: AspectoGuardado | null, rol?: RolId | null): Aspecto {
+// `kit` fuerza la clase (un tema que decide quién se ve): entonces los colores guardados y de la base valen siempre.
+export function aspecto(id: string, guardado?: AspectoGuardado | null, base?: AspectoGuardado | null, rol?: RolId | null, kit?: Clase): Aspecto {
   const h = hash(id)
-  const clase = guardado?.clase ?? base?.clase ?? 'ninguna'
+  const clase = kit ?? guardado?.clase ?? base?.clase ?? 'ninguna'
   const c = CLASES[clase]
-  const b = base && (base.clase ?? 'ninguna') === clase ? base : { pelo: base?.pelo, piel: base?.piel }
+  const b = kit || (base && (base.clase ?? 'ninguna') === clase) ? base : { pelo: base?.pelo, piel: base?.piel }
   const g: AspectoGuardado = { ...b, ...guardado }
   const camisa = g.camisa ?? c.camisa ?? CAMISAS[h % CAMISAS.length]
   return {

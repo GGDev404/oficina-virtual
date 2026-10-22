@@ -7,6 +7,7 @@ import { useOficina } from '@/components/contexto'
 import { Panel, Pestanas } from '@/components/pestanas'
 import { Retrato } from '@/components/retrato'
 import { Cerrar, Descripcion, Titulo, Ventana } from '@/components/ventana'
+import { actorDe } from '@/escena/personajes'
 import { aspecto, CLASES, RASGOS, YO_FABRICA } from '@/escena/sprites'
 import { leer, post } from '@/lib/api'
 import { nombreSesion, VIVOS } from '@/lib/oficina'
@@ -114,7 +115,7 @@ export function Armeria({ inicial }: { inicial?: string }) {
 
   const editor = <section className="contexto" aria-labelledby="arm-equipo">
     <div className="arm-escaparate">
-      <Retrato aspecto={vista} tam={120} etiqueta={`Vista previa: ${CLASES[vista.clase].titulo}${vista.rol ? `, con ${RASGOS[vista.rol].titulo}` : ''}`} />
+      <Retrato aspecto={vista} actor={actorDe(clave, obj.rol)} tam={120} etiqueta={`Vista previa: ${CLASES[vista.clase].titulo}${vista.rol ? `, con ${RASGOS[vista.rol].titulo}` : ''}`} />
       <div className="arm-ficha">
         <h3 id="arm-equipo" className="arm-nombre">{borrador.apodo || obj.titulo}</h3>
         <span className="meta">{CLASES[vista.clase].titulo} · {CLASES[vista.clase].juego}{vista.rol ? ` · lleva ${RASGOS[vista.rol].titulo}` : ''}</span>
