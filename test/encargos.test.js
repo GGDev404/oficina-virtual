@@ -60,7 +60,7 @@ test('encargo a una sesión viva del rol: se entrega con cabecera, queda registr
   assert.equal(propio.estado, 'arrancando');
 });
 
-test('cwd explícito distinto: no usa la sesión existente; sin sesión ni cwd es 400; arrancando dos veces es 409', async () => {
+test('cwd explícito distinto: no usa la sesión existente; sin sesión ni cwd es 400; un segundo encargo arranca otro worker', async () => {
   const { db, e, lanzadas } = montar({ vivas: [R] });
   sesion(db, R, '/home/u/p', { rol: 'diseno' });
   await assert.rejects(e.encargar({ rol: 'implementacion', texto: 'x' }), (x) => x instanceof ErrorEncargo && x.status === 400);
@@ -70,8 +70,10 @@ test('cwd explícito distinto: no usa la sesión existente; sin sesión ni cwd e
   assert.equal(lanzadas[0].rol, 'diseno');
   assert.match(lanzadas[0].sistema, /rol de \*\*diseño de interfaz/);
   assert.match(lanzadas[0].prompt, /^Encargo de la oficina: pantalla/);
-  assert.equal(lanzadas[0].permiso, ROLES.diseno.permiso);
-  await assert.rejects(e.encargar({ rol: 'diseno', texto: 'otra', cwd: '/home/u/otro' }), (x) => x.status === 409);
+  assert.equal(lanzadas[0].permiso, fichaRol('diseno').permiso); // el de agentes/diseno.md (Armería), si falta el de ROLES
+  const otra = await e.encargar({ rol: 'diseno', texto: 'otra', cwd: '/home/u/otro' });
+  assert.equal(otra.estado, 'arrancando');
+  assert.deepEqual(lanzadas.map((l) => l.encargo), [r.id, otra.id]);
 });
 
 test('la sesión arrancada se marca con su rol y toma el encargo; falla del lanzador cierra el encargo en error', async () => {
@@ -253,4 +255,29 @@ test('la sesión del rol se cierra al entregar; sus dudas van a quien encargó y
   await assert.rejects(e.responder({ id, texto: 'tarde' }), (x) => x.status === 404);
   await e.alTerminarTurno(A, 'ENTREGA: algo'); // una sesión tuya (sin rol ni encargo) nunca se cierra
   assert.deepEqual(apagadas, [R]);
+});
+
+test('workers independientes: cada sesión que encarga tiene su propio worker y cada uno toma su encargo exacto', async () => {
+  const B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', R2 = 'rrrrrrrr-rrrr-4rrr-8rrr-rrrrrrrrrrr2';
+  const { db, e, llamadas, lanzadas } = montar({ vivas: [A, B, R, R2] });
+  sesion(db, A, '/home/u/p'); sesion(db, B, '/home/u/p');
+  const ea = await e.encargar({ rol: 'revision-qa', texto: 'revisa A', de_sesion: A });
+  const eb = await e.encargar({ rol: 'revision-qa', texto: 'revisa B', de_sesion: B }); // mismo rol y carpeta: no espera ni comparte
+  assert.equal(lanzadas.length, 2);
+  // Arrancan al revés: cada una se liga por OFICINA_ENCARGO, no por orden.
+  sesion(db, R2, '/home/u/p'); e.alRegistrarRol(R2, 'revision-qa', eb.id);
+  sesion(db, R, '/home/u/p'); e.alRegistrarRol(R, 'revision-qa', ea.id);
+  assert.equal(db.prepare('SELECT a_sesion FROM encargos WHERE id = ?').get(ea.id).a_sesion, R);
+  assert.equal(db.prepare('SELECT a_sesion FROM encargos WHERE id = ?').get(eb.id).a_sesion, R2);
+  // R está ocupada con A: un nuevo encargo de B no cae en R aunque esté viva.
+  await e.encargar({ rol: 'revision-qa', texto: 'otra de B', de_sesion: B });
+  assert.equal(lanzadas.length, 3);
+  // R libre después de entregar a A: A puede reutilizarla, B no.
+  await e.alTerminarTurno(R, 'ENTREGA: ok A');
+  db.prepare("UPDATE sesiones SET estado = 'listo_para_revisar' WHERE id = ?").run(R); // la prueba no cierra la sesión de verdad
+  llamadas.length = 0;
+  await e.encargar({ rol: 'revision-qa', texto: 'otra de B', de_sesion: B });
+  assert.equal(lanzadas.length, 4);
+  const r = await e.encargar({ rol: 'revision-qa', texto: 'otra de A', de_sesion: A });
+  assert.equal(r.sesion, R);
 });

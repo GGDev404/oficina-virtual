@@ -270,6 +270,11 @@ node scripts/instalar-skills.js <repo>/.claude/skills   # skills del ERP Millet 
 node scripts/instalar-agentes.js --quitar # quita solo los que siguen idénticos a los del repo
 ```
 
+**Workers independientes**: cada sesión que encarga tiene sus propios workers. Solo se reutiliza una sesión del rol que
+esté libre y no haya trabajado para otra sesión; si no, se arranca una nueva (`rol-<rol>-<encargo>`) aunque otra del mismo
+rol esté ocupada. La nueva recibe `OFICINA_ENCARGO=<id>` (hook.sh lo manda como `encargo_env`) y se liga a ese encargo
+exacto. El límite es la memoria: con memoria crítica no se abre otra sesión.
+
 Como **sesión fija**: `POST /api/roles/:rol/encargo` con `{texto, de_sesion?, cwd?}` (texto ≤ 4000, rol de la lista fija,
 `cwd` dentro de tu home). Si hay una sesión viva de ese rol (con ese `cwd`, si lo das; nunca la misma sesión que pide)
 le entrega el encargo por la vía más rápida: tmux tecleado si su terminal está libre, si no el mensajero. Si no hay,

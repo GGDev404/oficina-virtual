@@ -31,7 +31,7 @@ export function fichaRol(rol, dir = AGENTES) {
 }
 // Comandos que la sesión del rol corre sin preguntar (`--allowedTools`), p. ej. `Bash(npm run *)`. Nunca `Bash` o
 // `Bash(*)` a secas: eso es dejarle toda la terminal.
-export const MAX_PERMITIDOS = 40;
+export const MAX_PERMITIDOS = 80;
 export const reglaValida = (r) => typeof r === 'string' && /^[A-Za-z_][A-Za-z0-9_]*(\([^()\n]{1,200}\))?$/.test(r) && !/^Bash(\(\s*\*?\s*\))?$/.test(r);
 export const listaRoles = () => Object.entries(ROLES).map(([id, { titulo }]) => ({ id, titulo, ...fichaRol(id) }));
 
@@ -118,6 +118,7 @@ export const dudaDe = (mensaje) => {
 // Misión: un encargo que pasa de rol en rol (plan → implementación → QA → docs). Cada paso recibe el objetivo y la
 // entrega del paso anterior; solo la entrega del último vuelve a quien la pidió. Si QA rechaza, regresa una vez al rol
 // que hizo el trabajo (implementación, diseño…) con los defectos y después vuelve a QA.
+export const MAX_REENVIO = 4000; // lo que se teclea en la sesión de origen; el resto se lee de la oficina
 export const MAX_PASOS = 5, MAX_REINTENTOS = 1, MAX_MISIONES = 3; // misiones abiertas a la vez (cada una son varios turnos)
 export const rechazado = (resultado) => /veredicto\W{0,4}\s*rechazad/i.test(resultado ?? '');
 export const textoPaso = (mision, rol, objetivo, anterior, resultado) =>
@@ -140,7 +141,8 @@ export function crearEncargos({ db, entregar, vivo, lanzar, etiqueta, apagar = a
       .run(estado, campos.via ?? null, campos.detalle ?? null, campos.resultado ?? null, ahora(), id);
     alCambiar();
   };
-  const arrancar = (rol, cwd, prompt) => { const f = fichaRol(rol); return lanzar({ rol, cwd, prompt, sistema: cuerpo(rol), permiso: f.permiso, modelo: f.modelo, permitidos: f.permitidos, prohibidos: ['AskUserQuestion'] }); };
+  // `encargo`: la sesión nueva lo recibe como OFICINA_ENCARGO y así se liga a ese encargo exacto, aunque arranquen varias del mismo rol.
+  const arrancar = (rol, cwd, prompt, encargo = null) => { const f = fichaRol(rol); return lanzar({ rol, cwd, prompt, sistema: cuerpo(rol), permiso: f.permiso, modelo: f.modelo, permitidos: f.permitidos, prohibidos: ['AskUserQuestion'], encargo }); };
   // La sesión de un rol que ya entregó y no tiene otro encargo abierto se cierra: no se queda gastando memoria.
   const liberar = async (sid) => {
     if (db.prepare(`SELECT 1 FROM encargos WHERE a_sesion = ? AND estado IN ('entregando', 'entregado')`).get(sid)) return;
@@ -160,8 +162,11 @@ export function crearEncargos({ db, entregar, vivo, lanzar, etiqueta, apagar = a
     const cuerpoEncargo = textoEncargo(de, texto);
     db.prepare(`UPDATE encargos SET estado = 'error', detalle = 'la sesión no arrancó', resuelto_ts = ? WHERE estado = 'arrancando' AND creado_ts < ?`)
       .run(ahora(), ahora() - 5 * 60_000);
+    // Cada sesión que encarga tiene sus propios workers: solo se reutiliza una sesión del rol que esté libre (sin encargo
+    // abierto) y que no haya trabajado para otra sesión. Si no hay, se arranca una nueva aunque otra del rol esté ocupada.
     let destino = null;
-    for (const s of db.prepare(`SELECT id, cwd FROM sesiones WHERE rol = ? AND estado <> 'cerrada' ORDER BY ultimo_evento_ts DESC`).all(rol)) {
+    for (const s of db.prepare(`SELECT id, cwd FROM sesiones s WHERE rol = ? AND estado <> 'cerrada' AND NOT EXISTS (SELECT 1 FROM encargos x
+        WHERE x.a_sesion = s.id AND (x.estado IN ('arrancando', 'entregando', 'entregado') OR x.de_sesion IS NOT ?)) ORDER BY ultimo_evento_ts DESC`).all(rol, de_sesion)) {
       if (s.id !== de_sesion && (!cwd || s.cwd === cwd) && await vivo(s.id)) { destino = s; break; }
     }
     const dondeArrancar = cwd ?? origen?.cwd ?? null;
@@ -175,11 +180,8 @@ export function crearEncargos({ db, entregar, vivo, lanzar, etiqueta, apagar = a
       return { id, estado: r.ok ? 'entregado' : 'error', via: r.via ?? null, sesion: destino.id, detalle: r.detalle ?? null };
     }
     if (!dondeArrancar) throw new ErrorEncargo(400, `no hay sesión viva de ${rol}: indica cwd para arrancarla`);
-    if (db.prepare(`SELECT 1 FROM encargos WHERE rol = ? AND estado = 'arrancando' AND cwd = ?`).get(rol, dondeArrancar)) {
-      throw new ErrorEncargo(409, `la sesión de ${rol} está arrancando; reintenta en unos segundos`);
-    }
     const id = insertar(null, 'arrancando');
-    const r = await arrancar(rol, dondeArrancar, cuerpoEncargo);
+    const r = await arrancar(rol, dondeArrancar, cuerpoEncargo, id);
     if (!r.ok) { cerrar(id, 'error', { detalle: r.motivo }); throw new ErrorEncargo(422, r.motivo); }
     db.prepare(`UPDATE encargos SET via = 'nueva' WHERE id = ?`).run(id);
     alCambiar();
@@ -194,10 +196,13 @@ export function crearEncargos({ db, entregar, vivo, lanzar, etiqueta, apagar = a
   }
 
   // La sesión recién abierta con OFICINA_ROL queda marcada y, si la arrancó un encargo, es su destino.
-  function alRegistrarRol(sid, rol) {
+  function alRegistrarRol(sid, rol, encargo = null) {
     if (!esRol(rol)) return;
     if (!db.prepare('UPDATE sesiones SET rol = ? WHERE id = ? AND rol IS NULL').run(rol, sid).changes) return;
-    const e = db.prepare(`SELECT id, de_sesion, texto FROM encargos WHERE rol = ? AND estado = 'arrancando' AND a_sesion IS NULL ORDER BY id LIMIT 1`).get(rol);
+    // Con OFICINA_ENCARGO, su encargo exacto; sin él (sesión abierta a mano), el más viejo que espera.
+    const e = encargo
+      ? db.prepare(`SELECT id, de_sesion, texto FROM encargos WHERE id = ? AND rol = ? AND estado = 'arrancando' AND a_sesion IS NULL`).get(encargo, rol)
+      : db.prepare(`SELECT id, de_sesion, texto FROM encargos WHERE rol = ? AND estado = 'arrancando' AND a_sesion IS NULL ORDER BY id LIMIT 1`).get(rol);
     if (!e) return;
     db.prepare(`UPDATE encargos SET a_sesion = ?, estado = 'entregado' WHERE id = ?`).run(sid, e.id);
     anotar(e.de_sesion ? etiqueta(e.de_sesion) : 'la oficina', e.de_sesion, sid, e.texto, 'encargo');
@@ -257,7 +262,8 @@ export function crearEncargos({ db, entregar, vivo, lanzar, etiqueta, apagar = a
       db.prepare('UPDATE encargos SET detalle = ? WHERE id = ?').run(`la misión no pudo pasar a ${siguiente.rol}: ${motivo}`, e.id);
     }
     if (!e.de_sesion) return;
-    const r = await entregar(e.de_sesion, `Entrega de ${etiqueta(sid)} (rol ${e.rol}, encargo #${e.id}):\n${resultado.slice(0, 4000)}`, { de: etiqueta(sid) });
+    const recorte = resultado.length > MAX_REENVIO ? `\n\n… (recortado: el texto completo está en GET http://127.0.0.1:4777/api/encargos/${e.id})` : '';
+    const r = await entregar(e.de_sesion, `Entrega de ${etiqueta(sid)} (rol ${e.rol}, encargo #${e.id}):\n${resultado.slice(0, MAX_REENVIO)}${recorte}`, { de: etiqueta(sid) });
     if (r.ok) anotar(etiqueta(sid), sid, e.de_sesion, resultado, 'entrega');
     else db.prepare('UPDATE encargos SET detalle = ? WHERE id = ?').run(`no pude reenviar la entrega: ${r.detalle}`, e.id);
     alCambiar();

@@ -114,7 +114,7 @@ export function carpetaAparte(nombre, { raiz = APARTE, hoy = new Date() } = {}) 
 // `reanudar`: id de una sesión que murió; la retoma con toda su conversación (Claude Code le da un id nuevo).
 // `permitidos` va antes de --permission-mode: --allowedTools toma varios valores y se tragaría la indicación.
 const argsPermitidos = (permitidos, prohibidos) => [...(permitidos?.length ? ['--allowedTools', ...permitidos] : []), ...(prohibidos?.length ? ['--disallowedTools', ...prohibidos] : [])];
-export async function nuevaSesion({ cwd, prompt, nombre, permiso, tarea, modelo, reanudar, sistema, rol, permitidos, prohibidos }, { claude = 'claude', ejecutar = enScope(correr) } = {}) {
+export async function nuevaSesion({ cwd, prompt, nombre, permiso, tarea, modelo, reanudar, sistema, rol, permitidos, prohibidos, encargo }, { claude = 'claude', ejecutar = enScope(correr) } = {}) {
   const args = ['--bg', ...argsPermitidos(permitidos, prohibidos), '--permission-mode', permiso];
   if (reanudar) args.push('--resume', reanudar);
   if (modelo) args.push('--model', modelo);
@@ -124,6 +124,7 @@ export async function nuevaSesion({ cwd, prompt, nombre, permiso, tarea, modelo,
   const env = { ...process.env };
   if (tarea) env.CLICKUP_TASK = tarea;
   if (rol) env.OFICINA_ROL = rol;
+  if (encargo) env.OFICINA_ENCARGO = String(encargo);
   const { e, texto } = await ejecutar(claude, args, { cwd, env });
   const id = texto.match(/backgrounded\s*·\s*([0-9a-f]{6,})/)?.[1];
   if (id) return { ok: true, id };
@@ -136,7 +137,7 @@ export async function nuevaSesion({ cwd, prompt, nombre, permiso, tarea, modelo,
 // Sesión interactiva dentro de su propio tmux (sin ventana): la ves en la oficina, le escribes como si tecleras en su
 // terminal y la abres con «Abrir en terminal». Si la carpeta no es de confianza, el aviso sale en el panel: se abre
 // una terminal adjunta para que lo aceptes.
-export async function nuevaEnTmux({ cwd, prompt, nombre, permiso, tarea, modelo, reanudar, sistema, rol, permitidos, prohibidos },
+export async function nuevaEnTmux({ cwd, prompt, nombre, permiso, tarea, modelo, reanudar, sistema, rol, permitidos, prohibidos, encargo },
   { ejecutar = enScope(correr), socket = socketDe(nombre), pantalla = capturar, esperar = 2500, adjuntar = abrirTmux } = {}) {
   const claudeArgs = [...argsPermitidos(permitidos, prohibidos), '--permission-mode', permiso];
   if (modelo) claudeArgs.push('--model', modelo);
@@ -144,8 +145,9 @@ export async function nuevaEnTmux({ cwd, prompt, nombre, permiso, tarea, modelo,
   if (reanudar) claudeArgs.push('--resume', reanudar);
   if (sistema) claudeArgs.push('--append-system-prompt', sistema);
   claudeArgs.push(prompt);
-  const env = { ...process.env, ...(tarea ? { CLICKUP_TASK: tarea } : {}), ...(rol ? { OFICINA_ROL: rol } : {}) };
-  const { e, texto } = await ejecutar('tmux', argsNueva({ socket, cwd, env: { CLICKUP_TASK: tarea, OFICINA_ROL: rol }, claudeArgs }), { cwd, env });
+  const propias = { CLICKUP_TASK: tarea, OFICINA_ROL: rol, OFICINA_ENCARGO: encargo ? String(encargo) : undefined };
+  const env = { ...process.env, ...Object.fromEntries(Object.entries(propias).filter(([, v]) => v)) };
+  const { e, texto } = await ejecutar('tmux', argsNueva({ socket, cwd, env: propias, claudeArgs }), { cwd, env });
   if (e) return { ok: false, motivo: (texto.split('\n').find(Boolean) ?? e.message).slice(0, 300) };
   await new Promise((listo) => setTimeout(listo, esperar));
   const vista = await pantalla(socket).catch(() => '');

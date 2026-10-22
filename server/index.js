@@ -217,7 +217,7 @@ function recibir(ev) {
   avisarCambios(aplicar(db, ev, { rama, porPid: (pid) => [...vivas].find(([, v]) => v.pid === pid)?.[0] }));
   ligar(db, sid, ev.tarea_env);
   if (socketValido(ev.tmux_env) && sid) db.prepare('UPDATE sesiones SET tmux = ? WHERE id = ?').run(ev.tmux_env, sid);
-  if (sid && esRol(ev.rol_env)) encargos.alRegistrarRol(sid, ev.rol_env);
+  if (sid && esRol(ev.rol_env)) encargos.alRegistrarRol(sid, ev.rol_env, /^\d{1,9}$/.test(ev.encargo_env ?? '') ? Number(ev.encargo_env) : null);
   if (ev.evento === 'Stop' && sid) encargos.alTerminarTurno(sid, ev.payload.last_assistant_message).catch((e) => console.error('encargo:', e.message));
   if (ev.evento === 'SessionStart' || ev.evento === 'UserPromptSubmit' || ev.evento === 'SessionEnd') vigilarTranscripts();
   avisar();
@@ -278,7 +278,7 @@ const encargos = crearEncargos({ db, entregar, vivo: sesionViva, etiqueta: etiqu
   apagar: (sid) => new Promise((listo) => setTimeout(() => cerrarPorId(sid).then(listo, listo), 3000)),
   lanzar: async (datos) => nivelMemoria(leerMeminfo()) === 'critico'
     ? { ok: false, motivo: 'Memoria casi agotada: no abro otra sesión.' }
-    : lanzarSesion({ ...datos, nombre: `rol-${datos.rol}`, tarea: null, modelo: datos.modelo ?? '' }).then((r) => { if (r.ok) actualizarVivas(); return r; }) });
+    : lanzarSesion({ ...datos, nombre: `rol-${datos.rol}${datos.encargo ? `-${datos.encargo}` : ''}`, tarea: null, modelo: datos.modelo ?? '' }).then((r) => { if (r.ok) actualizarVivas(); return r; }) });
 
 function json(res, codigo, cuerpo) {
   res.writeHead(codigo, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -441,6 +441,11 @@ const servidor = http.createServer(async (req, res) => {
         if (e instanceof ErrorEncargo) return json(res, e.status, { error: e.message });
         throw e;
       }
+    }
+    // Resultado completo de un encargo (la entrega reenviada se recorta).
+    if (req.method === 'GET' && (m = url.pathname.match(/^\/api\/encargos\/(\d+)$/))) {
+      const e = db.prepare('SELECT id, rol, estado, texto, resultado, detalle FROM encargos WHERE id = ?').get(Number(m[1]));
+      return e ? json(res, 200, e) : json(res, 404, { error: 'no existe ese encargo' });
     }
     // Respuesta a la DUDA:/BLOQUEO: de un rol (/responder, con el token de los agentes o tu cookie).
     if (req.method === 'POST' && (m = url.pathname.match(/^\/api\/encargos\/(\d+)\/respuesta$/))) {
