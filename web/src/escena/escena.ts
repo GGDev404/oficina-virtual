@@ -101,7 +101,8 @@ const rutaA = (desde: Punto, sala: Sala | null, fin: Punto[]) => {
 }
 
 // Equipo de cada sesión: el suyo de la Armería, si no el de su rol (sprites.ts completa lo que falte).
-const guardadoDe = (d: Datos, s: Sesion) => d.aspectos?.[`sesion:${s.id}`] ?? (s.rol ? d.aspectos?.[`rol:${s.rol}`] : undefined) ?? null
+const guardadoDe = (d: Datos, s: Sesion) => d.aspectos?.[`sesion:${s.id}`] ?? null
+const baseDe = (d: Datos, s: Sesion) => (s.rol ? d.aspectos?.[`rol:${s.rol}`] : undefined) ?? null
 const VELOCIDAD = 55 // px lógicos por segundo
 const EN_MESA = { x: MESA_YO.dx + 14, y: MESA_YO.dy + 6 }
 const RODEO = [{ x: MESA_YO.dx - 6, y: MESA_YO.dy + 6 }, { x: MESA_YO.dx - 6, y: MESA_YO.dy + 24 }] // por un lado del escritorio
@@ -258,7 +259,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
         if (a?.saliendo) { a.saliendo = false; a.destinoClave = null; a.boton.disabled = false; a.boton.classList.remove('saliendo') } // volvió
         const guardado = guardadoDe(d, s)
         if (!a) {
-          const look = aspecto(s.id, guardado)
+          const look = aspecto(s.id, guardado, baseDe(d, s))
           a = { x: SALIDA.x, y: SALIDA.y, ruta: [], sala: null, aspecto: look, boton: crearBoton(s.id, look) }
           actores.set(s.id, a)
         }
@@ -271,7 +272,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
         }
         a.lugar = destino
         a.s = s
-        const look = aspecto(s.id, guardado)
+        const look = aspecto(s.id, guardado, baseDe(d, s))
         if (JSON.stringify(look) !== JSON.stringify(a.aspecto)) { // cambió su equipo en la Armería
           a.aspecto = look
           const et = a.boton.querySelector<HTMLElement>('.etiqueta')!
@@ -288,7 +289,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
           burbuja.className = `burbuja ${color}`
           burbuja.style.animation = 'none'; void burbuja.offsetWidth; burbuja.style.animation = '' // brota de nuevo con el estado nuevo
         }
-        const nombre = guardado?.apodo ?? s.nombre ?? s.tarea_id ?? base(s.cwd)
+        const nombre = guardado?.apodo ?? baseDe(d, s)?.apodo ?? s.nombre ?? s.tarea_id ?? base(s.cwd)
         const etiqueta = a.boton.querySelector<HTMLElement>('.etiqueta')!
         const [txt, barra] = etiqueta.children as unknown as [HTMLElement, HTMLElement]
         if (txt.textContent !== nombre) { txt.textContent = nombre; a.anchoEtiqueta = null }
@@ -521,7 +522,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
   return {
     actualizar(d: Datos) {
       datos = d; sucio = true
-      yo = aspecto('yo', { ...YO_FABRICA, ...d.aspectos?.yo })
+      yo = aspecto('yo', d.aspectos?.yo, YO_FABRICA)
       actualizarActores(d); despacharMensajeros(d); despacharEntreSesiones(d)
     },
     destruir() {

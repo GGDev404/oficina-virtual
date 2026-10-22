@@ -14,12 +14,12 @@ export function Entrar({ yo, alCerrar, alEntrar }: { yo: Yo; alCerrar: () => voi
     setEstado((await r.json().catch(() => ({}))).error ?? `Error ${r.status}`)
   }
   return (
-    <Ventana alCerrar={alCerrar} id="v-entrar" style={{ maxWidth: 440 }} enfocar={() => caja.current}>
+    <Ventana alCerrar={alCerrar} id="v-entrar" enfocar={() => caja.current}>
       <header><div className="titulos"><Titulo>Entra a tu oficina</Titulo>
         <Descripcion>Una vez en este navegador; dura 30 días. Así ningún agente puede aprobar ni teclear en tu nombre.</Descripcion></div>
         <Cerrar /></header>
       <div className="cuerpo">
-        <form onSubmit={entrar} style={{ display: 'grid', gap: 8 }}>
+        <form onSubmit={entrar} className="pila">
           <label htmlFor="ve-frase">Tu frase</label>
           <input id="ve-frase" ref={caja} type="password" autoComplete="current-password" required />
           <div className="fila"><button className="primario" type="submit">Entrar</button><span className="meta" role="status">{estado}</span></div>

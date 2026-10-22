@@ -100,13 +100,13 @@ export function NuevaSesion({ opciones: o, carpetas }: { opciones: OpcionesNueva
         <Descripcion>Para una tarea de ClickUp o para cualquier otra cosa (un traspaso, una investigación): la tarea es opcional.</Descripcion></div>
         <Cerrar etiqueta="Cerrar ventana" /></header>
       <div className="cuerpo"><form className="dos-col" onSubmit={empezar}>
-        <section aria-labelledby="vs-tareas-t" ref={columna}><h3 id="vs-tareas-t" style={{ marginTop: 0 }}>Tarea (opcional)</h3>
+        <section aria-labelledby="vs-tareas-t" ref={columna}><h3 id="vs-tareas-t" className="sin-margen-arriba">Tarea (opcional)</h3>
           <SelectorTarea datos={d} seleccionada={tarea} alElegir={elegir} /></section>
         <div className="contexto">
           <section className="bloque" aria-live="polite">
-            {t ? <><div className="fila"><h4 style={{ marginRight: 'auto' }}>Tarea elegida</h4>
+            {t ? <><div className="fila"><h4 className="empuja">Tarea elegida</h4>
               <button className="boton-chico" type="button" onClick={quitar}>Quitar</button></div><ResumenTarea t={t} /></>
-              : <><h4>Sin tarea</h4><p className="meta" style={{ margin: 0 }}>Elige una a la izquierda para ligarla desde el inicio, o empieza sin tarea.</p></>}
+              : <><h4>Sin tarea</h4><p className="meta sin-margen">Elige una a la izquierda para ligarla desde el inicio, o empieza sin tarea.</p></>}
           </section>
           <label className="campo"><span>Dónde trabaja</span>
             <select value={ubicacion} onChange={(e) => ubicar(tarea, e.target.value)}>{opciones.map(([v, txt]) => <option key={v} value={v}>{txt}</option>)}</select></label>

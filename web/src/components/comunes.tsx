@@ -18,9 +18,9 @@ export function NombreTarea({ t }: { t: Tarea }) {
 export function ResumenTarea({ t }: { t: Tarea }) {
   const [cuando, tono] = cuandoVence(t)
   return <>
-    <Enlace href={t.url} style={{ fontWeight: 600 }}>{t.nombre}</Enlace>
+    <Enlace href={t.url} className="negrita">{t.nombre}</Enlace>
     <div className="fila meta">
-      <span className={`cuando ${tono}`} style={{ fontWeight: 600 }}>Vence {cuando}</span>
+      <span className={`cuando negrita ${tono}`}>Vence {cuando}</span>
       <Chip>{t.estado ?? '—'}</Chip><ChipPrioridad p={t.prioridad} />{t.lista && <span>{t.lista}</span>}
     </div>
     {t.horario && <div className="ficha-tarea"><b>Horario: </b>{t.horario}</div>}

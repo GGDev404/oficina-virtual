@@ -13,7 +13,7 @@ import { ligar, religarTodas, FORMATO_ID } from './tarea-link.js';
 import { crearNotificador, ESTADOS_AVISO } from './notificar.js';
 import { siguiente } from './siguiente.js';
 import { leerVivas, aplicarVivas } from './vivas.js';
-import { leerConversacion, leerContexto, rutaValida } from './conversacion.js';
+import { leerConversacion, leerContexto, leerGasto, resumenGasto, rutaValida } from './conversacion.js';
 import { crearDifusor } from './difusion.js';
 import { ROLES, esRol, listaRoles, crearEncargos, ErrorEncargo } from './encargos.js';
 import { crearMensajero, guardarImagenes, conImagenes, MAX_TEXTO } from './mensajero.js';
@@ -111,15 +111,24 @@ function leerNoche() {
   return { fecha: null };
 }
 
-// Uso de contexto de las sesiones vivas, leído del final de su transcript cada 20 s.
+// Uso de contexto de las sesiones vivas, leído del final de su transcript cada 20 s; y su gasto acumulado de tokens.
 let contextos = {};
+const gastosLeidos = new Map(); // sesión → acumulado con su offset (conversacion.js)
+let gastos = {};
 function actualizarContextos() {
-  const nuevos = {};
+  const nuevos = {}, nuevosGastos = {}, abiertas = new Set();
   for (const s of db.prepare(`SELECT id, transcript_path FROM sesiones WHERE estado <> 'cerrada' AND transcript_path IS NOT NULL`).all()) {
     const c = leerContexto(s.transcript_path);
     if (c) nuevos[s.id] = c;
+    abiertas.add(s.id);
+    const g = leerGasto(s.transcript_path, gastosLeidos.get(s.id));
+    gastosLeidos.set(s.id, g);
+    if (g.respuestas) nuevosGastos[s.id] = resumenGasto(g);
   }
-  if (JSON.stringify(nuevos) !== JSON.stringify(contextos)) { contextos = nuevos; avisar(); }
+  for (const id of gastosLeidos.keys()) if (!abiertas.has(id)) gastosLeidos.delete(id);
+  if (JSON.stringify(nuevos) !== JSON.stringify(contextos) || JSON.stringify(nuevosGastos) !== JSON.stringify(gastos)) {
+    contextos = nuevos; gastos = nuevosGastos; avisar();
+  }
 }
 
 // Cada escritura en el transcript de una sesión abierta llega a la página al momento (event: conversacion):
@@ -151,7 +160,7 @@ function transcriptCambio(sid, ruta) {
   if (c && JSON.stringify(c) !== JSON.stringify(contextos[sid])) { contextos = { ...contextos, [sid]: c }; avisar(); }
 }
 
-const estadoCompleto = () => ({ ...estado(db), sync, vivas: Object.fromEntries(vivas), mensajes: mensajero.mensajes(), contexto: contextos, permisos: permisos.lista(), preguntas: preguntas.lista(), roles: listaRoles(), aspectos: listaAspectos(db) });
+const estadoCompleto = () => ({ ...estado(db), sync, vivas: Object.fromEntries(vivas), mensajes: mensajero.mensajes(), contexto: contextos, gastos, permisos: permisos.lista(), preguntas: preguntas.lista(), roles: listaRoles(), aspectos: listaAspectos(db) });
 
 // Notificación de escritorio cuando una sesión pasa a pedirte algo o llega una corrección de ficha.
 const notificar = crearNotificador();

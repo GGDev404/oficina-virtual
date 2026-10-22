@@ -27,9 +27,9 @@ export function ActividadEntre({ sid, max = 8 }: { sid?: string; max?: number })
   if (!filas.length) return <p className="vacio">Aún no hay mensajes entre sesiones.</p>
   return <ul className="lista-simple" aria-label="Actividad entre sesiones">{filas.map((f) => (
     <li key={f.id} title={f.texto}>
-      <div className="fila" style={{ flexWrap: 'nowrap' }}><b className="corto" style={{ flex: '1 1 0', WebkitLineClamp: 1 }}>{quien(f.de_sesion, f.de ?? 'Oficina')} → {quien(f.a_sesion)}</b>
+      <div className="fila sin-corte"><b className="corto corto-1">{quien(f.de_sesion, f.de ?? 'Oficina')} → {quien(f.a_sesion)}</b>
         <Chip color={COLOR_TIPO[f.tipo]}>{TIPO[f.tipo]}</Chip><span className="meta">{horaDe(f.ts)}</span></div>
-      <div className="meta" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{plano(f.texto)}</div>
+      <div className="meta una-linea">{plano(f.texto)}</div>
     </li>
   ))}</ul>
 }
@@ -39,13 +39,13 @@ function FilaEncargo({ e }: { e: Encargo }) {
   const quien = useQuien(d, tareas)
   const [txt, color] = ESTADO_ENCARGO[e.estado]
   return (
-    <div className="proc" style={{ padding: 'var(--s2) var(--s3)', display: 'grid', gap: 4 }}>
+    <div className="proc pila-chica relleno-chico">
       <div className="fila"><b>{tituloRol(d, e.rol)}</b><Chip color={color}>{txt}</Chip>
         {(e.mision || e.cadena) && <span className="chip azul-suave">misión #{e.mision ?? e.id}{e.intento ? ` · reintento ${e.intento}` : ''}</span>}{e.via && <span className="meta">{VIA[e.via] ?? e.via}</span>}
         <span className="meta">{hace(e.creado_ts)}</span></div>
       <div className="meta">{quien(e.de_sesion, 'Oficina')} → {e.a_sesion ? quien(e.a_sesion) : 'sesión del rol (arrancando)'}</div>
       <div className="corto3" title={e.texto}>{e.texto}</div>
-      {e.estado === 'error' && e.detalle && <div className="aviso-caja rojo" role="alert" style={{ margin: 0 }}>{e.detalle}</div>}
+      {e.estado === 'error' && e.detalle && <div className="aviso-caja rojo sin-margen" role="alert">{e.detalle}</div>}
       {e.resultado && <details><summary>Resultado</summary><Markdown texto={e.resultado} /></details>}
     </div>
   )
@@ -90,7 +90,7 @@ function FormEncargo({ s }: { s: Sesion }) {
           onKeyDown={(ev) => { if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); ev.currentTarget.form?.requestSubmit() } }} /></label>
       <div className="fila"><button className="primario" type="submit" disabled={enviando || !texto.trim()}>{enviando ? 'Enviando…' : 'Encargar'}</button>
         <span className="meta" role="status">{ok}</span></div>
-      {error && <div className="aviso-caja rojo" role="alert" style={{ margin: 0 }}>{error}</div>}
+      {error && <div className="aviso-caja rojo sin-margen" role="alert">{error}</div>}
     </form>
   )
 }
@@ -99,15 +99,15 @@ function FormEncargo({ s }: { s: Sesion }) {
 export function PanelEncargos({ s }: { s: Sesion }) {
   const { datos: d } = useOficina()
   const lista = encargosDe(d, s.id)
-  return <div style={{ display: 'grid', gap: 'var(--s3)' }}>
-    {s.rol && <p className="meta" style={{ margin: 0 }}>Esta es la sesión fija del rol <b>{tituloRol(d, s.rol)}</b>.</p>}
+  return <div className="pila-media">
+    {s.rol && <p className="meta sin-margen">Esta es la sesión fija del rol <b>{tituloRol(d, s.rol)}</b>.</p>}
     <FormEncargo s={s} />
-    <section aria-label="Encargos de esta sesión" style={{ display: 'grid', gap: 'var(--s2)' }}>
-      <h4 style={{ margin: 0, fontSize: 13, color: 'var(--suave)' }}>Encargos</h4>
+    <section aria-label="Encargos de esta sesión" className="pila">
+      <h4 className="subtitulo">Encargos</h4>
       {lista.length ? lista.map((e) => <FilaEncargo key={e.id} e={e} />) : <p className="vacio">Sin encargos en esta sesión.</p>}
     </section>
-    <section aria-label="Actividad entre sesiones" style={{ display: 'grid', gap: 'var(--s1)' }}>
-      <h4 style={{ margin: 0, fontSize: 13, color: 'var(--suave)' }}>Entre sesiones</h4>
+    <section aria-label="Actividad entre sesiones" className="pila-chica">
+      <h4 className="subtitulo">Entre sesiones</h4>
       <ActividadEntre sid={s.id} max={6} />
     </section>
   </div>
@@ -134,7 +134,7 @@ export function AbrirRol({ carpetas }: { carpetas?: string[] }) {
   return (
     <form className="bloque" onSubmit={abrir} aria-label="Abrir sesión de un rol">
       <h4>Abrir la sesión de un rol</h4>
-      <p className="meta" style={{ margin: 0 }}>Cada rol tiene una sesión fija por carpeta, sin encargo: queda lista para recibirlos.</p>
+      <p className="meta sin-margen">Cada rol tiene una sesión fija por carpeta, sin encargo: queda lista para recibirlos.</p>
       <label className="campo"><span>Rol</span>
         <select value={elegido} onChange={(e) => setRol(e.target.value)}>{d.roles.map((r) => <option key={r.id} value={r.id}>{r.titulo}</option>)}</select></label>
       <label className="campo"><span>Carpeta</span>
@@ -142,7 +142,7 @@ export function AbrirRol({ carpetas }: { carpetas?: string[] }) {
         <datalist id="rol-carpetas">{lista.map((c) => <option key={c} value={c} label={carpeta(c)} />)}</datalist></label>
       <div className="fila"><button className="primario" type="submit" disabled={enviando || !ruta.trim()}>Abrir sesión del rol</button>
         <span className="meta" role="status">{estado}</span></div>
-      {error && <div className="aviso-caja rojo" role="alert" style={{ margin: 0 }}>{error}</div>}
+      {error && <div className="aviso-caja rojo sin-margen" role="alert">{error}</div>}
     </form>
   )
 }
@@ -151,15 +151,15 @@ export function AbrirRol({ carpetas }: { carpetas?: string[] }) {
 export function RolesVista() {
   const { datos: d } = useOficina()
   const vivas = d.sesiones.filter((s) => s.rol)
-  return <div style={{ display: 'grid', gap: 'var(--s4)' }}>
+  return <div className="pila-grande">
     <AbrirRol />
-    <section aria-labelledby="vr-fijas" style={{ display: 'grid', gap: 'var(--s1)' }}>
-      <h3 id="vr-fijas" style={{ margin: 0 }}>Sesiones de roles abiertas</h3>
+    <section aria-labelledby="vr-fijas" className="pila-chica">
+      <h3 id="vr-fijas" className="sin-margen">Sesiones de roles abiertas</h3>
       {vivas.length ? <ul className="lista-simple">{vivas.map((s) => <li key={s.id} className="fila"><b>{tituloRol(d, s.rol)}</b><span className="meta">{carpeta(s.cwd)}</span></li>)}</ul>
         : <p className="vacio">Ningún rol tiene sesión abierta.</p>}
     </section>
-    <section aria-labelledby="vr-act" style={{ display: 'grid', gap: 'var(--s1)' }}>
-      <h3 id="vr-act" style={{ margin: 0 }}>Entre sesiones</h3>
+    <section aria-labelledby="vr-act" className="pila-chica">
+      <h3 id="vr-act" className="sin-margen">Entre sesiones</h3>
       <ActividadEntre max={10} />
     </section>
   </div>

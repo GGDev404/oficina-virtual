@@ -28,18 +28,21 @@ export function oscurecer(hex: string, k = 0.8) {
   return `#${c.map((v) => v.toString(16).padStart(2, '0')).join('')}`
 }
 
-// Equipo final: lo guardado (sesión, si no rol) sobre lo de fábrica de su clase, sobre lo que sale del id.
-export function aspecto(id: string, guardado?: AspectoGuardado | null): Aspecto {
+// Equipo final: lo guardado sobre su base (el rol para una sesión, lo de fábrica para ti), sobre lo que sale del id.
+// Los colores de armadura de la base solo valen si la clase es la misma: al cambiar de clase manda la de fábrica.
+export function aspecto(id: string, guardado?: AspectoGuardado | null, base?: AspectoGuardado | null): Aspecto {
   const h = hash(id)
-  const clase = guardado?.clase ?? 'ninguna'
+  const clase = guardado?.clase ?? base?.clase ?? 'ninguna'
   const c = CLASES[clase]
-  const camisa = guardado?.camisa ?? c.camisa ?? CAMISAS[h % CAMISAS.length]
+  const b = base && (base.clase ?? 'ninguna') === clase ? base : { pelo: base?.pelo, piel: base?.piel }
+  const g: AspectoGuardado = { ...b, ...guardado }
+  const camisa = g.camisa ?? c.camisa ?? CAMISAS[h % CAMISAS.length]
   return {
     clase, camisa, sombra: oscurecer(camisa),
-    pelo: guardado?.pelo ?? PELOS[(h >>> 3) % PELOS.length],
-    piel: guardado?.piel ?? PIELES[(h >>> 7) % PIELES.length],
-    pantalon: guardado?.pantalon ?? c.pantalon ?? PANTALON,
-    brillo: guardado?.brillo ?? c.brillo,
+    pelo: g.pelo ?? PELOS[(h >>> 3) % PELOS.length],
+    piel: g.piel ?? PIELES[(h >>> 7) % PIELES.length],
+    pantalon: g.pantalon ?? c.pantalon ?? PANTALON,
+    brillo: g.brillo ?? c.brillo,
   }
 }
 export const YO_FABRICA: AspectoGuardado = { pelo: '#161616', piel: '#c99572', camisa: '#1f9e8f' }

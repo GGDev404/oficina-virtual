@@ -21,8 +21,8 @@ export function DecisionPermiso({ p, compacto = false }: { p: Permiso; compacto?
   }
   const campos = compacto ? p.campos.slice(0, 2) : p.campos
   return (
-    <div style={{ display: 'grid', gap: 8 }}>
-      <p style={{ margin: 0 }}><b>Pide permiso para {p.herramienta}. </b>Decide aquí en <Cuenta vence={p.vence} /> o pásalo a su terminal; si no decides, aparece allá.</p>
+    <div className="pila">
+      <p className="sin-margen"><b>Pide permiso para {p.herramienta}. </b>Decide aquí en <Cuenta vence={p.vence} /> o pásalo a su terminal; si no decides, aparece allá.</p>
       {campos.map(([k, v]) => <div className="permiso-campo" key={k}><span>{ETIQUETAS_CAMPO[k] ?? k}</span><pre>{v}</pre></div>)}
       {!compacto && <input type="text" value={motivo} onChange={(e) => setMotivo(e.target.value)}
         placeholder="Motivo del rechazo (opcional; se lo dice al agente)" aria-label="Motivo del rechazo" />}
@@ -59,8 +59,8 @@ export function FormularioPregunta({ p }: { p: Pregunta }) {
     try { await post(`/api/preguntas/${p.id}`, { respuestas }); setEstado('Enviado.') } catch (err) { setEstado((err as Error).message) }
   }
   return (
-    <div className="aviso-caja" style={{ display: 'grid', gap: 10 }}>
-      <p style={{ margin: 0 }}><b>Te pregunta. </b>Responde aquí en <Cuenta vence={p.vence} />; si no, la pregunta aparece en su terminal.</p>
+    <div className="aviso-caja pila-media">
+      <p className="sin-margen"><b>Te pregunta. </b>Responde aquí en <Cuenta vence={p.vence} />; si no, la pregunta aparece en su terminal.</p>
       {p.preguntas.map((q, i) => (
         <fieldset className="pregunta" key={i}>
           <legend>{q.titulo && <Chip>{q.titulo}</Chip>} {q.pregunta}</legend>
@@ -95,8 +95,8 @@ export function PantallaTmux({ s }: { s: Sesion }) {
   }}>{etiqueta}</button>
   return (
     <div>
-      <p style={{ margin: '0 0 6px' }}>Su terminal muestra este diálogo. Elige la opción con su número, igual que en la terminal:</p>
-      <pre ref={pre} style={{ margin: '0 0 8px', maxHeight: 260, overflow: 'auto', fontSize: 12, whiteSpace: 'pre' }}>{texto}</pre>
+      <p className="abajo-s2">Su terminal muestra este diálogo. Elige la opción con su número, igual que en la terminal:</p>
+      <pre ref={pre} className="pre-terminal">{texto}</pre>
       <div className="acciones">{tecla('1')}{tecla('2')}{tecla('3')}{tecla('4')}{tecla('Escape', 'Esc')}<button type="button" className="boton-chico" onClick={cargar}>Actualizar</button></div>
     </div>
   )

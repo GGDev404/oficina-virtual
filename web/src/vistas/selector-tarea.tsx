@@ -17,7 +17,7 @@ export function SelectorTarea({ datos, seleccionada = null, alElegir, autoFocus 
     const [cuando, tono] = cuandoVence(t)
     return (
       <button type="button" className="opcion" aria-pressed={t.id === seleccionada} onClick={() => alElegir(t)} key={t.id}>
-        <span className="fila" style={{ justifyContent: 'space-between', flexWrap: 'nowrap', gap: 12 }}>
+        <span className="fila fila-entre">
           <span className="nombre">{t.nombre}</span><span className={`meta cuando ${tono}`}>{cuando}</span>
         </span>
         <span className="fila meta">

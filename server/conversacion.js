@@ -116,3 +116,50 @@ export function leerContexto(ruta) {
     if (fd !== undefined) fs.closeSync(fd);
   }
 }
+
+// Gasto acumulado de una sesión: suma el usage de cada respuesta del transcript (una vez por mensaje: Claude Code
+// escribe una línea por bloque con el mismo usage). Se lee por partes desde donde quedó la vez anterior.
+// caché = qué parte de la entrada salió de la caché de prompts (más alto, más barato).
+export const gastoVacio = () => ({ offset: 0, vistos: [], entrada: 0, cache_leida: 0, cache_creada: 0, salida: 0, respuestas: 0 });
+export function sumarUso(g, lineas) {
+  const vistos = new Set(g.vistos);
+  for (const l of lineas) {
+    let e;
+    try { e = JSON.parse(l); } catch { continue; }
+    const u = e.type === 'assistant' ? e.message?.usage : null;
+    const id = e.message?.id ?? e.uuid;
+    if (!u || vistos.has(id)) continue;
+    vistos.add(id);
+    g.entrada += u.input_tokens ?? 0; g.cache_leida += u.cache_read_input_tokens ?? 0;
+    g.cache_creada += u.cache_creation_input_tokens ?? 0; g.salida += u.output_tokens ?? 0; g.respuestas++;
+  }
+  g.vistos = [...vistos].slice(-50); // basta recordar los últimos: un mensaje no se reparte en más líneas que eso
+  return g;
+}
+export const resumenGasto = (g) => {
+  const total = g.entrada + g.cache_leida + g.cache_creada;
+  return { entrada: g.entrada, cache_leida: g.cache_leida, cache_creada: g.cache_creada, salida: g.salida, respuestas: g.respuestas,
+    cache_pct: total ? Math.round((g.cache_leida / total) * 100) : null };
+};
+export function leerGasto(ruta, g = gastoVacio()) {
+  if (!rutaValida(ruta)) return g;
+  let fd;
+  try {
+    fd = fs.openSync(ruta, 'r');
+    const { size } = fs.fstatSync(fd);
+    if (size < g.offset) g = gastoVacio(); // el archivo se rehízo
+    const n = Math.min(size - g.offset, 16 * 1024 * 1024); // de 16 MB en 16 MB
+    if (n <= 0) return g;
+    const buf = Buffer.alloc(n);
+    fs.readSync(fd, buf, 0, n, g.offset);
+    const texto = buf.toString('utf8');
+    const corte = texto.lastIndexOf('\n'); // la última línea puede estar a medio escribir: espera a la próxima lectura
+    if (corte < 0) return g;
+    g.offset += Buffer.byteLength(texto.slice(0, corte + 1));
+    return sumarUso(g, texto.slice(0, corte).split('\n'));
+  } catch {
+    return g;
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
+}

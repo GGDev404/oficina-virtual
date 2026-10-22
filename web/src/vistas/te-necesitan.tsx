@@ -28,7 +28,7 @@ export function TeNecesitan() {
                     ? <button className="primario boton-chico" type="button" onClick={() => abrirAgente(s.id)}>Ver el diálogo y contestar</button>
                     : d.vivas?.[s.id]?.tipo === 'background'
                       ? <button className="primario boton-chico" type="button" onClick={() => postSeguro(rutaSesion(s.id, 'terminal'))}><Icono n="terminal" />Abrir su terminal para aprobar</button>
-                      : <span className="aviso-caja rojo" style={{ margin: 0, padding: '2px 8px' }}>Apruébalo en su terminal o en la app · {carpeta(s.cwd)}</span>)
+                      : <span className="aviso-caja rojo chico">Apruébalo en su terminal o en la app · {carpeta(s.cwd)}</span>)
                     : <button className="primario boton-chico" type="button" onClick={() => abrirAgente(s.id, { escribir: true })}>Responder</button>}
                 <button className="boton-chico" type="button" onClick={() => abrirAgente(s.id)}>Ver ficha</button>
               </div>

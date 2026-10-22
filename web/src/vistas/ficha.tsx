@@ -66,6 +66,7 @@ function Contenido({ s, d, tareas, iniciales, caja, abrirNueva }: {
   const espera = esperaProcesos(s, d)
   const ctx = d.contexto?.[s.id]
   const nivel = nivelContexto(ctx)
+  const gasto = d.gastos?.[s.id]
   const [textoEstado, colorEstado] = espera ? [`Esperando ${procesos.length} proceso${procesos.length > 1 ? 's' : ''}`, 'naranja'] : (ESTADOS[s.estado] ?? [s.estado, ''])
   const [estado, setEstado] = useState('') // línea de estado del redactor
   const [confirmandoCierre, setConfirmandoCierre] = useState(false)
@@ -143,7 +144,7 @@ function Contenido({ s, d, tareas, iniciales, caja, abrirNueva }: {
     || (Date.now() - m.ts < 600_000 && !recibidos.some((x) => x.includes(m.texto.trim()))))
   const yoDice = (clave: string, quien: string, ts: number | null, cuerpo: string, clase = '') => (
     <div className={`msg msg-yo ${clase}`} key={clave}>
-      <div style={{ display: 'grid', justifyItems: 'end', minWidth: 0 }}><div className="quien">{quien}{ts ? ` · ${horaDe(ts)}` : ''}</div>
+      <div className="alinea-fin"><div className="quien">{quien}{ts ? ` · ${horaDe(ts)}` : ''}</div>
         <div className="globo-yo">{cuerpo}</div></div>
       <span className="avatar" aria-hidden="true">{iniciales}</span>
     </div>
@@ -151,7 +152,7 @@ function Contenido({ s, d, tareas, iniciales, caja, abrirNueva }: {
   const items: { ts: number; nodo: ReactNode }[] = [
     ...(conversacion ?? []).map((m, i) => ({ ts: m.ts ?? 0, nodo: m.rol === 'sistema' ? <div className="msg-sistema" key={`c${i}`}>{m.texto}</div>
       : m.rol === 'agente' ? <div className="msg" key={`c${i}`}><span className="avatar" aria-hidden="true">AG</span>
-        <div style={{ minWidth: 0 }}><div className="quien"><b>Agente</b>{m.ts ? ` · ${horaDe(m.ts)}` : ''}</div><Markdown texto={m.texto} /></div></div>
+        <div className="min-0"><div className="quien"><b>Agente</b>{m.ts ? ` · ${horaDe(m.ts)}` : ''}</div><Markdown texto={m.texto} /></div></div>
         : yoDice(`c${i}`, m.rol === 'mensaje' ? 'Tú · desde la oficina' : 'Tú', m.ts, m.texto) })),
     ...mensajes.map((m) => ({ ts: m.ts, nodo: yoDice(`m${m.id}`, m.estado === 'enviando' ? 'Enviando…' : m.estado === 'error' ? `No se envió: ${m.detalle}` : 'Entregado · lo lee entre pasos',
       m.ts, m.texto, m.estado === 'error' ? 'error' : 'pendiente') })),
@@ -198,7 +199,7 @@ function Contenido({ s, d, tareas, iniciales, caja, abrirNueva }: {
   const vivos = subs.filter((a) => a.estado === 'trabajando')
   const listaSubs = [...vivos, ...subs.filter((a) => a.estado !== 'trabajando').reverse().slice(0, 6)]
   const bloqueTarea = <BloqueTarea s={s} d={d} t={t} asignando={asignando} asignar={asignar} terminar={() => setAsignando(false)} />
-  const procs = procesos.length ? <>{espera && <div className="aviso-caja" style={{ margin: 0 }}>Espera a que terminen sus procesos; después sigue solo.</div>}
+  const procs = procesos.length ? <>{espera && <div className="aviso-caja sin-margen">Espera a que terminen sus procesos; después sigue solo.</div>}
     {procesos.map((p, i) => <TarjetaProceso key={i} sid={s.id} p={p} i={i} />)}</> : <p className="vacio">Nada corre en segundo plano.</p>
   const panelEncargos = <PanelEncargos s={s} />
   const agentes = listaSubs.length ? listaSubs.map((a) => <FilaSubagente key={a.id} a={a} />) : <p className="vacio">No ha usado subagentes.</p>
@@ -237,9 +238,12 @@ function Contenido({ s, d, tareas, iniciales, caja, abrirNueva }: {
       </div>
       <div className="va-ctx">{nivel && ctx && <>
         <span className="texto-ctx">Contexto {miles(ctx.tokens)} / {miles(ctx.limite)}</span>
-        <span className="barra-ctx" role="meter" aria-label="Contexto usado" aria-valuenow={Math.round(nivel.pct * 100)} aria-valuemin={0} aria-valuemax={100}>
+        <span className="medidor nivel" role="meter" aria-label="Contexto usado" aria-valuenow={Math.round(nivel.pct * 100)} aria-valuemin={0} aria-valuemax={100}>
           <i className={nivel.clase} style={{ width: `${Math.min(100, Math.round(nivel.pct * 100))}%` }} /></span>
-        <b>{Math.round(nivel.pct * 100)} %</b></>}</div>
+        <b>{Math.round(nivel.pct * 100)} %</b></>}
+        {gasto && <span className="va-gasto" title={`Entrada ${miles(gasto.entrada)} · caché leída ${miles(gasto.cache_leida)} · caché creada ${miles(gasto.cache_creada)} · salida ${miles(gasto.salida)} · ${gasto.respuestas} respuestas`}>
+          Gasto <b>{miles(gasto.entrada + gasto.cache_leida + gasto.cache_creada + gasto.salida)}</b>
+          {gasto.cache_pct != null && <> · caché <b className={gasto.cache_pct < 60 ? 'bajo' : ''}>{gasto.cache_pct} %</b></>}</span>}</div>
     </header>
     <div className="va-chips">
       {chip('proc', <><span className={`punto ${espera ? 'naranja' : procesos.length ? 'verde' : ''}`} />{procesos.length} proceso{procesos.length === 1 ? '' : 's'}</>, procs)}
@@ -291,7 +295,7 @@ function Contenido({ s, d, tareas, iniciales, caja, abrirNueva }: {
           <Tabs.Content value="procesos" className="va-panel">{procs}</Tabs.Content>
           <Tabs.Content value="subagentes" className="va-panel">{agentes}</Tabs.Content>
           <Tabs.Content value="encargos" className="va-panel">{panelEncargos}</Tabs.Content>
-          <Tabs.Content value="tarea" className="va-panel"><div className="proc" style={{ padding: 12 }}>{bloqueTarea}</div></Tabs.Content>
+          <Tabs.Content value="tarea" className="va-panel"><div className="proc relleno">{bloqueTarea}</div></Tabs.Content>
         </Tabs.Root>
       </aside>
     </div>
@@ -309,19 +313,19 @@ function Avisos({ s, d, viva, nombre, espera, nivel, confirmandoCierre, cancelar
   try { permiso = JSON.parse(s.permiso_json ?? 'null') } catch { /* sin detalle */ }
   return <>
     {confirmandoCierre && viva && <div className="aviso-caja rojo" role="alertdialog" aria-label="Confirmar cierre">
-      <p style={{ margin: '0 0 8px' }}><b>¿Cerrar «{nombre}»? </b>{viva.ocupada ? 'Está trabajando ahora: se corta lo que esté haciendo. ' : ''}
+      <p className="abajo-s2"><b>¿Cerrar «{nombre}»? </b>{viva.ocupada ? 'Está trabajando ahora: se corta lo que esté haciendo. ' : ''}
         La conversación queda guardada; la retomas con claude --resume {s.id.slice(0, 8)}… o con «Retomar» en Pendientes.</p>
       <div className="acciones">
-        <button type="button" className="primario" style={{ background: '#b3261e', color: '#fff' }} onClick={cerrarSesion}>Sí, cerrar</button>
+        <button type="button" className="peligro-solido" onClick={cerrarSesion}>Sí, cerrar</button>
         <button type="button" onClick={cancelarCierre}>Cancelar</button>
       </div>
     </div>}
     {s.estado === 'necesita_permiso' && (pendiente
       ? <div className="aviso-caja rojo"><DecisionPermiso key={pendiente.id} p={pendiente} /></div>
       : <div className="aviso-caja rojo">
-        <p style={{ margin: '0 0 6px' }}><b>Pide permiso</b>{permiso ? ` para ${permiso.herramienta}:` : '.'}</p>
-        {permiso?.detalle && <pre style={{ margin: '0 0 8px', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 12.5 }}>{permiso.detalle}</pre>}
-        {s.tmux ? <PantallaTmux key={s.permiso_json} s={s} /> : <p style={{ margin: '0 0 8px' }}>{viva?.tipo === 'background'
+        <p className="abajo-s2"><b>Pide permiso</b>{permiso ? ` para ${permiso.herramienta}:` : '.'}</p>
+        {permiso?.detalle && <pre className="pre-ajustado abajo-s2">{permiso.detalle}</pre>}
+        {s.tmux ? <PantallaTmux key={s.permiso_json} s={s} /> : <p className="abajo-s2">{viva?.tipo === 'background'
           ? 'Apruébalo en su terminal: ábrela y elige «Yes». Escribirle un mensaje no lo aprueba; queda en cola hasta después.'
           : `Apruébalo en su terminal o en la app (${carpeta(s.cwd)}). Escribirle un mensaje no lo aprueba; queda en cola hasta después.`}</p>}
         {(viva?.tipo === 'background' || s.tmux) && <button type="button" className="boton-chico" onClick={() => postSeguro(rutaSesion(s.id, 'terminal'))}><Icono n="terminal" />Abrir su terminal</button>}
@@ -330,7 +334,7 @@ function Avisos({ s, d, viva, nombre, espera, nivel, confirmandoCierre, cancelar
     {s.estado === 'bloqueado' && <p className="aviso-caja rojo"><b>Está bloqueado. </b>Su último mensaje dice qué le falta.</p>}
     {espera && <p className="aviso-caja"><b>Espera sus procesos. </b>Cuando terminen, sigue solo; si le escribes ahora, lee tu mensaje y responde.</p>}
     {nivel && viva && <div className={`aviso-caja ${nivel === 'lleno' ? 'rojo' : ''}`}>
-      <p style={{ margin: '0 0 8px' }}><b>{nivel === 'lleno' ? 'Contexto casi lleno. ' : 'Contexto alto. '}</b>
+      <p className="abajo-s2"><b>{nivel === 'lleno' ? 'Contexto casi lleno. ' : 'Contexto alto. '}</b>
         {nivel === 'lleno' ? 'Pídele un resumen de traspaso y abre una sesión nueva con él, o escribe /compact en su terminal.'
           : 'Conviene compactar pronto: escribe /compact en su terminal (un mensaje desde aquí no ejecuta comandos).'}</p>
       <button type="button" className="boton-chico" onClick={pedirTraspaso}>Pedir resumen de traspaso</button>
@@ -341,22 +345,22 @@ function Avisos({ s, d, viva, nombre, espera, nivel, confirmandoCierre, cancelar
 function BloqueTarea({ s, d, t, asignando, asignar, terminar }: { s: Sesion; d: Datos; t: Tarea | undefined; asignando: boolean; asignar: () => void; terminar: () => void }) {
   if (asignando) return (
     <section className="bloque">
-      <div className="fila"><h4 style={{ marginRight: 'auto' }}>Elige su tarea</h4><button className="boton-chico" type="button" onClick={terminar}>Cancelar</button></div>
+      <div className="fila"><h4 className="empuja">Elige su tarea</h4><button className="boton-chico" type="button" onClick={terminar}>Cancelar</button></div>
       <SelectorTarea datos={d} seleccionada={s.tarea_id} autoFocus alElegir={async (x) => { terminar(); await postSeguro(rutaSesion(s.id, 'tarea'), { tarea_id: x.id }) }} />
     </section>
   )
   return (
-    <div style={{ display: 'grid', gap: 8 }}>
+    <div className="pila">
       {s.tarea_id ? <>
         {t ? <ResumenTarea t={t} /> : <div>{s.tarea_id}</div>}
         <div className="fila"><span className="meta">ligada por {s.tarea_origen}</span>
           <button className="boton-chico" type="button" onClick={asignar}>Cambiar</button>
           <button className="boton-chico" type="button" onClick={() => postSeguro(rutaSesion(s.id, 'tarea'), { tarea_id: null })}>Desligar</button></div>
       </> : <>
-        <p className="meta" style={{ margin: 0 }}>Sin tarea ligada.</p>
+        <p className="meta sin-margen">Sin tarea ligada.</p>
         <button className="primario" type="button" onClick={asignar}>Asignar tarea</button>
       </>}
-      <p className="meta" style={{ margin: 0 }}>Última actividad {hace(s.ultimo_evento_ts)} · sesión {s.id.slice(0, 8)}</p>
+      <p className="meta sin-margen">Última actividad {hace(s.ultimo_evento_ts)} · sesión {s.id.slice(0, 8)}</p>
     </div>
   )
 }
@@ -379,11 +383,11 @@ function TarjetaProceso({ sid, p, i }: { sid: string; p: Proceso; i: number }) {
         <span className="marca">{info.marca}</span><Icono n="abajo" className="giro" /></summary>
       <div className="detalle">
         {info.comando && info.comando !== info.nombre && <pre className="consola">{info.comando}</pre>}
-        {info.log && (log != null ? <pre className="consola">{log || '(log vacío)'}</pre> : <p className="meta" style={{ margin: 0 }}>Cargando su log…</p>)}
+        {info.log && (log != null ? <pre className="consola">{log || '(log vacío)'}</pre> : <p className="meta sin-margen">Cargando su log…</p>)}
         {info.log && <div className="acciones">
           <button type="button" className="boton-chico" onClick={() => cargarLog(400)}>Ver log completo</button>
           <button type="button" className="boton-chico" onClick={() => cargarLog()}>Actualizar</button></div>}
-        {!info.log && !info.comando && <p className="meta" style={{ margin: 0 }}>Sin más detalle: Claude Code no expone su salida.</p>}
+        {!info.log && !info.comando && <p className="meta sin-margen">Sin más detalle: Claude Code no expone su salida.</p>}
       </div>
     </details>
   )

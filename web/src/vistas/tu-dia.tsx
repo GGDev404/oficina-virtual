@@ -35,7 +35,7 @@ export function TuDia({ seccion: inicial }: { seccion: Seccion }) {
         <Descripcion oculta>Tu agenda, lo pendiente, los comentarios para ti y la memoria de la computadora.</Descripcion>
         <div className="fila">
           <span className={`chip ${v.color} veredicto`}>{v.texto}</span>
-          {corte && <span className="meta fila" style={{ gap: 4 }}><Icono n="hora" />{corte.nombre} a las {corte.hora}</span>}
+          {corte && <span className="meta fila gap-s1"><Icono n="hora" />{corte.nombre} a las {corte.hora}</span>}
         </div>
         <Cerrar /></header>
       <Tabs.Root value={seccion} onValueChange={(x) => setSeccion(x as Seccion)} className="flex min-h-0 flex-1 flex-col">
@@ -100,10 +100,10 @@ function Agenda({ d, hoy }: { d: Datos; hoy: Tarea[] }) {
   const todos = dia != null && completos.has(dia)
   const visibles = todos ? delDia : delDia.slice(0, MAX)
   return <>
-    <h3 style={{ marginTop: 0 }}>Hoy</h3>
+    <h3 className="sin-margen-arriba">Hoy</h3>
     <ul id="vo-hoy">{hoy.length ? hoy.map((t) => <FilaHoy key={t.id} t={t} d={d} ahora={ahora} />) : <li className="vacio">Nada vence hoy.</li>}</ul>
     <Tabs.Root value={dia ?? ''} onValueChange={setElegido}>
-      <div className="fila vo-dias-fila"><h3 style={{ margin: 0 }}>Próximos días</h3>
+      <div className="fila vo-dias-fila"><h3 className="sin-margen">Próximos días</h3>
         <Tabs.List className="fila" aria-label="Día">
           {claves.slice(0, 8).map((k) => <Tabs.Trigger key={k} value={k} className="vo-dia">{etiquetaDia(k)}<span className="cuenta">{porDia.get(k)!.length}</span></Tabs.Trigger>)}
         </Tabs.List>
@@ -112,13 +112,13 @@ function Agenda({ d, hoy }: { d: Datos; hoy: Tarea[] }) {
         <div className="vo-grid">{visibles.map((t) => (
           <Enlace key={t.id} href={t.url} className="vo-tarjeta"><span className="hora">{t.due_ts ? horaDe(t.due_ts) : '—'}</span><span className="vo-nombre"><NombreTarea t={t} /></span></Enlace>
         ))}</div>
-        {delDia.length > MAX && <button type="button" className="boton-chico" style={{ marginTop: 8 }} onClick={() => setCompletos((c) => {
+        {delDia.length > MAX && <button type="button" className="boton-chico arriba-s2" onClick={() => setCompletos((c) => {
           const n = new Set(c); if (n.has(dia)) n.delete(dia); else n.add(dia); return n
         })}>{todos ? 'Ver menos' : `Ver ${delDia.length - MAX} más de este día`}</button>}
       </Tabs.Content>}
     </Tabs.Root>
     {!delDia.length && <p className="vacio">Nada vence en los próximos días.</p>}
-    <section className="bloque" aria-labelledby="vo-noche-t" style={{ marginTop: 'var(--s5)' }}>
+    <section className="bloque arriba-s5" aria-labelledby="vo-noche-t">
       <h4 id="vo-noche-t">Turno nocturno</h4>
       <Noche />
     </section>
@@ -133,7 +133,7 @@ function Noche() {
   const deHoy = noche.fecha === new Date().toLocaleDateString('sv')
   const texto = <div className="anoche">{(noche.texto ?? '').replace(/^#+\s*/gm, '').replace(/\*\*/g, '').replace(/`/g, '')}</div>
   return deHoy && new Date().getHours() < 12
-    ? <><p className="meta" style={{ margin: '0 0 8px' }}>Resumen de anoche ({noche.fecha})</p>{texto}</>
+    ? <><p className="meta abajo-s2">Resumen de anoche ({noche.fecha})</p>{texto}</>
     : <details><summary>Resumen del turno del {noche.fecha}</summary>{texto}</details>
 }
 
@@ -155,7 +155,7 @@ function Pendientes() {
       {solicitudes.map((q) => <div className="comentario" key={`q${q.id}`}>
         <div className="fila"><Chip color="amarillo">Quiere abrir una sesión</Chip><b className="corto">{q.nombre || 'sin nombre'}</b><span className="meta">{hace(q.creado_ts)}</span></div>
         <div className="meta">Pide: {quien(q.de_sesion)} · carpeta {q.cwd} · permisos {q.permiso}{q.modelo ? ` · ${q.modelo}` : ''}{q.tarea_id ? ` · tarea ${q.tarea_id}` : ''}</div>
-        <pre style={{ margin: '4px 0', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 12.5 }}>{q.prompt}</pre>
+        <pre className="pre-ajustado entre-s1">{q.prompt}</pre>
         <div className="fila">{accion('Abrir', `/api/solicitudes/${q.id}/aprobar`, true)}{accion('Rechazar', `/api/solicitudes/${q.id}/rechazar`)}</div>
       </div>)}
       {sesiones.map((s) => <div className="comentario" key={`s${s.id}`}>
@@ -169,8 +169,8 @@ function Pendientes() {
         <div className="fila">{accion('Hecho', `/api/pendientes/${n.id}/hecho`)}<span className="meta">{hace(n.creado_ts)}</span></div>
       </div>)}
     </div> : <p className="vacio">Nada pendiente.</p>}
-    <form className="fila" style={{ marginTop: 8 }} onSubmit={agregar}>
-      <input type="text" maxLength={500} placeholder="Anota algo pendiente…" aria-label="Nuevo pendiente" style={{ flex: 1, minWidth: 0 }}
+    <form className="fila arriba-s2" onSubmit={agregar}>
+      <input type="text" maxLength={500} placeholder="Anota algo pendiente…" aria-label="Nuevo pendiente" className="crece"
         value={nota} onChange={(e) => setNota(e.target.value)} />
       <button className="boton-chico" type="submit">Agregar</button>
     </form>
@@ -182,7 +182,7 @@ function ParaTi() {
   const [todos, setTodos] = useState(false)
   const lista = d.comentarios.filter((c) => !c.es_mio && (todos || (c.para_mi && !c.respondido && !c.visto_local)))
   return <>
-    <div className="fila" style={{ justifyContent: 'flex-end' }}><label className="meta"><input type="checkbox" checked={todos} onChange={(e) => setTodos(e.target.checked)} /> Todos los comentarios</label></div>
+    <div className="fila fin"><label className="meta"><input type="checkbox" checked={todos} onChange={(e) => setTodos(e.target.checked)} /> Todos los comentarios</label></div>
     {lista.length ? <div>{lista.map((c) => {
       const t = tareas[c.tarea_id]
       return (
@@ -193,7 +193,7 @@ function ParaTi() {
           <div className="mensaje corto3">{c.texto}</div>
           <div className="fila">
             {!c.visto_local && <button className="boton-chico" type="button" onClick={() => postSeguro(`/api/comentarios/${encodeURIComponent(c.id)}/visto`)}>Marcar visto</button>}
-            {t && <Enlace className="fila" href={`${t.url}?comment=${encodeURIComponent(c.id)}`} style={{ fontSize: 12.5, gap: 4 }}>Abrir en ClickUp<Icono n="externo" /></Enlace>}
+            {t && <Enlace className="fila gap-s1 texto-sm" href={`${t.url}?comment=${encodeURIComponent(c.id)}`}>Abrir en ClickUp<Icono n="externo" /></Enlace>}
           </div>
         </div>
       )
@@ -208,21 +208,21 @@ function MemoriaVista() {
   const [texto, color] = NIVEL_MEM[mem.nivel]
   const barra = (usado: number, total: number) => {
     const pct = total ? Math.round((100 * usado) / total) : 0
-    return <div className="fila" style={{ gap: 8 }}>
-      <div role="meter" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} style={{ flex: 1, height: 8, borderRadius: 4, background: 'var(--hundido)', overflow: 'hidden' }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: pct > 85 ? 'var(--rojo)' : pct > 65 ? 'var(--naranja)' : 'var(--verde)' }} /></div>
+    return <div className="fila">
+      <div className="medidor nivel crece" role="meter" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+        <i className={pct > 85 ? 'lleno' : pct > 65 ? 'medio' : ''} style={{ width: `${pct}%` }} /></div>
       <span className="meta">{gb(usado)} de {gb(total)}</span></div>
   }
   return <>
     <div className="fila"><Chip color={color}>{texto}</Chip>
       <span className="meta">{mem.nivel === 'critico' ? 'No se abren sesiones nuevas. Pausa o cierra un agente.' : mem.nivel === 'alto' ? 'Cuidado al abrir más agentes.' : `${gb(mem.disponible)} disponibles`}</span></div>
-    <div className="meta" style={{ marginTop: 8 }}>RAM</div>{barra(mem.total - mem.disponible, mem.total)}
-    <div className="meta" style={{ marginTop: 6 }}>Swap</div>{barra(mem.swapTotal - mem.swapLibre, mem.swapTotal)}
-    <div className="meta" style={{ marginTop: 10 }}>Por agente (aprox., incluye sus procesos)</div>
+    <div className="meta arriba-s2">RAM</div>{barra(mem.total - mem.disponible, mem.total)}
+    <div className="meta arriba-s2">Swap</div>{barra(mem.swapTotal - mem.swapLibre, mem.swapTotal)}
+    <div className="meta arriba-s3">Por agente (aprox., incluye sus procesos)</div>
     {mem.sesiones.length ? <ul className="lista-simple">{mem.sesiones.map((s) => {
       const ses = d.sesiones.find((x) => x.id === s.id)
       return <li className="fila" key={s.id}>
-        <span className="corto" style={{ flex: 1, minWidth: 0 }}>{ses ? nombreSesion(ses, tareas) : (s.nombre ?? s.id.slice(0, 8))}</span>
+        <span className="corto crece">{ses ? nombreSesion(ses, tareas) : (s.nombre ?? s.id.slice(0, 8))}</span>
         {s.pausada && <Chip color="naranja">pausado</Chip>}<span className="meta">{(s.mb / 1024).toFixed(1)} GB</span>
         <BotonAccion className={`boton-chico ${s.pausada ? 'primario' : ''}`}
           accion={async () => { await postSeguro(rutaSesion(s.id, s.pausada ? 'reanudar' : 'pausar')); cargarMemoria() }}>{s.pausada ? 'Reanudar' : 'Pausar'}</BotonAccion>

@@ -181,6 +181,7 @@ export interface Datos {
   preguntas: Pregunta[]
   roles: Rol[]
   aspectos?: Record<string, AspectoGuardado>
+  gastos?: Record<string, Gasto>
   experiencia?: { rol: RolId; hechos: number; fallos: number; ultimo_ts: number | null }[]
   encargos: Encargo[]
   entre_sesiones: EntreSesiones[]
@@ -206,3 +207,6 @@ export interface Yo {
   frase: boolean
   nombre?: string | null
 }
+
+// Tokens que lleva gastados una sesión (server/conversacion.js → leerGasto). cache_pct: parte de la entrada que salió de caché.
+export interface Gasto { entrada: number; cache_leida: number; cache_creada: number; salida: number; respuestas: number; cache_pct: number | null }

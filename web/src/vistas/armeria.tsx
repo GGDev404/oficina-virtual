@@ -42,11 +42,12 @@ export function Armeria({ inicial }: { inicial?: string }) {
 
   const elegir = (k: string) => { setClave(k); setBorrador(d.aspectos?.[k] ?? {}); setError('') }
   const base = clave === 'yo' ? YO_FABRICA : obj.rol ? d.aspectos?.[`rol:${obj.rol}`] : undefined
-  const vista = useMemo(() => aspecto(clave, { ...base, ...borrador }), [clave, base, borrador])
+  const vista = useMemo(() => aspecto(clave, borrador, base), [clave, base, borrador])
   const cambiar = (campo: keyof AspectoGuardado, valor: string | undefined) => setBorrador((b) => ({ ...b, [campo]: valor }))
   const guardar = (a: AspectoGuardado | null) => post(`/api/aspectos/${encodeURIComponent(clave)}`, a)
     .then(() => { setError(''); if (!a) setBorrador({}) }, (e: Error) => setError(e.message))
   const n = obj.rol ? nivelDe(d, obj.rol) : null
+  const rol = d.roles.find((r) => r.id === obj.rol)
 
   return (
     <Ventana id="v-armeria" alCerrar={cerrarVentana}>
@@ -70,6 +71,7 @@ export function Armeria({ inicial }: { inicial?: string }) {
                   <i style={{ width: `${Math.round(n.pct * 100)}%` }} />
                 </div>
                 <span className="meta">{n.xp} XP · faltan {n.falta} · {n.hechos} entregas{n.fallos ? `, ${n.fallos} fallidas` : ''}</span>
+                {rol && <Hotbar equipo={rol.equipo ?? []} modelo={rol.modelo} />}
                 {n.logros.length > 0 && <div className="fila">{n.logros.map((l) => <span key={l} className="chip azul-suave">{l}</span>)}</div>}
               </div>}
             </div>
@@ -133,4 +135,19 @@ export function Armeria({ inicial }: { inicial?: string }) {
       </div>
     </Ventana>
   )
+}
+
+// Barra de equipo (como la de Minecraft): las skills que el rol carga, en 9 casillas, y el modelo con que corre.
+const MODELO_CORTO: Record<string, string> = { 'claude-opus-5-5': 'Opus', 'claude-sonnet-5-5': 'Sonnet', 'claude-haiku-5-5': 'Haiku', 'claude-fable-5-1': 'Fable' }
+function Hotbar({ equipo, modelo }: { equipo: string[]; modelo?: string }) {
+  const casillas = [...equipo.slice(0, 9), ...Array(Math.max(0, 9 - equipo.length)).fill(null)] as (string | null)[]
+  return <div className="arm-hotbar-caja">
+    <span className="meta">Equipo{modelo ? ` · corre con ${MODELO_CORTO[modelo] ?? modelo}` : ''}</span>
+    <ol className="arm-hotbar" aria-label="Skills equipadas">
+      {casillas.map((c, i) => c
+        ? <li key={i} className="casilla llena" title={c}><span aria-hidden="true">{c.replace(/^.*:/, '').replace(/^millet-/, '').slice(0, 3).toUpperCase()}</span><span className="oculto">{c}</span></li>
+        : <li key={i} className="casilla" aria-hidden="true" />)}
+    </ol>
+    {equipo.length > 0 && <span className="meta arm-hotbar-lista">{equipo.join(' · ')}</span>}
+  </div>
 }
