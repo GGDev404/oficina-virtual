@@ -304,6 +304,8 @@
   #v-agente > header.va-cabeza { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s2) var(--s4); align-items: center;
     padding: var(--s4) var(--s5) var(--s3); }
   .va-cabeza h2 { font-size: var(--t-xl); }
+  .va-titulo { display: flex; gap: var(--s3); align-items: center; min-width: 0; }
+  .va-titulo .retrato { border-radius: var(--r2); }
   .va-botones { display: flex; gap: var(--s2); align-items: center; }
   .va-botones .acciones { flex-wrap: nowrap; }
   .va-sep { width: 1px; height: 24px; background: var(--borde); margin: 0 var(--s1); }

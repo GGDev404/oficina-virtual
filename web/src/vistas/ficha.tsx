@@ -5,6 +5,8 @@ import { Tabs } from 'radix-ui'
 import { ResumenTarea } from '@/components/comunes'
 import { useOficina } from '@/components/contexto'
 import { Icono } from '@/components/icono'
+import { Retrato } from '@/components/retrato'
+import { aspecto, type Pose } from '@/escena/sprites'
 import { Cerrar, Descripcion, Titulo, Ventana } from '@/components/ventana'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { leer, post, postSeguro, rutaSesion } from '@/lib/api'
@@ -18,6 +20,9 @@ import type { Datos, Intercambio, Sesion, Subagente, Tarea, Viva } from '@/lib/t
 import { PanelEncargos } from './encargos'
 import { DecisionPermiso, FormularioPregunta, PantallaTmux } from './permisos'
 import { SelectorTarea } from './selector-tarea'
+
+// Pose del retrato según el estado (las mismas que en la escena).
+const POSE: Record<string, Pose> = { trabajando: 'teclea', necesita_permiso: 'mano', duda: 'mano', te_espera: 'parado', bloqueado: 'triste', listo_para_revisar: 'cafe', 'sin_señal': 'duerme' }
 
 const PEDIR_TRASPASO = 'Tu ventana de contexto está casi llena. Escribe un resumen de traspaso para seguir en una sesión nueva: objetivo, '
   + 'estado actual, archivos tocados, decisiones tomadas, qué falta y el siguiente paso concreto. Termina con la rama y la carpeta.'
@@ -60,6 +65,7 @@ function Contenido({ s, d, tareas, iniciales, caja, abrirNueva }: {
   s: Sesion; d: Datos; tareas: Record<string, Tarea>; iniciales: string; caja: React.RefObject<HTMLTextAreaElement | null>
   abrirNueva: ReturnType<typeof useOficina>['abrirNueva']
 }) {
+  const { abrirArmeria } = useOficina()
   const t = s.tarea_id ? tareas[s.tarea_id] : undefined
   const viva = d.vivas?.[s.id]
   const procesos = procesosDe(s)
@@ -212,9 +218,15 @@ function Contenido({ s, d, tareas, iniciales, caja, abrirNueva }: {
 
   return <>
     <header className="va-cabeza">
-      <Titulo>{nombreSesion(s, tareas)}</Titulo>
+      <div className="va-titulo">
+        {/* Retrato estilo barra de DOOM: la pose sigue al estado y se ve más golpeado con el contexto casi lleno. */}
+        <Retrato tam={36} pose={nivel?.clase === 'lleno' ? 'triste' : POSE[s.estado] ?? 'parado'}
+          aspecto={aspecto(s.id, d.aspectos?.[`sesion:${s.id}`], s.rol ? d.aspectos?.[`rol:${s.rol}`] : null)} />
+        <Titulo>{nombreSesion(s, tareas)}</Titulo>
+      </div>
       <Descripcion oculta>Conversación con el agente, cuadro para escribirle y su contexto: procesos, subagentes y tarea.</Descripcion>
       <div className="va-botones"><div className="acciones">
+        <button type="button" className="icono-boton" aria-label="Equipar en la Armería" title="Equipar en la Armería" onClick={() => abrirArmeria(`sesion:${s.id}`)}><Icono n="escudo" /></button>
         {terminal && <button type="button" className="icono-boton" aria-label="Abrir en terminal" title="Abrir en terminal" onClick={terminal}><Icono n="terminal" /></button>}
         <button type="button" className="icono-boton solo-ancho" aria-label="Continuar en sesión nueva" title="Continuar en sesión nueva" onClick={continuar}><Icono n="recargar" /></button>
         {viva && <button type="button" className="contorno-rojo solo-ancho" onClick={() => setConfirmandoCierre(true)}>Cerrar sesión</button>}

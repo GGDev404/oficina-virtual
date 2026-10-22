@@ -1,7 +1,7 @@
 // Tarjetas de resumen debajo de la escena: un ítem cada una; cada una abre solo lo suyo.
 import { useOficina } from '@/components/contexto'
 import { Icono, type NombreIcono } from '@/components/icono'
-import { ESTADOS, colaUrgente, gb, nombreSesion, pendientesParaMi, proximoCorte, veredicto } from '@/lib/oficina'
+import { ESTADOS, colaUrgente, gb, miles, nombreSesion, pendientesParaMi, proximoCorte, veredicto } from '@/lib/oficina'
 
 export const NIVEL_MEM = { bien: ['Memoria bien', 'verde', 'bien'], alto: ['Memoria alta', 'naranja', 'aviso'], critico: ['Memoria casi agotada', 'rojo', 'alerta'] } as const
 
@@ -16,7 +16,7 @@ function Tarjeta({ icon, tono = '', titulo, detalle, accion }: { icon: NombreIco
 }
 
 export function Tarjetas() {
-  const { datos: d, tareas, mem, abrirNecesitan, abrirOficina } = useOficina()
+  const { datos: d, tareas, mem, abrirNecesitan, abrirOficina, abrirAgente } = useOficina()
   const cola = colaUrgente(d)
   const v = veredicto(d)
   const paraMi = pendientesParaMi(d).sort((a, b) => b.ts - a.ts)
@@ -24,6 +24,13 @@ export function Tarjetas() {
   const p = d.pendientes
   const pend = p.sesiones.length + p.notas.length + p.solicitudes.length
   const pausados = mem?.sesiones.filter((s) => s.pausada).length ?? 0
+  // Gasto de tokens de las sesiones abiertas: total, caché ponderada y quién gasta más (su ficha se abre al hacer clic).
+  const gastos = Object.entries(d.gastos ?? {}).map(([id, g]) => ({ id, g, total: g.entrada + g.cache_leida + g.cache_creada + g.salida }))
+  const totalTokens = gastos.reduce((n, x) => n + x.total, 0)
+  const entradaTotal = gastos.reduce((n, x) => n + x.g.entrada + x.g.cache_leida + x.g.cache_creada, 0)
+  const cachePct = entradaTotal ? Math.round((100 * gastos.reduce((n, x) => n + x.g.cache_leida, 0)) / entradaTotal) : null
+  const mayor = gastos.sort((a, b) => b.total - a.total)[0]
+  const sesionMayor = mayor && d.sesiones.find((s) => s.id === mayor.id)
   return (
     <nav className="tarjetas" aria-label="Resumen">
       <Tarjeta icon="campana" tono={cola.some((s) => s.estado === 'necesita_permiso' || s.estado === 'bloqueado') ? 'alerta' : cola.length ? 'aviso' : 'bien'}
@@ -41,6 +48,9 @@ export function Tarjetas() {
         detalle={p.solicitudes.length ? `${p.solicitudes.length} sesiones por aprobar`
           : p.sesiones.length ? `${p.sesiones.length} sesiones por retomar` : p.notas[0]?.texto ?? 'Nada por retomar'}
         accion={() => abrirOficina('pendientes')} />
+      {sesionMayor && <Tarjeta icon="chip" tono={cachePct != null && cachePct < 60 ? 'aviso' : ''} titulo={`Tokens · ${miles(totalTokens)}`}
+        detalle={`caché ${cachePct ?? '—'} % · ${gastos.length} sesiones · más: ${nombreSesion(sesionMayor, tareas)} (${miles(mayor.total)})`}
+        accion={() => abrirAgente(sesionMayor.id)} />}
       {mem && <Tarjeta icon="hora" tono={NIVEL_MEM[mem.nivel][2] === 'bien' ? '' : NIVEL_MEM[mem.nivel][2]} titulo={NIVEL_MEM[mem.nivel][0]}
         detalle={`${gb(mem.disponible)} libres · swap ${Math.round(100 - (100 * mem.swapLibre) / (mem.swapTotal || 1))} %${pausados ? ` · ${pausados} pausados` : ''}`}
         accion={() => abrirOficina('memoria')} />}
