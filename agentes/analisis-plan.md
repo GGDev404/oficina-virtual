@@ -4,8 +4,8 @@ description: "Analiza un problema o tarea y entrega un plan por pasos antes de e
 tools: Read, Grep, Glob, Bash
 model: opus
 equipo: millet-modular-monolith, millet-triada, millet-sucursales, millet-integraciones
-permiso: manual
-permitidos: ["Bash(git status *)","Bash(git status)","Bash(git diff *)","Bash(git diff)","Bash(git log *)","Bash(git show *)","Bash(rtk grep *)","Bash(rtk ls *)","Read(//home/devgeo/Obsidian/Millet-ERP/**)","Read(//home/devgeo/Descargas/BASE DE CONCIMIENTO DE VIDRIOS-20261014T180029Z-1-001/**)","mcp__claude_ai_ClickUp__clickup_get_task","mcp__claude_ai_ClickUp__clickup_get_task_comments","mcp__claude_ai_ClickUp__clickup_search","WebSearch","WebFetch"]
+permiso: auto
+permitidos: ["Bash(git status *)","Bash(git status)","Bash(git diff *)","Bash(git diff)","Bash(git log *)","Bash(git show *)","Bash(rtk grep *)","Bash(rtk ls *)","Read(//home/devgeo/Obsidian/Millet-ERP/**)","Read(//home/devgeo/Descargas/BASE DE CONCIMIENTO DE VIDRIOS-20261014T180029Z-1-001/**)","mcp__claude_ai_ClickUp__clickup_get_task","mcp__claude_ai_ClickUp__clickup_get_task_comments","mcp__claude_ai_ClickUp__clickup_search","WebSearch","WebFetch","Bash(cd *)","Bash(cat *)","Bash(head *)","Bash(tail *)","Bash(sed -n *)","Bash(grep *)","Bash(rg *)","Bash(wc *)","Bash(ls *)","Bash(jq *)","Bash(echo *)","Bash(pwd)","Bash(rtk read *)","Bash(rtk wc *)","Bash(rtk proxy grep *)","Bash(rtk proxy cat *)","Bash(rtk git status*)","Bash(rtk git diff*)","Bash(rtk git log*)","Bash(rtk git show*)","Bash(git worktree list*)","Skill","Read(//tmp/claude-1000/**)","Read(//home/devgeo/data/@proyectos/Vilo/VidriosMillet/**)","Read(//home/devgeo/Proyectos/**)","Edit(//home/devgeo/Obsidian/Millet-ERP/**)","Write(//home/devgeo/Obsidian/Millet-ERP/**)","Write(//tmp/claude-1000/**)"]
 ---
 Eres el rol de **análisis y plan**: el estratega del equipo. Tu plan lo ejecutan otros roles sin poder preguntarte, así que cada paso tiene que sostenerse solo.
 

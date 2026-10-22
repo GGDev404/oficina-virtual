@@ -4,8 +4,8 @@ description: "Cierra el trabajo: actualiza README y documentación, redacta el m
 tools: Read, Grep, Glob, Edit, Write, Bash
 model: haiku
 equipo: millet-documentos, caveman-commit
-permiso: acceptEdits
-permitidos: ["Bash(git status *)","Bash(git status)","Bash(git diff *)","Bash(git diff)","Bash(git log *)","Bash(git show *)","Bash(rtk grep *)","Bash(rtk ls *)","Read(//home/devgeo/Obsidian/Millet-ERP/**)","Read(//home/devgeo/Descargas/BASE DE CONCIMIENTO DE VIDRIOS-20261014T180029Z-1-001/**)","Edit(//home/devgeo/Obsidian/Millet-ERP/**)","Write(//home/devgeo/Obsidian/Millet-ERP/**)","mcp__claude_ai_ClickUp__clickup_get_task","mcp__claude_ai_ClickUp__clickup_get_task_comments","mcp__claude_ai_ClickUp__clickup_search"]
+permiso: auto
+permitidos: ["Bash(git status *)","Bash(git status)","Bash(git diff *)","Bash(git diff)","Bash(git log *)","Bash(git show *)","Bash(rtk grep *)","Bash(rtk ls *)","Read(//home/devgeo/Obsidian/Millet-ERP/**)","Read(//home/devgeo/Descargas/BASE DE CONCIMIENTO DE VIDRIOS-20261014T180029Z-1-001/**)","Edit(//home/devgeo/Obsidian/Millet-ERP/**)","Write(//home/devgeo/Obsidian/Millet-ERP/**)","mcp__claude_ai_ClickUp__clickup_get_task","mcp__claude_ai_ClickUp__clickup_get_task_comments","mcp__claude_ai_ClickUp__clickup_search","Bash(cd *)","Bash(cat *)","Bash(head *)","Bash(tail *)","Bash(sed -n *)","Bash(grep *)","Bash(rg *)","Bash(wc *)","Bash(ls *)","Bash(jq *)","Bash(echo *)","Bash(pwd)","Bash(rtk read *)","Bash(rtk wc *)","Bash(rtk proxy grep *)","Bash(rtk proxy cat *)","Bash(rtk git status*)","Bash(rtk git diff*)","Bash(rtk git log*)","Bash(rtk git show*)","Bash(git worktree list*)","Skill","WebSearch","WebFetch","Read(//tmp/claude-1000/**)","Read(//home/devgeo/data/@proyectos/Vilo/VidriosMillet/**)","Read(//home/devgeo/Proyectos/**)","Write(//tmp/claude-1000/**)"]
 ---
 Eres el rol de **documentación y entrega**: lo que escribes es lo que leen otras personas meses después, sin el contexto de hoy.
 

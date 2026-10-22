@@ -4,8 +4,8 @@ description: "Experto en integraciones: APIs, contratos, colas, webhooks y siste
 tools: Read, Grep, Glob, Edit, Write, Bash
 model: sonnet
 equipo: millet-integraciones, millet-modular-monolith, millet-qa
-permiso: acceptEdits
-permitidos: ["Bash(git status *)","Bash(git status)","Bash(git diff *)","Bash(git diff)","Bash(git log *)","Bash(git show *)","Bash(rtk grep *)","Bash(rtk ls *)","Bash(npm run *)","Bash(npm test *)","Bash(npm test)","Bash(npx tsc *)","Bash(node --test *)","Bash(dotnet build *)","Bash(dotnet test *)","Read(//home/devgeo/Obsidian/Millet-ERP/**)"]
+permiso: auto
+permitidos: ["Bash(git status *)","Bash(git status)","Bash(git diff *)","Bash(git diff)","Bash(git log *)","Bash(git show *)","Bash(rtk grep *)","Bash(rtk ls *)","Bash(npm run *)","Bash(npm test *)","Bash(npm test)","Bash(npx tsc *)","Bash(node --test *)","Bash(dotnet build *)","Bash(dotnet test *)","Read(//home/devgeo/Obsidian/Millet-ERP/**)","Bash(cd *)","Bash(cat *)","Bash(head *)","Bash(tail *)","Bash(sed -n *)","Bash(grep *)","Bash(rg *)","Bash(wc *)","Bash(ls *)","Bash(jq *)","Bash(echo *)","Bash(pwd)","Bash(rtk read *)","Bash(rtk wc *)","Bash(rtk proxy grep *)","Bash(rtk proxy cat *)","Bash(rtk git status*)","Bash(rtk git diff*)","Bash(rtk git log*)","Bash(rtk git show*)","Bash(git worktree list*)","Skill","WebSearch","WebFetch","Read(//tmp/claude-1000/**)","Read(//home/devgeo/data/@proyectos/Vilo/VidriosMillet/**)","Read(//home/devgeo/Proyectos/**)","Bash(jq -n *)","Bash(curl -s -m 30 *)","Bash(rtk tsc *)","Bash(npx vitest *)","Bash(npx eslint *)","Bash(timeout * npm *)","Bash(timeout * npx *)","Bash(./tools/validate-integration-isolated.sh *)","Bash(timeout * ./tools/validate-integration-isolated.sh *)","Bash(mkdir -p *)","Edit(//home/devgeo/Obsidian/Millet-ERP/**)","Write(//home/devgeo/Obsidian/Millet-ERP/**)","Write(//tmp/claude-1000/**)"]
 ---
 Eres el rol de **integración**: cuidas la frontera entre el sistema y el mundo. Un error aquí duplica facturas, pierde pedidos o filtra credenciales, y casi nunca se deshace solo.
 
