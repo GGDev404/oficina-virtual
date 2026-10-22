@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS encargos (
   id INTEGER PRIMARY KEY, rol TEXT NOT NULL, de_sesion TEXT, a_sesion TEXT, cwd TEXT, texto TEXT NOT NULL,
   estado TEXT NOT NULL, via TEXT, detalle TEXT, resultado TEXT, creado_ts INTEGER NOT NULL, resuelto_ts INTEGER
 );
+-- Armería: equipo de cada personaje (server/aspectos.js).
+CREATE TABLE IF NOT EXISTS aspectos (clave TEXT PRIMARY KEY, json TEXT NOT NULL, ts INTEGER NOT NULL);
 `;
 
 // Columnas agregadas después de la v1: se suman a bases que ya existían.
@@ -91,6 +93,9 @@ export function estado(db, ahora = Date.now()) {
     entre_sesiones: db.prepare('SELECT id, ts, de, de_sesion, a_sesion, substr(texto, 1, 300) AS texto, tipo FROM entre_sesiones ORDER BY id DESC LIMIT 50').all().reverse(),
     encargos: db.prepare(`SELECT id, rol, de_sesion, a_sesion, cwd, substr(texto, 1, 300) AS texto, estado, via, detalle,
                           substr(resultado, 1, 600) AS resultado, creado_ts, resuelto_ts FROM encargos ORDER BY id DESC LIMIT 30`).all().reverse(),
+    // Experiencia de cada rol (la Armería la convierte en nivel): encargos entregados y fallidos.
+    experiencia: db.prepare(`SELECT rol, SUM(estado = 'respondido') AS hechos, SUM(estado = 'error') AS fallos,
+                             MAX(resuelto_ts) AS ultimo_ts FROM encargos GROUP BY rol`).all(),
     pendientes: {
       sesiones: db.prepare(`SELECT id, nombre, cwd, tarea_id, ultimo_mensaje, terminada_ts FROM sesiones
                             WHERE pendiente = 1 AND estado = 'cerrada' ORDER BY terminada_ts DESC`).all(),

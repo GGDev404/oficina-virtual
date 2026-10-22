@@ -3,8 +3,8 @@
 @import "shadcn/tailwind.css";
 @import "./oficina.css";
 
-/* Tema oscuro según el sistema, igual que los tokens de la oficina (no hay clase .dark). */
-@custom-variant dark (@media (prefers-color-scheme: dark));
+/* Oscuro igual que los tokens de la oficina: html[data-modo=oscuro] (lib/tema.ts lo resuelve con el sistema y el tema). */
+@custom-variant dark (&:where([data-modo=oscuro], [data-modo=oscuro] *));
 
 /* Los nombres de shadcn apuntan a los tokens de la oficina (oficina.css): un componente nuevo de shadcn o de otra
    librería basada en Tailwind sale con los colores de aquí, en claro y en oscuro. */
@@ -27,12 +27,12 @@
   --border: var(--borde);
   --input: var(--borde);
   --ring: var(--acento);
-  --radius: 0.75rem;
+  --radius: var(--r4);
 }
 
 @theme inline {
-  --font-sans: system-ui, sans-serif;
-  --font-mono: ui-monospace, monospace;
+  --font-sans: var(--letra);
+  --font-mono: var(--mono);
   --font-pixel: var(--pixel);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -63,6 +63,8 @@
   --color-verde-bg: var(--verde-bg);
   --color-gris: var(--gris);
   --color-gris-bg: var(--gris-bg);
+  --color-azul: var(--azul);
+  --color-azul-bg: var(--azul-bg);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);

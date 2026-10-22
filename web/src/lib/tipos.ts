@@ -124,7 +124,11 @@ export interface Solicitud {
   creado_ts: number
 }
 
-export type RolId = 'analisis-plan' | 'implementacion' | 'revision-qa' | 'docs-entrega' | 'diseno'
+export type RolId = 'analisis-plan' | 'implementacion' | 'revision-qa' | 'docs-entrega' | 'diseno' | 'integracion'
+
+// Armería (server/aspectos.js): equipo guardado por `rol:<id>`, `sesion:<uuid>` o `yo`.
+export type Clase = 'ninguna' | 'spartan' | 'netrunner' | 'marine' | 'bloque'
+export interface AspectoGuardado { clase?: Clase; camisa?: string; pelo?: string; piel?: string; pantalon?: string; brillo?: string; apodo?: string }
 
 export interface Rol {
   id: RolId
@@ -171,6 +175,8 @@ export interface Datos {
   permisos: Permiso[]
   preguntas: Pregunta[]
   roles: Rol[]
+  aspectos?: Record<string, AspectoGuardado>
+  experiencia?: { rol: RolId; hechos: number; fallos: number; ultimo_ts: number | null }[]
   encargos: Encargo[]
   entre_sesiones: EntreSesiones[]
 }

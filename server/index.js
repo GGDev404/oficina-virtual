@@ -21,6 +21,7 @@ import { PERMISOS, MODELOS, carpetaValida, carpetasConocidas, nuevaSesion, nueva
   abrirTmux, worktreeDeTarea, carpetaAparte, esClaude } from './control.js';
 import { enviarTexto, enviarTecla, capturar, vive, cerrar as cerrarTmux, socketValido } from './tmux.js';
 import { memoria, leerMeminfo, nivelMemoria, pausar } from './memoria.js';
+import { claveValida, guardarAspecto, listaAspectos } from './aspectos.js';
 import { crearToken, autorizar, crearLimite, fraseCorrecta, hashCookie, leerCookie, archivoWeb, COOKIE, DURACION_MS } from './guardia.js';
 
 const PUERTO = Number(process.env.OFICINA_PUERTO ?? 4777);
@@ -150,7 +151,7 @@ function transcriptCambio(sid, ruta) {
   if (c && JSON.stringify(c) !== JSON.stringify(contextos[sid])) { contextos = { ...contextos, [sid]: c }; avisar(); }
 }
 
-const estadoCompleto = () => ({ ...estado(db), sync, vivas: Object.fromEntries(vivas), mensajes: mensajero.mensajes(), contexto: contextos, permisos: permisos.lista(), preguntas: preguntas.lista(), roles: listaRoles() });
+const estadoCompleto = () => ({ ...estado(db), sync, vivas: Object.fromEntries(vivas), mensajes: mensajero.mensajes(), contexto: contextos, permisos: permisos.lista(), preguntas: preguntas.lista(), roles: listaRoles(), aspectos: listaAspectos(db) });
 
 // Notificación de escritorio cuando una sesión pasa a pedirte algo o llega una corrección de ficha.
 const notificar = crearNotificador();
@@ -414,6 +415,15 @@ const servidor = http.createServer(async (req, res) => {
         if (e instanceof ErrorEncargo) return json(res, e.status, { error: e.message });
         throw e;
       }
+    }
+    // Armería: equipo de un rol, una sesión o el tuyo (solo con tu cookie). Cuerpo vacío o null lo quita.
+    if (req.method === 'POST' && (m = url.pathname.match(/^\/api\/aspectos\/([^/]+)$/))) {
+      const clave = decodeURIComponent(m[1]);
+      if (!claveValida(clave)) return json(res, 400, { error: 'clave no válida: rol:<id>, sesion:<uuid> o yo' });
+      if (clave.startsWith('rol:') && !esRol(clave.slice(4))) return json(res, 404, { error: 'rol desconocido' });
+      const aspecto = guardarAspecto(db, clave, await leerJson(req));
+      avisar();
+      return json(res, 200, { clave, aspecto });
     }
     if (req.method === 'GET' && url.pathname === '/api/siguiente') {
       const n = Math.min(Math.max(Number.parseInt(url.searchParams.get('n') ?? '15', 10) || 15, 1), 50);

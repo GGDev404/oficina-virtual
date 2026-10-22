@@ -3,6 +3,7 @@
 // React solo monta el contenedor (Escena.tsx) y le pasa los datos con actualizar().
 import { ESTADOS, MAX_ACTIVOS, base, esperaProcesos, nivelContexto, nombreSesion, pendientesParaMi, procesosDe, tareaPorId, textoSobre, veredicto } from '@/lib/oficina'
 import type { Datos, EntreSesiones, RolId, Sesion } from '@/lib/tipos'
+import { aspecto, personaje as dibujarPersona, YO_FABRICA, type Aspecto, type Pose } from './sprites'
 
 const W = 480, H = 272
 
@@ -34,9 +35,10 @@ function el(tag: string, attrs: Record<string, string | (() => void)> = {}, ...h
   return n
 }
 
+// Paleta del lienzo: sale de los tokens --esc-* (oficina.css) y se vuelve a leer al cambiar de tema.
 const PAL = {
-  pasillo: ['#bdb7a8', '#b2ac9c'], muro: '#47415f', muroAlto: '#2c2940', zocalo: '#24212f', borde: '#1c1a26',
-  marco: '#6b5236', oscuro: '#1e1b26', pantalon: '#30364a', zapato: '#1b1a22',
+  pasillo: ['#bdb7a8', '#b2ac9c'], linea: '#cfc9b9', muro: '#47415f', muroAlto: '#2c2940', zocalo: '#24212f', borde: '#1c1a26',
+  marco: '#6b5236', oscuro: '#1e1b26', monitor: '#0f2740', codigo: ['#7dffa8', '#5fd3ff'], resalte: '#ffd84a',
 }
 type Sala = 'taller' | 'puerta' | 'bloqueados' | 'descanso' | 'oficina'
 // Cada cuarto tiene una sola puerta hacia el pasillo horizontal (y 128–160): por ahí caminan los agentes.
@@ -47,9 +49,17 @@ const SALAS: Record<Sala, { titulo: string; x: number; y: number; w: number; h: 
   descanso: { titulo: 'Descanso', x: 112, y: 160, w: 160, h: 112, piso: ['#d2ab72', '#c8a16a'], puerta: 196, abajo: false },
   oficina: { titulo: 'Tu oficina', x: 304, y: 160, w: 176, h: 112, piso: ['#4f7d5c', '#4a7657'], puerta: 392, abajo: false },
 }
+function leerPaleta() {
+  const st = getComputedStyle(document.documentElement)
+  const v = (n: string, d: string) => st.getPropertyValue(`--esc-${n}`).trim() || d
+  PAL.pasillo = [v('pasillo', PAL.pasillo[0]), v('pasillo-2', PAL.pasillo[1])]
+  for (const k of ['linea', 'muro', 'zocalo', 'borde', 'marco', 'monitor', 'resalte'] as const) PAL[k] = v(k, PAL[k])
+  PAL.muroAlto = v('muro-alto', PAL.muroAlto)
+  PAL.codigo = [v('codigo', PAL.codigo[0]), v('codigo-2', PAL.codigo[1])]
+  for (const [k, s] of Object.entries(SALAS)) s.piso = [v(k, s.piso[0]), v(`${k}-2`, s.piso[1])]
+}
 const ESCRITORIOS = [26, 72].flatMap((dy) => [14, 72, 130, 188].map((dx) => ({ dx, dy })))
 const MESA_YO = { dx: SALAS.oficina.x + 104, dy: SALAS.oficina.y + 50 }
-type Pose = 'teclea' | 'mano' | 'parado' | 'triste' | 'cafe' | 'duerme' | 'camina' | 'espera'
 type Burbuja = [string | { icono: string; texto?: string }, string]
 const ROL: Record<string, { sala: Sala; pose: Pose; burbuja?: Burbuja; prio?: number }> = {
   trabajando: { sala: 'taller', pose: 'teclea' },
@@ -90,19 +100,8 @@ const rutaA = (desde: Punto, sala: Sala | null, fin: Punto[]) => {
   return [...(ahi ? [entrada(ahi), enPasillo(ahi)] : [{ x: desde.x, y: 146 }]), ...(sala ? [enPasillo(sala), entrada(sala)] : []), ...fin]
 }
 
-// Aspecto estable por sesión (pelo, piel y camisa salen del id).
-function hash(t: string) { let h = 2166136261; for (const c of t) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0 }
-const PELOS = ['#2b1d14', '#5a3a1e', '#c99a3e', '#161616', '#8a3b2a', '#d8d2c4', '#3b2a4a']
-const CAMISAS = [['#336fc6', '#2c5fa8'], ['#c94b30', '#a8432c'], ['#3aa66b', '#2b8053'], ['#9b59b6', '#7a4590'],
-  ['#e0a526', '#b78516'], ['#2bb3b3', '#1f8a8a'], ['#e05f8f', '#b54670'], ['#616e7c', '#55606c']]
-const PIELES = ['#f1c7a3', '#dcae84', '#b07a52', '#7d5135']
-interface Aspecto { pelo: string; piel: string; camisa: string; sombra: string }
-function aspecto(id: string): Aspecto {
-  const h = hash(id)
-  const [camisa, sombra] = CAMISAS[h % CAMISAS.length]
-  return { pelo: PELOS[(h >>> 3) % PELOS.length], piel: PIELES[(h >>> 7) % PIELES.length], camisa, sombra }
-}
-const YO: Aspecto = { pelo: '#161616', piel: '#c99572', camisa: '#1f9e8f', sombra: '#177a6e' }
+// Equipo de cada sesión: el suyo de la Armería, si no el de su rol (sprites.ts completa lo que falte).
+const guardadoDe = (d: Datos, s: Sesion) => d.aspectos?.[`sesion:${s.id}`] ?? (s.rol ? d.aspectos?.[`rol:${s.rol}`] : undefined) ?? null
 const VELOCIDAD = 55 // px lógicos por segundo
 const EN_MESA = { x: MESA_YO.dx + 14, y: MESA_YO.dy + 6 }
 const RODEO = [{ x: MESA_YO.dx - 6, y: MESA_YO.dy + 6 }, { x: MESA_YO.dx - 6, y: MESA_YO.dy + 24 }] // por un lado del escritorio
@@ -117,7 +116,7 @@ interface Entrega extends Punto { sid: string; id: number; fase: 'espera' | 'va'
 interface Sobre extends Punto { ruta: Punto[]; tipo: EntreSesiones['tipo'] }
 interface Destello extends Punto { t0: number; tipo: EntreSesiones['tipo'] }
 const COLOR_SOBRE = { mensaje: '#fffdf5', encargo: '#ffb347', entrega: '#6fe39a' }
-const ROL_CORTO: Record<RolId, string> = { 'analisis-plan': 'PLAN', implementacion: 'IMPL', 'revision-qa': 'QA', 'docs-entrega': 'DOCS', diseno: 'DISEÑO' }
+const ROL_CORTO: Record<RolId, string> = { 'analisis-plan': 'PLAN', implementacion: 'IMPL', 'revision-qa': 'QA', 'docs-entrega': 'DOCS', diseno: 'DISEÑO', integracion: 'INTEG' }
 
 export interface Acciones { abrirAgente: (id: string) => void; abrirOficina: (seccion?: string) => void }
 
@@ -131,42 +130,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
   const en = (c: CanvasRenderingContext2D, fn: () => void) => { const previo = ctx; ctx = c; fn(); ctx = previo }
   let datos: Datos | null = null
 
-  // Personaje de 12×16 px; (x, y) son los pies. f = cuadro de animación.
-  function personaje(x: number, y: number, a: Aspecto, pose: Pose, f: number, vista = 'frente') {
-    const ox = Math.round(x) - 6, oy = Math.round(y) - 16
-    const p = (cx: number, cy: number, w: number, h: number, c: string) => r(ox + cx, oy + cy, w, h, c)
-    if (vista === 'espalda') { // sentado frente a su monitor; quieto si espera un proceso
-      const t = reducido || pose === 'espera' ? 0 : f % 2
-      p(4, 0, 4, 1, a.pelo); p(3, 1, 6, 4, a.pelo); p(4, 5, 4, 1, a.piel)
-      p(2, 6, 8, 6, a.camisa); p(2, 11, 8, 1, a.sombra)
-      p(2, 3 + t, 1, 3, a.camisa); p(2, 2 + t, 1, 1, a.piel)
-      p(9, 4 - t, 1, 3, a.camisa); p(9, 3 - t, 1, 1, a.piel)
-      p(1, 9, 10, 6, '#323a4c'); p(1, 9, 10, 1, '#46516b'); p(2, 15, 1, 1, PAL.oscuro); p(9, 15, 1, 1, PAL.oscuro) // silla
-      return
-    }
-    r(ox + 2, oy + 15, 8, 2, 'rgba(0,0,0,.28)')
-    const b = !reducido && pose === 'mano' && f % 2 ? -1 : 0 // la mano levantada se agita
-    const q = (cx: number, cy: number, w: number, h: number, c: string) => p(cx, cy + b, w, h, c)
-    q(4, 0, 4, 1, a.pelo); q(3, 1, 6, 1, a.pelo); q(3, 2, 1, 1, a.pelo); q(8, 2, 1, 1, a.pelo)
-    q(4, 2, 4, 1, a.piel); q(3, 3, 6, 2, a.piel); q(4, 5, 4, 1, a.piel)
-    if (pose === 'duerme') { q(4, 4, 1, 1, '#5b3b2a'); q(7, 4, 1, 1, '#5b3b2a') }
-    else { q(4, 3, 1, 1, PAL.oscuro); q(7, 3, 1, 1, PAL.oscuro) }
-    if (pose === 'triste') q(5, 5, 2, 1, '#8b5a44')
-    q(3, 6, 6, 5, a.camisa); q(3, 10, 6, 1, a.sombra); q(2, 7, 1, 3, a.camisa); q(2, 10, 1, 1, a.piel)
-    if (pose === 'mano') { q(9, 3, 1, 4, a.camisa); q(9, 2, 1, 1, a.piel); q(9, 7, 1, 1, a.camisa) }
-    else if (pose === 'cafe') {
-      q(9, 7, 1, 2, a.camisa); q(9, 9, 1, 1, a.piel); q(10, 7, 2, 3, '#f4f1ea'); q(10, 7, 2, 1, '#6b3e1f')
-      if (!reducido) p(10 + (f % 2), 5 - (f % 3), 1, 1, 'rgba(255,255,255,.75)') // vapor
-    } else { q(9, 7, 1, 3, a.camisa); q(9, 10, 1, 1, a.piel) }
-    p(3, 11, 6, 1, PAL.pantalon)
-    if (pose === 'camina' && !reducido) {
-      const t = f % 2
-      p(4, 12, 2, t ? 2 : 1, PAL.pantalon); p(4, t ? 14 : 13, 2, 1, PAL.zapato)
-      p(6, 12, 2, t ? 1 : 2, PAL.pantalon); p(6, t ? 13 : 14, 2, 1, PAL.zapato)
-    } else {
-      p(4, 12, 2, 2, PAL.pantalon); p(6, 12, 2, 2, PAL.pantalon); p(4, 14, 2, 1, PAL.zapato); p(6, 14, 2, 1, PAL.zapato)
-    }
-  }
+  const personaje = (x: number, y: number, a: Aspecto, pose: Pose, f: number, vista = 'frente') => dibujarPersona(r, x, y, a, pose, f, { vista, reducido })
 
   // Subagente: robot de 8×10 px que flota a un lado de su agente.
   function robot(x: number, y: number, f: number, k: number) {
@@ -192,15 +156,15 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
   }
   // Pantalla: código que corre si teclea; barra de progreso si espera un proceso.
   function pantalla(dx: number, dy: number, t: number, espera: boolean) {
-    r(dx + 8, dy - 8, 14, 8, '#0f2740')
+    r(dx + 8, dy - 8, 14, 8, PAL.monitor)
     if (espera) {
       r(dx + 10, dy - 5, 10, 2, '#1d3a5c')
-      r(dx + 10, dy - 5, 1 + ((reducido ? 5 : t) % 10), 2, '#ffd84a')
+      r(dx + 10, dy - 5, 1 + ((reducido ? 5 : t) % 10), 2, PAL.resalte)
       return
     }
     for (let k = 0; k < 4; k++) {
       const w = 3 + ((k * 7 + (reducido ? 0 : t)) % 9)
-      r(dx + 9 + (k % 2) * 2, dy - 7 + k * 2, Math.min(w, 11), 1, k % 2 ? '#5fd3ff' : '#7dffa8')
+      r(dx + 9 + (k % 2) * 2, dy - 7 + k * 2, Math.min(w, 11), 1, PAL.codigo[k % 2 ? 1 : 0])
     }
   }
   function planta(x: number, y: number) {
@@ -211,9 +175,9 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
   // Fondo estático (pisos, muros, puertas y muebles): se pinta una vez en otro lienzo.
   const fondo = document.createElement('canvas')
   fondo.width = W; fondo.height = H
-  en(fondo.getContext('2d')!, () => {
+  const pintarFondo = () => en(fondo.getContext('2d')!, () => {
     for (let y = 0; y < H; y += 16) for (let x = 0; x < W; x += 16) r(x, y, 16, 16, PAL.pasillo[((x + y) / 16) % 2])
-    r(0, 145, W, 2, '#cfc9b9'); r(287, 0, 2, H, '#cfc9b9')
+    r(0, 145, W, 2, PAL.linea); r(287, 0, 2, H, PAL.linea)
     for (const s of Object.values(SALAS)) {
       for (let y = s.y + 14; y < s.y + s.h; y += 8) for (let x = s.x; x < s.x + s.w; x += 8) {
         r(x, y, 8, 8, s.piso[((x - s.x) / 8 + (y - s.y - 14) / 8) % 2])
@@ -247,6 +211,11 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
     r(MESA_YO.dx - 10, MESA_YO.dy - 18, 60, 44, '#3e6b4b'); r(MESA_YO.dx - 8, MESA_YO.dy - 16, 56, 40, '#457656')
     planta(o.x + 6, o.y + o.h - 22)
   })
+  leerPaleta(); pintarFondo()
+  let sucio = true // hay que volver a pintar aunque nada se mueva (datos, tamaño o tema nuevos)
+  const alCambiarTema = () => { leerPaleta(); pintarFondo(); sucio = true }
+  addEventListener('oficina-tema', alCambiarTema)
+  let yo: Aspecto = aspecto('yo', YO_FABRICA)
 
   // ── Actores: un personaje por sesión viva ──
   const actores = new Map<string, Actor>()
@@ -287,8 +256,9 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
       lista.forEach((s, i) => {
         let a = actores.get(s.id)
         if (a?.saliendo) { a.saliendo = false; a.destinoClave = null; a.boton.disabled = false; a.boton.classList.remove('saliendo') } // volvió
+        const guardado = guardadoDe(d, s)
         if (!a) {
-          const look = aspecto(s.id)
+          const look = aspecto(s.id, guardado)
           a = { x: SALIDA.x, y: SALIDA.y, ruta: [], sala: null, aspecto: look, boton: crearBoton(s.id, look) }
           actores.set(s.id, a)
         }
@@ -301,6 +271,12 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
         }
         a.lugar = destino
         a.s = s
+        const look = aspecto(s.id, guardado)
+        if (JSON.stringify(look) !== JSON.stringify(a.aspecto)) { // cambió su equipo en la Armería
+          a.aspecto = look
+          const et = a.boton.querySelector<HTMLElement>('.etiqueta')!
+          et.style.background = look.camisa; et.style.color = textoSobre(look.camisa)
+        }
         a.espera = esperaProcesos(s, d)
         const n = procesosDe(s).length
         const [contenido, color]: Burbuja = a.espera ? [{ icono: 'reloj', texto: String(n) }, 'azul'] : ROL[s.estado].burbuja ?? ['', '']
@@ -312,7 +288,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
           burbuja.className = `burbuja ${color}`
           burbuja.style.animation = 'none'; void burbuja.offsetWidth; burbuja.style.animation = '' // brota de nuevo con el estado nuevo
         }
-        const nombre = s.nombre ?? s.tarea_id ?? base(s.cwd)
+        const nombre = guardado?.apodo ?? s.nombre ?? s.tarea_id ?? base(s.cwd)
         const etiqueta = a.boton.querySelector<HTMLElement>('.etiqueta')!
         const [txt, barra] = etiqueta.children as unknown as [HTMLElement, HTMLElement]
         if (txt.textContent !== nombre) { txt.textContent = nombre; a.anchoEtiqueta = null }
@@ -375,6 +351,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
 
   function escalar() {
     e = lienzo.clientWidth / W
+    sucio = true
     escena.style.setProperty('--e', String(e))
     for (const f of Object.values(fijos)) f.el.style.transform = `translate(${f.x * e}px, ${f.y * e}px)${f.centro}`
   }
@@ -427,7 +404,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
   function dibujarMensajero(o: Entrega, f: number, fCamina: number) {
     if (o.fase === 'espera') return
     const caminando = o.ruta.length > 0
-    personaje(o.x, o.y, YO, caminando ? 'camina' : 'parado', caminando ? fCamina : f)
+    personaje(o.x, o.y, yo, caminando ? 'camina' : 'parado', caminando ? fCamina : f)
     const ox = Math.round(o.x) - 6, oy = Math.round(o.y) - 16
     if (o.fase === 'va') { r(ox + 9, oy + 8, 4, 3, '#fffdf5'); r(ox + 9, oy + 8, 4, 1, '#c9c6bd') } // sobre en la mano
     if (o.fase === 'entrega') { // globo con el sobre (o una X si no se pudo entregar)
@@ -478,7 +455,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
   }
 
   // ── Bucle de animación ──
-  let reloj = 0, previo = performance.now(), cuadroId = 0
+  let reloj = 0, previo = performance.now(), cuadroId = 0, ultimoF = -1
   function cuadro(ahora: number) {
     const dt = Math.min(0.1, (ahora - previo) / 1000)
     previo = ahora; reloj += dt
@@ -488,7 +465,12 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
     }
     moverMensajeros(dt)
     moverSobres(dt)
-    dibujar(Math.floor(reloj * 4), Math.floor(reloj * 8))
+    // Quieto, se pinta solo cuando cambia el cuadro de animación (4 por segundo) y no a cada refresco de pantalla.
+    const mueve = entregas.length > 0 || sobres.length > 0 || destellos.length > 0 || [...actores.values()].some((a) => a.ruta.length > 0)
+    const f = Math.floor(reloj * 4)
+    if (!mueve && !sucio && f === ultimoF) { cuadroId = requestAnimationFrame(cuadro); return }
+    ultimoF = f; sucio = false
+    dibujar(f, Math.floor(reloj * 8))
     const ancho = W * e
     for (const a of actores.values()) {
       // Mismo redondeo que el sprite: la etiqueta no se despega del personaje al caminar. Al frente, el que está más abajo.
@@ -521,7 +503,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
     for (const o of sobres) dibujarSobre(o.x, o.y, o.tipo)
     for (const o of destellos) dibujarDestello(o)
     const m = MESA_YO
-    if (!entregas.length) personaje(EN_MESA.x, EN_MESA.y, YO, 'parado', f) // si va a entregar, su lugar queda vacío
+    if (!entregas.length) personaje(EN_MESA.x, EN_MESA.y, yo, 'parado', f) // si va a entregar, su lugar queda vacío
     r(m.dx, m.dy, 40, 10, '#c88d55'); r(m.dx, m.dy, 40, 1, '#dba06a'); r(m.dx, m.dy + 10, 40, 6, '#8a5a33')
     r(m.dx + 25, m.dy - 9, 12, 10, '#2b2b33'); r(m.dx + 30, m.dy + 1, 2, 2, '#2b2b33')
     const n = datos ? pendientesParaMi(datos).length : 0
@@ -537,10 +519,15 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
   escalar()
   arrancar()
   return {
-    actualizar(d: Datos) { datos = d; actualizarActores(d); despacharMensajeros(d); despacharEntreSesiones(d) },
+    actualizar(d: Datos) {
+      datos = d; sucio = true
+      yo = aspecto('yo', { ...YO_FABRICA, ...d.aspectos?.yo })
+      actualizarActores(d); despacharMensajeros(d); despacharEntreSesiones(d)
+    },
     destruir() {
       cancelAnimationFrame(cuadroId); cuadroId = 0
       document.removeEventListener('visibilitychange', alCambiarVisibilidad)
+      removeEventListener('oficina-tema', alCambiarTema)
       movimiento.removeEventListener('change', alCambiarMovimiento)
       observador.disconnect(); capa.replaceChildren()
     },

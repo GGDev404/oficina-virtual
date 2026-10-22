@@ -21,6 +21,7 @@ export interface Oficina {
   abrirOficina: (seccion?: Seccion) => void
   abrirNecesitan: () => void
   abrirNueva: (opciones?: OpcionesNueva) => void
+  abrirArmeria: (clave?: string) => void
   cerrarVentana: () => void
 }
 

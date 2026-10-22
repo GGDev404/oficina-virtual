@@ -2,7 +2,7 @@
 import {
   AtSignIcon, BellIcon, BotIcon, CalendarIcon, CheckIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon,
   CopyIcon, CpuIcon, DoorOpenIcon, EllipsisIcon, ExternalLinkIcon, FolderIcon, GitBranchIcon, HourglassIcon, ImageIcon,
-  MailIcon, OctagonXIcon, RefreshCwIcon, SendIcon, TerminalIcon, XIcon,
+  MailIcon, OctagonXIcon, RefreshCwIcon, SendIcon, ShieldIcon, TerminalIcon, XIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -11,7 +11,7 @@ const ICONOS = {
   listo: CheckIcon, calendario: CalendarIcon, externo: ExternalLinkIcon, reloj: HourglassIcon, enviar: SendIcon,
   imagen: ImageIcon, terminal: TerminalIcon, flecha: ChevronRightIcon, arroba: AtSignIcon, puerta: DoorOpenIcon,
   campana: BellIcon, hora: ClockIcon, recargar: RefreshCwIcon, copiar: CopyIcon, mas: EllipsisIcon,
-  abajo: ChevronDownIcon, izquierda: ChevronLeftIcon, chip: CpuIcon,
+  abajo: ChevronDownIcon, izquierda: ChevronLeftIcon, chip: CpuIcon, escudo: ShieldIcon,
 }
 export type NombreIcono = keyof typeof ICONOS
 

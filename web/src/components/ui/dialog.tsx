@@ -37,7 +37,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-[rgba(10,10,14,.55)] duration-(--dur-media) ease-(--curva-entrada) data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 data-closed:duration-(--dur-rapida) data-closed:ease-(--curva-salida) motion-reduce:animate-none",
+        "fixed inset-0 isolate z-50 bg-[var(--velo)] duration-(--dur-media) ease-(--curva-entrada) data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 data-closed:duration-(--dur-rapida) data-closed:ease-(--curva-salida) motion-reduce:animate-none",
         className
       )}
       {...props}
