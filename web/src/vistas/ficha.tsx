@@ -221,7 +221,7 @@ function Contenido({ s, d, tareas, iniciales, caja, abrirNueva }: {
       <div className="va-titulo">
         {/* Retrato estilo barra de DOOM: la pose sigue al estado y se ve más golpeado con el contexto casi lleno. */}
         <Retrato tam={36} pose={nivel?.clase === 'lleno' ? 'triste' : POSE[s.estado] ?? 'parado'}
-          aspecto={aspecto(s.id, d.aspectos?.[`sesion:${s.id}`], s.rol ? d.aspectos?.[`rol:${s.rol}`] : null)} />
+          aspecto={aspecto(s.id, d.aspectos?.[`sesion:${s.id}`], s.rol ? d.aspectos?.[`rol:${s.rol}`] : null, s.rol)} />
         <Titulo>{nombreSesion(s, tareas)}</Titulo>
       </div>
       <Descripcion oculta>Conversación con el agente, cuadro para escribirle y su contexto: procesos, subagentes y tarea.</Descripcion>

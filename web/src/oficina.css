@@ -258,7 +258,7 @@
   #v-oficina > header.vo-cabeza { display: flex; align-items: center; gap: var(--s2) var(--s4); flex-wrap: wrap; padding: var(--s4) var(--s5) var(--s2); border-bottom: 0; }
   .vo-cabeza h2 { font-size: var(--t-xl); margin: 0; }
   .vo-cabeza .cerrar { margin-left: auto; }
-  .vo-tabs { display: flex; gap: var(--s1); padding: 0 var(--s5); border-bottom: 1px solid var(--borde); overflow-x: auto; }
+  .vo-tabs { flex: none; display: flex; gap: var(--s1); padding: 0 var(--s5); border-bottom: 1px solid var(--borde); overflow-x: auto; }
   .vo-tabs [role=tab] { background: none; border: 0; border-radius: 0; border-bottom: 2px solid transparent; padding: var(--s2) var(--s3); min-height: 42px; }
   /* Base común de las dos filas de pestañas (Tu día y ficha): reposo, hover, foco y seleccionada. */
   :is(.vo-tabs, .va-tabs) [role=tab] { background: none; color: var(--suave); white-space: nowrap; }
@@ -336,7 +336,7 @@
   .va-chat { display: flex; flex-direction: column; min-height: 0; min-width: 0; padding: var(--s2) var(--s5) var(--s4); }
   .va-lado { border-left: 1px solid var(--borde); display: flex; flex-direction: column; min-height: 0; min-width: 0;
     background: color-mix(in srgb, var(--hundido) 55%, var(--panel)); }
-  .va-tabs { display: flex; gap: 2px; align-items: center; padding: var(--s3) var(--s3) var(--s2); }
+  .va-tabs { flex: none; display: flex; gap: 2px; align-items: center; padding: var(--s3) var(--s3) var(--s2); }
   .va-tabs [role=tab] { border-color: transparent; font-size: var(--t-md); padding-inline: var(--s2); gap: 6px; }
   .va-tabs [role=tab][aria-selected=true] { background: var(--panel); border-color: var(--borde); }
   .va-tabs .plegar { margin-left: auto; }
@@ -431,6 +431,7 @@
   .redactar { display: grid; gap: var(--s2); margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--borde); }
   .aviso-caja { background: var(--naranja-bg); color: var(--naranja); border-radius: var(--r3); padding: var(--s2) var(--s3); font-size: var(--t-md); margin: 0 0 var(--s3); }
   .aviso-caja.rojo { background: var(--rojo-bg); color: var(--rojo); }
+  .aviso-caja.verde { background: var(--verde-bg); color: var(--verde); }
   .contexto { display: grid; gap: var(--s3); align-content: start; grid-template-columns: minmax(0, 1fr); min-width: 0; }
   .bloque select { width: 100%; }
   .dos-col > * { min-width: 0; }
@@ -497,19 +498,21 @@
   .arm-escaparate { display: flex; gap: var(--s4); align-items: center; flex-wrap: wrap; }
   .arm-ficha { display: grid; gap: var(--s1); min-width: 0; flex: 1; }
   .arm-nombre { margin: 0; font: 700 var(--t-xl)/1.2 var(--pixel); letter-spacing: .02em; }
-  .arm-nivel { display: grid; gap: var(--s1); margin-top: var(--s2); }
+  .arm-nivel { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s1); margin-top: var(--s2); }
   .arm-insignia { justify-self: start; font: 700 var(--t-xs)/1 var(--pixel); letter-spacing: .06em; padding: var(--s1) var(--s2); border-radius: var(--r1);
     background: var(--acento); color: var(--acento-texto); }
   .arm-clases { display: grid; gap: var(--s2); grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
   .arm-colores { display: grid; gap: var(--s2) var(--s3); grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
-  .arm-hotbar-caja { display: grid; gap: var(--s1); margin-top: var(--s1); }
+  .arm-hotbar-caja { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s1); margin-top: var(--s1); }
   .arm-hotbar { display: grid; grid-template-columns: repeat(9, minmax(0, 36px)); gap: 2px; padding: 3px; background: var(--esc-tinta);
     border-radius: var(--r1); justify-content: start; width: max-content; max-width: 100%; }
   .arm-hotbar .casilla { aspect-ratio: 1; display: grid; place-items: center; background: color-mix(in srgb, var(--esc-papel) 14%, var(--esc-tinta));
     border: 2px solid color-mix(in srgb, var(--esc-papel) 30%, var(--esc-tinta)); font: 700 var(--t-xs)/1 var(--pixel); color: var(--esc-papel); }
+  @media (max-width: 480px) { .arm-hotbar { grid-template-columns: repeat(5, minmax(0, 36px)); } }
   .arm-hotbar .casilla.llena { border-color: var(--esc-resalte); }
   .arm-hotbar-lista { overflow-wrap: anywhere; }
   .opciones-lista { display: grid; gap: 2px; max-height: 50svh; overflow: auto; }
+  .arm-skills { max-height: 18em; }
 
   /* Avisos de logro: panel oscuro con título amarillo, como los de Minecraft. Entran deslizando (sin movimiento: aparecen). */
   .logros { position: fixed; top: calc(var(--cabecera) + var(--s3)); right: var(--s4); z-index: var(--z-encima); display: grid; gap: var(--s2);

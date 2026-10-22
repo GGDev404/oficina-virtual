@@ -11,7 +11,7 @@ Argumentos: `$ARGUMENTS` (la primera palabra es el rol; el resto, el encargo).
 2. Manda el encargo a la oficina. Arma el JSON con `jq` (nunca pegues el texto dentro del comando de shell) y usa el token de la oficina:
 
 ```bash
-jq -n --arg texto "<texto del encargo>" --arg de "${CLAUDE_SESSION_ID:-}" --arg cwd "$PWD" \
+jq -n --arg texto "<texto del encargo>" --arg de "${CLAUDE_CODE_SESSION_ID:-}" --arg cwd "$PWD" \
   '{texto:$texto, cwd:$cwd} + (if $de != "" then {de_sesion:$de} else {} end)' \
 | curl -s -m 30 -H 'Content-Type: application/json' -H "X-Oficina-Token: $(cat ~/.local/share/oficina-virtual/token)" \
     --data-binary @- http://127.0.0.1:4777/api/roles/<rol>/encargo

@@ -90,7 +90,7 @@ Token en `~/.config/oficina-virtual/.env` (ver `.env.example`, `chmod 600`). La 
 1. `CLICKUP_TASK=<id> claude` (el hook hereda el entorno y lo manda como `tarea_env`);
 2. la rama git del `cwd` (`feature/factura-duplicada-k7p2tfedr`);
 3. la carpeta (`mi-erp.worktrees/k7p2tfedd`, sirve con HEAD separado);
-4. el primer prompt tuyo con un ID: `/agil k7p2jvu77`, `app.clickup.com/t/<id>` o `CU-<id>`
+4. el primer prompt tuyo con un ID: `Tarea k7p2jvu77: …`, `app.clickup.com/t/<id>` o `CU-<id>`
    (se ignoran `<task-notification>` y `<agent-message>`);
 5. a mano desde la página (`POST /api/sesiones/:id/tarea`; `null` desliga y vuelve el ligado automático).
 
@@ -176,7 +176,7 @@ casilla para ver todos) y el resumen del turno nocturno (carpeta `OFICINA_NOCHE_
 
 **Nueva sesión** (botón de la barra, o «Empezar sesión» en una tarea de tu agenda): eliges la tarea en un selector que
 agrupa por cuándo vence (vencidas, hoy, mañana, esta semana…) y muestra hora de entrega, estado, prioridad, sprint y
-horario de la ficha. Propone el worktree de la tarea (`git worktree list` de tus repos conocidos), `/agil <ID>` como
+horario de la ficha. Propone el worktree de la tarea (`git worktree list` de tus repos conocidos), «Tarea <ID>: arranca con el Flujo de día…» como
 indicación y un nombre. Arranca `claude` con `CLICKUP_TASK=<ID>` dentro de **su propio tmux** (ver abajo); con
 `OFICINA_LANZADOR=bg` vuelve a `claude --bg`. Permisos: auto, aceptar ediciones o manual; nunca `bypassPermissions`
 desde la página. Si la carpeta no es de confianza, se abre una terminal adjunta para que aceptes el aviso.
@@ -185,7 +185,9 @@ desde la página. Si la carpeta no es de confianza, se abre una terminal adjunta
 servidor tmux propio (`tmux -L ov-<nombre>-<hex>`), lanzado con `systemd-run --user --scope`: un OOM o un cierre se
 lleva solo esa sesión. `OFICINA_TMUX` liga la sesión con su socket (columna `sesiones.tmux`). Tus mensajes desde la
 ficha se pegan en su terminal (bracketed paste + Enter), así que Claude Code los toma como tuyos: contestar «sí,
-hazlo» o una duda funciona igual que en la terminal, sin el mensajero. Si tiene un diálogo abierto, la oficina no
+hazlo» o una duda funciona igual que en la terminal, sin el mensajero. Para que una sesión que abres tú en la
+terminal funcione igual, ábrela con `scripts/claude-tmux.sh` (mismos argumentos que `claude`; sugerido
+`alias ct=~/Proyectos/Oficina-virtual/scripts/claude-tmux.sh`) en vez de `claude` a secas. Si tiene un diálogo abierto, la oficina no
 teclea texto encima (409): la ficha muestra su pantalla (`tmux capture-pane`) y contestas con las teclas **1–4** o
 **Esc**; no hay otras teclas permitidas. Ojo: elegir en la oficina es tan válido como elegir en la terminal, incluida
 la opción de cambiar a modo auto. **Abrir en terminal** hace `tmux -L <socket> attach -t main`; a mano:
@@ -251,9 +253,14 @@ ver `docs/investigacion.md`).
   plan con Opus, documentación con Haiku, el resto con Sonnet. Así no todo gasta tokens del modelo más caro.
 - **Equipo**: `equipo:` del frontmatter lista las skills que el rol usa; el cuerpo dice cuándo cargar cada una (no se
   precargan: solo cuestan tokens cuando hacen falta). La Armería las muestra como barra de 9 casillas.
+- **Modo de trabajo** (Armería → un rol): modelo, permisos de su sesión (`permiso:` manual, acceptEdits o auto; nunca
+  bypass), hasta 9 skills (las de `~/.claude/skills`, las de plugins como `plugin:skill` y las de `skills/`, o una escrita a
+  mano) e instrucciones. Se guarda en `agentes/<rol>.md` y en `~/.claude/agents/<rol>.md` (el anterior queda como `.bak`);
+  lo toma la próxima sesión del rol, que recibe sus skills al final del prompt de sistema. Las instrucciones deben
+  conservar la marca `ENTREGA:`. Rutas: `GET /api/skills`, `GET|POST /api/roles/:rol/config` (guardar solo con tu cookie).
 - **Misiones**: un encargo puede llevar `cadena` (hasta 4 roles más). Cada `ENTREGA:` pasa sola al rol siguiente con el
   objetivo y la entrega anterior; solo la del último paso vuelve a quien pidió. Si QA responde «Veredicto: rechazado»,
-  la misión regresa una vez a implementación y luego vuelve a QA (un encargo suelto a QA no arranca a nadie). Hasta 3
+  la misión regresa una vez al rol que hizo el trabajo (implementación, diseño…) y luego vuelve a QA (un encargo suelto a QA no arranca a nadie). Hasta 3
   misiones abiertas a la vez (429 si no). Si un paso no se puede entregar, la entrega vuelve a quien pidió con el motivo. En la ficha: Encargos → «Después (misión)».
 
 ```bash
@@ -273,7 +280,18 @@ respuesta final empiece con `ENTREGA:`; cuando esa sesión termina el turno (Sto
 de origen («Entrega de …») por la misma vía y el encargo pasa a `respondido`. Respuestas: 202 `{id, estado, via, sesion}`,
 400 (rol/texto/cwd), 409 (ya está arrancando), 422 (no se pudo abrir), 502 (no se pudo entregar).
 
-`commands/encargar.md` (`cp -n` a `~/.claude/commands/`): `/encargar <rol> <texto>` hace ese POST con el token. Esta ruta
+`commands/encargar.md` (`cp -n` a `~/.claude/commands/`): `/encargar <rol> <texto>` hace ese POST con el token. Manda
+`CLAUDE_CODE_SESSION_ID` como `de_sesion`: sin él la entrega no tiene a quién volver.
+
+**Las sesiones de rol se cierran solas** al entregar (`ENTREGA:`) si no tienen otro encargo abierto. **No te preguntan a ti**:
+arrancan sin `AskUserQuestion` y, si terminan con `DUDA:` o `BLOQUEO:`, la oficina se lo pasa a la sesión que hizo el
+encargo («Duda de …»), que contesta con `/responder <id> <texto>` (`POST /api/encargos/:id/respuesta`, token o cookie;
+solo la sesión de origen). Si el encargo salió de la página, la duda te queda a ti. Los permisos siguen siendo tuyos:
+otra sesión no puede aprobarlos.
+
+**Nadie se valida a sí mismo**: `implementacion`, `diseno` e `integracion` piden su revisión a `revision-qa` con `/encargar`
+antes de su `ENTREGA:` (salvo dentro de una misión, que ya pasa por QA) y encargan a otro rol la parte que le toca a él.
+`revision-qa` no encarga: da el veredicto. Esta ruta
 acepta el token de los agentes **o** tu cookie; abrir la sesión de un rol sin encargo (`/sesion`) solo con tu cookie.
 Ojo: a diferencia de `/api/solicitudes`, un encargo no pasa por tu aprobación: puede teclear en la terminal libre de otra
 sesión y abrir una de rol (a lo más `acceptEdits`, nunca `bypassPermissions`). Queda en `eventos` (`teclado` / `mensaje_oficina`

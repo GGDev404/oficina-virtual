@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { abrir } from '../server/db.js';
-import { ROLES, esRol, cuerpoRol, entregaDe, textoEncargo, crearEncargos, ErrorEncargo } from '../server/encargos.js';
+import { ROLES, esRol, cuerpoRol, entregaDe, textoEncargo, crearEncargos, ErrorEncargo, fichaRol, leerRol, guardarRol, sistemaRol, listaSkills, reglaValida } from '../server/encargos.js';
 
 const RAIZ = path.resolve(import.meta.dirname, '..');
 const A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', R = 'rrrrrrrr-rrrr-4rrr-8rrr-rrrrrrrrrrrr';
@@ -15,11 +15,11 @@ const sesion = (db, id, cwd, extra = {}) => db.prepare(`INSERT INTO sesiones (id
 
 function montar({ vivas = [], entrega = { ok: true, via: 'tmux' } } = {}) {
   const db = abrir(':memory:');
-  const llamadas = [], lanzadas = [];
-  const e = crearEncargos({ db, vivo: async (sid) => vivas.includes(sid), etiqueta: (sid) => `sesion-${sid.slice(0, 1)}`,
+  const llamadas = [], lanzadas = [], apagadas = [];
+  const e = crearEncargos({ db, vivo: async (sid) => vivas.includes(sid), etiqueta: (sid) => `sesion-${sid.slice(0, 1)}`, apagar: async (sid) => { apagadas.push(sid); },
     entregar: async (sid, texto, o) => { llamadas.push({ sid, texto, o }); return entrega; },
     lanzar: async (d) => { lanzadas.push(d); return { ok: true }; } });
-  return { db, e, llamadas, lanzadas };
+  return { db, e, llamadas, lanzadas, apagadas };
 }
 
 test('un .md por rol, con frontmatter de subagente y tools mínimas; revision-qa no edita', () => {
@@ -153,6 +153,17 @@ test('misión: cada ENTREGA pasa al rol siguiente; QA rechaza una vez y vuelve a
   assert.deepEqual(pasos, ['implementacion:implementacion:0', `revision-qa:${id}:0`, `implementacion:${id}:1`, `revision-qa:${id}:1`, `docs-entrega:${id}:1`]);
 });
 
+test('misión de diseño: si QA rechaza, regresa a diseño (no a implementación)', async () => {
+  const D = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  const { db, e, llamadas } = montar({ vivas: [A, R, D] });
+  sesion(db, A, '/home/u/p'); sesion(db, D, '/home/u/p', { rol: 'diseno' }); sesion(db, R, '/home/u/p', { rol: 'revision-qa' });
+  await e.encargar({ rol: 'diseno', texto: 'pantalla de pagos', de_sesion: A, cadena: ['revision-qa'] });
+  await e.alTerminarTurno(D, 'ENTREGA: hice la pantalla');
+  await e.alTerminarTurno(R, 'ENTREGA: **Veredicto**: rechazado. Sin foco visible.');
+  assert.equal(llamadas.at(-1).sid, D);
+  assert.match(llamadas.at(-1).texto, /paso de diseno[\s\S]*Sin foco visible/);
+});
+
 test('misión: si el paso siguiente no se puede entregar, la entrega vuelve al origen con el motivo', async () => {
   const I = 'iiiiiiii-iiii-4iii-8iii-iiiiiiiiiiii';
   const db = abrir(':memory:');
@@ -176,4 +187,70 @@ test('un encargo suelto a QA con «rechazado» vuelve al origen y no arranca imp
   assert.equal(llamadas.at(-1).sid, A);
   for (let i = 0; i < 3; i++) await e.encargar({ rol: 'revision-qa', texto: `m${i}`, de_sesion: A, cadena: ['docs-entrega'] });
   await assert.rejects(e.encargar({ rol: 'revision-qa', texto: 'otra', de_sesion: A, cadena: ['docs-entrega'] }), (x) => x.status === 429);
+});
+
+test('modo de trabajo del rol: se guarda en agentes/ y en ~/.claude/agents (con .bak), y valida lo que llega', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rol-'));
+  const dir = path.join(tmp, 'agentes'), agentes = path.join(tmp, 'claude-agents');
+  fs.mkdirSync(dir); fs.mkdirSync(agentes);
+  fs.writeFileSync(path.join(dir, 'revision-qa.md'), '---\nname: revision-qa\ndescription: "x"\nmodel: sonnet\nequipo: millet-qa\n---\nRevisa. ENTREGA:\n');
+  fs.writeFileSync(path.join(agentes, 'revision-qa.md'), 'viejo');
+  assert.equal(fichaRol('revision-qa', dir).permiso, 'manual'); // sin `permiso:` usa el de ROLES
+  const ok = { modelo: 'opus', permiso: 'auto', equipo: ['millet-qa', 'code-review', 'millet-qa'], instrucciones: 'Revisa a fondo. ENTREGA:' };
+  const r = guardarRol('revision-qa', ok, { dir, agentes, ahora: () => 7 });
+  assert.deepEqual([r.modelo, r.permiso, r.equipo], ['opus', 'auto', ['millet-qa', 'code-review']]);
+  const texto = fs.readFileSync(path.join(dir, 'revision-qa.md'), 'utf8');
+  assert.match(texto, /^name: revision-qa$/m); assert.match(texto, /^description: "x"$/m);
+  assert.equal(fs.readFileSync(path.join(agentes, 'revision-qa.md'), 'utf8'), texto);
+  assert.equal(fs.readFileSync(path.join(agentes, 'revision-qa.md.7.bak'), 'utf8'), 'viejo');
+  assert.equal(leerRol('revision-qa', dir).instrucciones, 'Revisa a fondo. ENTREGA:');
+  assert.match(sistemaRol('revision-qa', dir), /Skills de tu equipo: millet-qa, code-review\./);
+  for (const malo of [{ permiso: 'bypassPermissions' }, { modelo: 'gpt' }, { equipo: Array(10).fill('a') }, { equipo: ['a; rm -rf'] }, { instrucciones: 'sin la marca' }]) {
+    assert.throws(() => guardarRol('revision-qa', { ...ok, ...malo }, { dir, agentes }), (e) => e instanceof ErrorEncargo && e.status === 400);
+  }
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('skills que un rol puede equipar: las tuyas, las del repo y las de plugins con prefijo', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'skills-')), repo = path.join(home, 'repo'), plugin = path.join(home, 'plug');
+  const skill = (d, n, cab) => { fs.mkdirSync(path.join(d, n), { recursive: true }); fs.writeFileSync(path.join(d, n, 'SKILL.md'), `---\nname: ${n}\n${cab}\n---\n`); };
+  skill(path.join(home, '.claude', 'skills'), 'mia', 'description: Hace lo mío');
+  skill(path.join(repo, 'skills'), 'millet-qa', 'description: >\n  Pruebas del\n  ERP');
+  skill(path.join(plugin, 'skills'), 'review', 'description: "Revisa"');
+  fs.mkdirSync(path.join(home, '.claude', 'plugins'));
+  fs.writeFileSync(path.join(home, '.claude', 'plugins', 'installed_plugins.json'), JSON.stringify({ plugins: { 'caveman@x': [{ installPath: plugin }] } }));
+  assert.deepEqual(listaSkills({ home, repo }), [
+    { id: 'caveman:review', descripcion: 'Revisa' }, { id: 'mia', descripcion: 'Hace lo mío' }, { id: 'millet-qa', descripcion: 'Pruebas del ERP' }]);
+  fs.rmSync(home, { recursive: true });
+});
+
+test('comandos permitidos por rol: reglas válidas, nunca Bash a secas, y llegan a --allowedTools antes de la indicación', async () => {
+  for (const r of ['Bash(npm run *)', 'Read', 'Bash(playwright-cli -s=claude *)']) assert.equal(reglaValida(r), true, r);
+  for (const r of ['Bash', 'Bash(*)', 'Bash( * )', 'Bash(a(b))', 'x y', '']) assert.equal(reglaValida(r), false, r);
+  const { nuevaSesion } = await import('../server/control.js');
+  let visto;
+  await nuevaSesion({ cwd: '/h', prompt: 'hola', permiso: 'auto', permitidos: ['Bash(npm run *)'] }, { ejecutar: async (_c, args) => { visto = args; return { texto: 'backgrounded · abc1234' }; } });
+  assert.deepEqual(visto, ['--bg', '--allowedTools', 'Bash(npm run *)', '--permission-mode', 'auto', 'hola']);
+});
+
+test('la sesión del rol se cierra al entregar; sus dudas van a quien encargó y la respuesta vuelve a ella', async () => {
+  const { db, e, llamadas, lanzadas, apagadas } = montar({ vivas: [A] });
+  sesion(db, A, '/home/u/p');
+  const { id } = await e.encargar({ rol: 'revision-qa', texto: 'revisa el total', de_sesion: A });
+  assert.deepEqual(lanzadas[0].prohibidos, ['AskUserQuestion']);
+  sesion(db, R, '/home/u/p'); e.alRegistrarRol(R, 'revision-qa');
+  await e.alTerminarTurno(R, 'Revisé casi todo.\n\n**DUDA:** ¿corro también la integración?');
+  assert.equal(llamadas.at(-1).sid, A);
+  assert.match(llamadas.at(-1).texto, new RegExp(`Duda de sesion-r \\(rol revision-qa, encargo #${id}\\):\\n¿corro también la integración\\?[\\s\\S]*/responder ${id}`));
+  assert.deepEqual(apagadas, []); // con la duda abierta no se cierra
+  await assert.rejects(e.responder({ id, texto: 'sí', de_sesion: R }), (x) => x.status === 403); // solo quien encargó
+  await e.responder({ id, texto: 'sí, con el filtro de Compras', de_sesion: A });
+  assert.equal(llamadas.at(-1).sid, R);
+  assert.match(llamadas.at(-1).texto, /Respuesta de sesion-a \(encargo #\d+\): sí, con el filtro de Compras/);
+  await e.alTerminarTurno(R, 'ENTREGA: **Veredicto**: aprobado');
+  assert.equal(llamadas.at(-1).sid, A);
+  assert.deepEqual(apagadas, [R]);
+  await assert.rejects(e.responder({ id, texto: 'tarde' }), (x) => x.status === 404);
+  await e.alTerminarTurno(A, 'ENTREGA: algo'); // una sesión tuya (sin rol ni encargo) nunca se cierra
+  assert.deepEqual(apagadas, [R]);
 });

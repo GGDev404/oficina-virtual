@@ -15,7 +15,7 @@ import { siguiente } from './siguiente.js';
 import { leerVivas, aplicarVivas } from './vivas.js';
 import { leerConversacion, leerContexto, leerGasto, resumenGasto, rutaValida } from './conversacion.js';
 import { crearDifusor } from './difusion.js';
-import { ROLES, esRol, listaRoles, crearEncargos, ErrorEncargo } from './encargos.js';
+import { ROLES, esRol, listaRoles, crearEncargos, ErrorEncargo, leerRol, guardarRol, listaSkills } from './encargos.js';
 import { crearMensajero, guardarImagenes, conImagenes, MAX_TEXTO } from './mensajero.js';
 import { PERMISOS, MODELOS, carpetaValida, carpetasConocidas, nuevaSesion, nuevaEnTmux, nuevaEnTerminal, cerrarSesion, abrirTerminal,
   abrirTmux, worktreeDeTarea, carpetaAparte, esClaude } from './control.js';
@@ -258,7 +258,24 @@ async function entregar(sid, texto, { de = null, alFallar = () => {} } = {}) {
     .run(sid, via === 'tmux' ? 'teclado' : 'mensaje_oficina', Date.now(), JSON.stringify({ via, de, texto: texto.slice(0, MAX_TEXTO) }));
   return { ok: true, via };
 }
+// Cerrar una sesión: su tmux si lo tiene (Claude Code recibe SIGHUP y guarda la conversación); si no, su proceso.
+async function cerrarPorId(sid) {
+  const s = db.prepare('SELECT tmux FROM sesiones WHERE id = ?').get(sid);
+  if (s?.tmux && await vive(s.tmux)) {
+    await cerrarTmux(s.tmux).catch(() => {});
+    setTimeout(actualizarVivas, 1500);
+    return { ok: true };
+  }
+  const viva = vivas.get(sid);
+  if (!viva) return { ok: false, status: 409, motivo: 'la sesión ya no está abierta' };
+  const r = await cerrarSesion(viva);
+  if (!r.ok) return { ok: false, status: 422, motivo: r.motivo };
+  setTimeout(actualizarVivas, 1500);
+  return { ok: true };
+}
 const encargos = crearEncargos({ db, entregar, vivo: sesionViva, etiqueta: etiquetaSesion, alCambiar: () => avisar(),
+  // Tras su ENTREGA: deja que el reenvío salga antes de cerrar su terminal.
+  apagar: (sid) => new Promise((listo) => setTimeout(() => cerrarPorId(sid).then(listo, listo), 3000)),
   lanzar: async (datos) => nivelMemoria(leerMeminfo()) === 'critico'
     ? { ok: false, motivo: 'Memoria casi agotada: no abro otra sesión.' }
     : lanzarSesion({ ...datos, nombre: `rol-${datos.rol}`, tarea: null, modelo: datos.modelo ?? '' }).then((r) => { if (r.ok) actualizarVivas(); return r; }) });
@@ -421,6 +438,27 @@ const servidor = http.createServer(async (req, res) => {
         avisar();
         return r.estado === 'error' ? json(res, 502, { error: r.detalle, ...r }) : json(res, 202, r);
       } catch (e) {
+        if (e instanceof ErrorEncargo) return json(res, e.status, { error: e.message });
+        throw e;
+      }
+    }
+    // Respuesta a la DUDA:/BLOQUEO: de un rol (/responder, con el token de los agentes o tu cookie).
+    if (req.method === 'POST' && (m = url.pathname.match(/^\/api\/encargos\/(\d+)\/respuesta$/))) {
+      const { texto, de_sesion = null } = await leerJson(req);
+      if (de_sesion !== null && !(typeof de_sesion === 'string' && /^[0-9a-f-]{36}$/.test(de_sesion))) return json(res, 400, { error: 'de_sesion no válida' });
+      const limpio = typeof texto === 'string' ? texto.trim() : '';
+      if (!limpio || limpio.length > MAX_TEXTO) return json(res, 400, { error: `la respuesta debe tener entre 1 y ${MAX_TEXTO} caracteres` });
+      try { return json(res, 200, await encargos.responder({ id: Number(m[1]), texto: limpio, de_sesion })); } catch (e) {
+        if (e instanceof ErrorEncargo) return json(res, e.status, { error: e.message });
+        throw e;
+      }
+    }
+    // Armería: configuración de un rol (modelo, permisos, skills, instrucciones) y skills que puede equipar.
+    if (req.method === 'GET' && url.pathname === '/api/skills') return json(res, 200, listaSkills());
+    if ((m = url.pathname.match(/^\/api\/roles\/([^/]+)\/config$/)) && (req.method === 'GET' || req.method === 'POST')) {
+      if (!esRol(m[1])) return json(res, 404, { error: 'rol desconocido' });
+      if (req.method === 'GET') return json(res, 200, leerRol(m[1]));
+      try { const r = guardarRol(m[1], await leerJson(req)); avisar(); return json(res, 200, r); } catch (e) {
         if (e instanceof ErrorEncargo) return json(res, e.status, { error: e.message });
         throw e;
       }
@@ -593,18 +631,8 @@ const servidor = http.createServer(async (req, res) => {
       return json(res, 201, { id: r.id ?? null, confianza: r.confianza === true, ...lugar });
     }
     if (req.method === 'POST' && (m = url.pathname.match(/^\/api\/sesiones\/([^/]+)\/cerrar$/))) {
-      const viva = vivas.get(m[1]);
-      const s = db.prepare('SELECT tmux FROM sesiones WHERE id = ?').get(m[1]);
-      if (s?.tmux && await vive(s.tmux)) { // cerrar su tmux: Claude Code recibe SIGHUP y guarda la conversación
-        await cerrarTmux(s.tmux).catch(() => {});
-        setTimeout(actualizarVivas, 1500);
-        return json(res, 204);
-      }
-      if (!viva) return json(res, 409, { error: 'la sesión ya no está abierta' });
-      const r = await cerrarSesion(viva);
-      if (!r.ok) return json(res, 422, { error: r.motivo });
-      setTimeout(actualizarVivas, 1500);
-      return json(res, 204);
+      const r = await cerrarPorId(m[1]);
+      return r.ok ? json(res, 204) : json(res, r.status, { error: r.motivo });
     }
     // Pendientes: sesiones que murieron sin cerrarse (Retomar / Descartar) y notas sueltas.
     if (req.method === 'POST' && (m = url.pathname.match(/^\/api\/sesiones\/([^/]+)\/retomar$/))) {

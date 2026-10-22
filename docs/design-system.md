@@ -42,12 +42,12 @@ Letra de píxel (`--pixel`) solo en títulos, etiquetas de la escena, insignias 
 | Aprobar | `.aprobar` | `--verde-solido` |
 | Chip / cuenta | `.chip` + `.rojo .naranja .amarillo .verde .azul-suave`, `.cuenta(.rojo .aviso)`, `.marca` | |
 | Medidor | `.medidor` + `<i>` (`.medio`, `.lleno`); `.medidor.nivel` arranca en verde | `role="meter"` con `aria-valuenow` |
-| Pestañas | `.vo-tabs` (subrayado), `.va-tabs` (pastilla) | base común de foco, hover y seleccionada |
+| Pestañas | `<Pestanas>` + `<Panel>` (`components/pestanas.tsx`, sobre Radix) con `.vo-tabs` (subrayado) o `.va-tabs` (pastilla) | tablist/tab/tabpanel, flechas y Inicio/Fin; base común de foco, hover y seleccionada |
 | Contenedores | `.bloque` (con `h4`), `.tarjeta`, `.proc`, `fieldset.pregunta`, `.aviso-caja(.rojo)` | |
 | Campos | `input` (text, search, password, number, email, date, url), `select`, `textarea`, `input[type=color]` | hover, disabled, `aria-invalid` |
 | Opciones | `.opcion[aria-pressed]`, `.opcion-pregunta` (radio/checkbox) | |
 | Maquetación | `.pila(-chica/-media/-grande)`, `.fila`, `.acciones`, `.sin-margen`, `.subtitulo`, `.una-linea`, `.crece`, `.empuja`, `.relleno(-chico)` | |
-| Juego | `.retrato` (sprite), `.arm-hotbar` (9 casillas), `.arm-insignia` (nivel), `.logro` (aviso de logro) | |
+| Juego | `.retrato` (sprite; clase = silueta, rol = rasgo a la izquierda: lupa, martillo, escudo, libro, paleta, enchufe, ver `RASGOS` en `escena/sprites.ts`), `.arm-hotbar` (9 casillas), `.arm-insignia` (nivel), `.logro` (aviso de logro) | |
 
 ## Accesibilidad (no negociable)
 

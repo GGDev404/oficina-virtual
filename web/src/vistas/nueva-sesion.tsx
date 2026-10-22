@@ -17,7 +17,8 @@ const propiaDe = (t: string | null, carpetas: string[]) => (t ? carpetas.filter(
 const opcionesUbicacion = (t: string | null, propia: string | null): [string, string][] => (t
   ? [['worktree', propia ? `Su worktree: ${carpeta(propia)}` : 'Worktree nuevo para la tarea (desde origin/develop o su rama)'], ['carpeta', 'Otra carpeta']]
   : [['aparte', 'Carpeta aparte nueva en ~/Agentes (fuera de cualquier repo)'], ['carpeta', 'Otra carpeta']])
-const autoDe = (t: Tarea) => ({ prompt: `/agil ${t.id}`, nombre: `${t.id} · ${t.nombre.replace(/^.*?·\s*/, '')}`.slice(0, 60) })
+// Sin slash command: desde 2026-10-21 los carriles (/agil, /rapida) ya no existen y un comando inexistente deja la sesión quieta.
+const autoDe = (t: Tarea) => ({ prompt: `Tarea ${t.id}: arranca con el «Flujo de día» de .local-context/MI_WORKFLOW.md.`, nombre: `${t.id} · ${t.nombre.replace(/^.*?·\s*/, '')}`.slice(0, 60) })
 
 export function NuevaSesion({ opciones: o, carpetas }: { opciones: OpcionesNueva; carpetas: string[] }) {
   const { datos: d, cerrarVentana } = useOficina()
@@ -117,7 +118,7 @@ export function NuevaSesion({ opciones: o, carpetas }: { opciones: OpcionesNueva
             <span className="meta">{ubicacion === 'worktree'
               ? (propia ? `Usará ${propia}.` : 'Se crea en <repo>.worktrees/<ID>, como en el turno nocturno, con los enlaces al arnés.') : ''}</span></label>
           <label className="campo"><span>Indicación</span>
-            <textarea ref={cajaPrompt} rows={4} required maxLength={4000} placeholder="Por ejemplo: /agil k7p2tfedr, o lo que quieres que haga"
+            <textarea ref={cajaPrompt} rows={4} required maxLength={4000} placeholder="Por ejemplo: Tarea k7p2tfedr: arranca con el «Flujo de día», o lo que quieres que haga"
               value={prompt} onChange={(e) => setPrompt(e.target.value)} /></label>
           <label className="campo"><span>Nombre (como aparece en la oficina)</span><input type="text" maxLength={80} value={nombre} onChange={(e) => setNombre(e.target.value)} /></label>
           <label className="campo"><span>Dónde se abre</span><select value={donde} onChange={(e) => setDonde(e.target.value)}>

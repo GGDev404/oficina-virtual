@@ -116,7 +116,7 @@ interface Entrega extends Punto { sid: string; id: number; fase: 'espera' | 'va'
 // Sobre que viaja entre dos sesiones (mensaje, encargo o entrega) y destello al llegar (o en su lugar con movimiento reducido).
 interface Sobre extends Punto { ruta: Punto[]; tipo: EntreSesiones['tipo'] }
 interface Destello extends Punto { t0: number; tipo: EntreSesiones['tipo'] }
-const COLOR_SOBRE = { mensaje: '#fffdf5', encargo: '#ffb347', entrega: '#6fe39a' }
+const COLOR_SOBRE = { mensaje: '#fffdf5', encargo: '#ffb347', entrega: '#6fe39a', duda: '#ff6b6b', respuesta: '#fffdf5' }
 const ROL_CORTO: Record<RolId, string> = { 'analisis-plan': 'PLAN', implementacion: 'IMPL', 'revision-qa': 'QA', 'docs-entrega': 'DOCS', diseno: 'DISEÑO', integracion: 'INTEG' }
 
 export interface Acciones { abrirAgente: (id: string) => void; abrirOficina: (seccion?: string) => void }
@@ -259,7 +259,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
         if (a?.saliendo) { a.saliendo = false; a.destinoClave = null; a.boton.disabled = false; a.boton.classList.remove('saliendo') } // volvió
         const guardado = guardadoDe(d, s)
         if (!a) {
-          const look = aspecto(s.id, guardado, baseDe(d, s))
+          const look = aspecto(s.id, guardado, baseDe(d, s), s.rol)
           a = { x: SALIDA.x, y: SALIDA.y, ruta: [], sala: null, aspecto: look, boton: crearBoton(s.id, look) }
           actores.set(s.id, a)
         }
@@ -272,7 +272,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
         }
         a.lugar = destino
         a.s = s
-        const look = aspecto(s.id, guardado, baseDe(d, s))
+        const look = aspecto(s.id, guardado, baseDe(d, s), s.rol)
         if (JSON.stringify(look) !== JSON.stringify(a.aspecto)) { // cambió su equipo en la Armería
           a.aspecto = look
           const et = a.boton.querySelector<HTMLElement>('.etiqueta')!

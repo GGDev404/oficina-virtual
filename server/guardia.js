@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export const RUTAS_HOOK = new Set(['/api/eventos', '/api/permisos', '/api/preguntas', '/api/solicitudes']);
-const ENCARGO = /^\/api\/roles\/[a-z-]+\/encargo$/;
+const ENCARGO = /^\/api\/(roles\/[a-z-]+\/encargo|encargos\/\d+\/respuesta)$/; // con token de agentes o tu cookie
 export const COOKIE = 'ov_sesion';
 export const DURACION_MS = 30 * 86_400_000;
 

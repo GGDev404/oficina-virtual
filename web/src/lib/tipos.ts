@@ -134,6 +134,7 @@ export interface Rol {
   id: RolId
   titulo: string
   modelo?: string
+  permiso?: string
   equipo?: string[]
 }
 
@@ -145,7 +146,7 @@ export interface EntreSesiones {
   de_sesion: string | null
   a_sesion: string
   texto: string
-  tipo: 'mensaje' | 'encargo' | 'entrega'
+  tipo: 'mensaje' | 'encargo' | 'entrega' | 'duda' | 'respuesta'
 }
 
 // Encargo a la sesión de un rol (últimos 30). `a_sesion` es null mientras la sesión del rol arranca.

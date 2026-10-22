@@ -11,8 +11,8 @@ const ESTADO_ENCARGO: Record<Encargo['estado'], [string, string]> = {
   arrancando: ['Arrancando', 'naranja'], entregando: ['Entregando', 'naranja'], entregado: ['Entregado', 'azul-suave'], respondido: ['Respondido', 'verde'], error: ['Error', 'rojo'],
 }
 const VIA: Record<string, string> = { tmux: 'por tmux', mensajero: 'por bandeja', nueva: 'sesión nueva' }
-const TIPO: Record<EntreSesiones['tipo'], string> = { mensaje: 'mensaje', encargo: 'encargo', entrega: 'entrega' }
-const COLOR_TIPO: Record<EntreSesiones['tipo'], string> = { mensaje: '', encargo: 'naranja', entrega: 'verde' }
+const TIPO: Record<EntreSesiones['tipo'], string> = { mensaje: 'mensaje', encargo: 'encargo', entrega: 'entrega', duda: 'duda', respuesta: 'respuesta' }
+const COLOR_TIPO: Record<EntreSesiones['tipo'], string> = { mensaje: '', encargo: 'naranja', entrega: 'verde', duda: 'rojo', respuesta: '' }
 
 const useQuien = (d: Datos, tareas: Record<string, import('@/lib/tipos').Tarea>) => (sid: string | null, respaldo = 'Oficina') => {
   const s = sid ? d.sesiones.find((x) => x.id === sid) : null
