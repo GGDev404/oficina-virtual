@@ -511,6 +511,15 @@
   .arm-hotbar-lista { overflow-wrap: anywhere; }
   .opciones-lista { display: grid; gap: 2px; max-height: 50svh; overflow: auto; }
 
+  /* Avisos de logro: panel oscuro con título amarillo, como los de Minecraft. Entran deslizando (sin movimiento: aparecen). */
+  .logros { position: fixed; top: calc(var(--cabecera) + var(--s3)); right: var(--s4); z-index: var(--z-encima); display: grid; gap: var(--s2);
+    pointer-events: none; width: min(320px, calc(100vw - 2 * var(--s4))); }
+  .logro { display: grid; gap: 2px; padding: var(--s2) var(--s3); background: var(--esc-tinta); color: var(--esc-papel);
+    border: 2px solid var(--esc-resalte); border-radius: var(--r1); box-shadow: 0 3px 0 var(--esc-sombra);
+    font: 500 var(--t-md)/1.3 var(--pixel); animation: entra-logro var(--dur-lenta) var(--curva-entrada); }
+  .logro b { color: var(--esc-resalte); font-weight: 700; }
+  @keyframes entra-logro { from { opacity: 0; transform: translateX(24px); } }
+
   /* Tu oficina */
   .veredicto { font-size: var(--t-md); font-weight: 600; }
   .hoy li { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--s3); padding: var(--s3) 0; border-top: 1px solid var(--borde); }

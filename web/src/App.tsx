@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ContextoOficina, type OpcionesNueva, type Oficina, type Seccion } from '@/components/contexto'
 import { Escena } from '@/escena/Escena'
 import { Icono } from '@/components/icono'
+import { Logros } from '@/components/logros'
 import { leer, postSeguro, siNoAutorizado } from '@/lib/api'
 import { useAhora, useEstado } from '@/lib/estado'
 import { hace, tareaPorId } from '@/lib/oficina'
@@ -85,6 +86,7 @@ export default function App() {
       {ventana?.tipo === 'armeria' && <Armeria inicial={ventana.clave} />}
       {ventana?.tipo === 'nueva' && <NuevaSesion opciones={ventana.opciones} carpetas={ventana.carpetas} />}
     </ContextoOficina.Provider>}
+    {datos && <Logros d={datos} />}
     {entrar && <Entrar yo={yo} alCerrar={() => setEntrar(false)} alEntrar={() => { setEntrar(false); pedirEntrar() }} />}
   </>
 }

@@ -315,7 +315,10 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
         const conCtx = ctxNivel ? ` · contexto ${Math.round(ctxNivel.pct * 100)} %` : ''
         const conRol = tituloRol ? ` (rol ${tituloRol})` : ''
         a.boton.setAttribute('aria-label', `${nombreSesion(s, tareas)}${conRol}: ${estadoTexto}${conCtx}`)
-        a.boton.title = `${nombreSesion(s, tareas)}${conRol} · ${estadoTexto}${conCtx}`
+        // Escáner (al señalar): modelo y tokens gastados, además de lo que dice el lector de pantalla.
+        const g = d.gastos?.[s.id], modelo = d.contexto?.[s.id]?.modelo
+        const escaner = `${modelo ? ` · ${modelo.replace(/^claude-/, '')}` : ''}${g ? ` · ${Math.round((g.entrada + g.cache_leida + g.cache_creada + g.salida) / 1000)}k tokens, caché ${g.cache_pct ?? '—'} %` : ''}`
+        a.boton.title = `${nombreSesion(s, tareas)}${conRol} · ${estadoTexto}${conCtx}${escaner}`
       })
     }
     // La sesión que se cierra sale caminando por el pasillo y desaparece al llegar a la orilla.
