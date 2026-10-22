@@ -1,11 +1,13 @@
-// Escena pixel art: un <canvas> de 480×272 px lógicos que el CSS escala con image-rendering: pixelated, y encima una
-// capa HTML con los personajes (botones), letreros e insignias. Es dibujo imperativo con su propio bucle de animación:
-// React solo monta el contenedor (Escena.tsx) y le pasa los datos con actualizar().
+// Escena en SVG: un <svg> de 480×272 px lógicos (#fondo, #actores, #efectos) y encima una capa HTML con los botones de
+// los agentes, letreros e insignias. Cada personaje es un grupo con el rig de personajes.ts: el bucle solo mueve su
+// transform mientras camina y las poses son una clase CSS. Es dibujo imperativo: React solo monta el contenedor
+// (Escena.tsx) y le pasa los datos con actualizar().
 import { ESTADOS, MAX_ACTIVOS, base, esperaProcesos, nivelContexto, nombreSesion, pendientesParaMi, procesosDe, resumenPizarra, tareaPorId, textoSobre, veredicto } from '@/lib/oficina'
 import type { Datos, EntreSesiones, RolId, Sesion } from '@/lib/tipos'
-import { aspecto, personaje as dibujarPersona, YO_FABRICA, type Aspecto, type Pose } from './sprites'
-
-const W = 480, H = 272
+import { temaActual } from '@/lib/tema'
+import { ESCRITORIOS, MESA_YO, SALAS, W, escenario, mesaYo, type Sala } from './escenarios'
+import { actorDe, clasePose, construirPersonaje, nodo, type Vista } from './personajes'
+import { aspecto, YO_FABRICA, type Aspecto, type Pose } from './sprites'
 
 // Íconos de trazo (formas de Lucide, ISC) que usa la capa: insignias y burbujas.
 const TRAZOS: Record<string, string[]> = {
@@ -36,31 +38,6 @@ function el(tag: string, attrs: Record<string, string | (() => void)> = {}, ...h
   return n
 }
 
-// Paleta del lienzo: sale de los tokens --esc-* (oficina.css) y se vuelve a leer al cambiar de tema.
-const PAL = {
-  pasillo: ['#bdb7a8', '#b2ac9c'], linea: '#cfc9b9', muro: '#47415f', muroAlto: '#2c2940', zocalo: '#24212f', borde: '#1c1a26',
-  marco: '#6b5236', oscuro: '#1e1b26', monitor: '#0f2740', codigo: ['#7dffa8', '#5fd3ff'], resalte: '#ffd84a',
-}
-type Sala = 'taller' | 'puerta' | 'bloqueados' | 'descanso' | 'oficina'
-// Cada cuarto tiene una sola puerta hacia el pasillo horizontal (y 128–160): por ahí caminan los agentes.
-const SALAS: Record<Sala, { titulo: string; x: number; y: number; w: number; h: number; piso: string[]; puerta: number; abajo: boolean }> = {
-  taller: { titulo: 'Taller', x: 0, y: 0, w: 272, h: 128, piso: ['#a8754a', '#9d6c44'], puerta: 248, abajo: true },
-  puerta: { titulo: 'Tu puerta', x: 304, y: 0, w: 176, h: 128, piso: ['#6e4f80', '#674a78'], puerta: 392, abajo: true },
-  bloqueados: { titulo: 'Bloqueados', x: 0, y: 160, w: 112, h: 112, piso: ['#71757f', '#696d77'], puerta: 82, abajo: false },
-  descanso: { titulo: 'Descanso', x: 112, y: 160, w: 160, h: 112, piso: ['#d2ab72', '#c8a16a'], puerta: 196, abajo: false },
-  oficina: { titulo: 'Tu oficina', x: 304, y: 160, w: 176, h: 112, piso: ['#4f7d5c', '#4a7657'], puerta: 392, abajo: false },
-}
-function leerPaleta() {
-  const st = getComputedStyle(document.documentElement)
-  const v = (n: string, d: string) => st.getPropertyValue(`--esc-${n}`).trim() || d
-  PAL.pasillo = [v('pasillo', PAL.pasillo[0]), v('pasillo-2', PAL.pasillo[1])]
-  for (const k of ['linea', 'muro', 'zocalo', 'borde', 'marco', 'monitor', 'resalte'] as const) PAL[k] = v(k, PAL[k])
-  PAL.muroAlto = v('muro-alto', PAL.muroAlto)
-  PAL.codigo = [v('codigo', PAL.codigo[0]), v('codigo-2', PAL.codigo[1])]
-  for (const [k, s] of Object.entries(SALAS)) s.piso = [v(k, s.piso[0]), v(`${k}-2`, s.piso[1])]
-}
-const ESCRITORIOS = [26, 72].flatMap((dy) => [14, 72, 130, 188].map((dx) => ({ dx, dy })))
-const MESA_YO = { dx: SALAS.oficina.x + 104, dy: SALAS.oficina.y + 50 }
 type Burbuja = [string | { icono: string; texto?: string }, string]
 const ROL: Record<string, { sala: Sala; pose: Pose; burbuja?: Burbuja; prio?: number }> = {
   trabajando: { sala: 'taller', pose: 'teclea' },
@@ -68,7 +45,7 @@ const ROL: Record<string, { sala: Sala; pose: Pose; burbuja?: Burbuja; prio?: nu
   duda: { sala: 'puerta', pose: 'mano', burbuja: ['?', 'naranja'], prio: 1 },
   te_espera: { sala: 'puerta', pose: 'parado', burbuja: ['•••', 'naranja'], prio: 2 },
   bloqueado: { sala: 'bloqueados', pose: 'triste', burbuja: [{ icono: 'alto' }, 'rojo'] },
-  listo_para_revisar: { sala: 'descanso', pose: 'cafe', burbuja: [{ icono: 'listo' }, 'amarillo'] },
+  listo_para_revisar: { sala: 'descanso', pose: 'entrega', burbuja: [{ icono: 'listo' }, 'amarillo'] },
   sin_señal: { sala: 'descanso', pose: 'duerme', burbuja: ['zZ', 'gris'] },
 }
 interface Punto { x: number; y: number }
@@ -111,112 +88,54 @@ const RODEO = [{ x: MESA_YO.dx - 6, y: MESA_YO.dy + 6 }, { x: MESA_YO.dx - 6, y:
 interface Actor extends Punto {
   ruta: Punto[]; sala: Sala | null; lugar?: Lugar; aspecto: Aspecto; boton: HTMLButtonElement; s?: Sesion
   saliendo?: boolean; destinoClave?: string | null; espera?: boolean; anchoEtiqueta?: number | null; maximo?: number
+  g: SVGGElement // raíz en #actores: su transform lo mueve; dentro, el rig (siempre el primero) y los robots
+  camina?: boolean; claveRig?: string; pose?: Pose; pantalla?: Element | null; claveRobots?: string; margen?: string
 }
 interface Entrega extends Punto { sid: string; id: number; fase: 'espera' | 'va' | 'entrega' | 'regresa'; ruta: Punto[]; regreso?: Punto[]; llego?: number; resultado?: string }
 
 // Sobre que viaja entre dos sesiones (mensaje, encargo o entrega) y destello al llegar (o en su lugar con movimiento reducido).
-interface Sobre extends Punto { ruta: Punto[]; tipo: EntreSesiones['tipo'] }
-interface Destello extends Punto { t0: number; tipo: EntreSesiones['tipo'] }
+interface Sobre extends Punto { ruta: Punto[]; tipo: EntreSesiones['tipo']; g: SVGGElement }
+interface Destello extends Punto { t0: number; tipo: EntreSesiones['tipo']; g: SVGGElement }
 const COLOR_SOBRE = { mensaje: '#fffdf5', encargo: '#ffb347', entrega: '#6fe39a', duda: '#ff6b6b', respuesta: '#fffdf5' }
 const ROL_CORTO: Record<RolId, string> = { 'analisis-plan': 'PLAN', implementacion: 'IMPL', 'revision-qa': 'QA', 'docs-entrega': 'DOCS', diseno: 'DISEÑO', integracion: 'INTEG' }
 
 export interface Acciones { abrirAgente: (id: string) => void; abrirOficina: (seccion?: string) => void; abrirPizarra: () => void }
 
-export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, capa: HTMLElement, acciones: Acciones) {
+export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTMLElement, acciones: Acciones) {
   const movimiento = matchMedia('(prefers-reduced-motion: reduce)')
   let reducido = movimiento.matches
   const alCambiarMovimiento = () => { reducido = movimiento.matches }
   movimiento.addEventListener('change', alCambiarMovimiento)
-  let ctx = lienzo.getContext('2d')! // contexto donde pintan r() y los sprites
-  const r = (x: number, y: number, w: number, h: number, c: string) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h) }
-  const en = (c: CanvasRenderingContext2D, fn: () => void) => { const previo = ctx; ctx = c; fn(); ctx = previo }
   let datos: Datos | null = null
+  const capaFondo = svg.querySelector('#fondo')!, capaActores = svg.querySelector('#actores')!, capaEfectos = svg.querySelector('#efectos')!
+  const grupo = (padre: Element, clase: string) => nodo('g', {}, padre, clase)
+  const px = (o: Punto) => `translate(${Math.round(o.x)}px, ${Math.round(o.y)}px)` // el mismo redondeo que la etiqueta: no se despega al caminar
 
-  const personaje = (x: number, y: number, a: Aspecto, pose: Pose, f: number, vista = 'frente') => dibujarPersona(r, x, y, a, pose, f, { vista, reducido })
-
-  // Subagente: robot de 8×10 px que flota a un lado de su agente.
-  function robot(x: number, y: number, f: number, k: number) {
-    const ox = Math.round(x) - 4, oy = Math.round(y) - 10 - (reducido ? 0 : (f + k) % 2)
-    const p = (cx: number, cy: number, w: number, h: number, c: string) => r(ox + cx, oy + cy, w, h, c)
-    r(ox + 1, Math.round(y) - 1, 6, 1, 'rgba(0,0,0,.25)')
-    p(4, 0, 1, 1, (f + k) % 4 < 2 ? '#7dffa8' : '#ff6b57'); p(4, 1, 1, 1, '#9aa3ad')
-    p(1, 2, 7, 4, '#c3ccd6'); p(1, 5, 7, 1, '#9aa3ad')
-    const ojo = (f + k * 3) % 12 === 0 ? '#9aa3ad' : '#3ee0ff'
-    p(2, 3, 1, 1, ojo); p(6, 3, 1, 1, ojo)
-    p(2, 6, 5, 3, '#7d8794'); p(3, 7, 3, 1, '#ffd84a')
-    p(2, 9, 1, 1, '#4a4f58'); p(6, 9, 1, 1, '#4a4f58')
+  // Subagente: robot de 8×10 px que flota a un lado de su agente (pies en el origen). Todo su movimiento es CSS.
+  function robot(k: number) {
+    const g = nodo('g', { transform: 'translate(-4 -10)' }), c = (x: number, y: number, w: number, h: number, fill: string, padre: Element = g, clase = '') => nodo('rect', { x, y, width: w, height: h, fill }, padre, clase)
+    const flota = nodo('g', { style: `animation-delay:${-k * 0.25}s` }, g, 'robot-flota')
+    c(1, 9, 6, 1, 'rgba(0,0,0,.25)', g)
+    c(4, 0, 1, 1, '#7dffa8', flota); c(4, 0, 1, 1, '#ff6b57', flota, 'robot-led').style.animationDelay = `${-k * 0.5}s`; c(4, 1, 1, 1, '#9aa3ad', flota)
+    c(1, 2, 7, 4, '#c3ccd6', flota); c(1, 5, 7, 1, '#9aa3ad', flota)
+    const ojos = nodo('g', { style: `animation-delay:${-k * 0.375}s` }, flota, 'robot-ojos')
+    c(2, 3, 1, 1, '#3ee0ff', ojos); c(6, 3, 1, 1, '#3ee0ff', ojos)
+    c(2, 6, 5, 3, '#7d8794', flota); c(3, 7, 3, 1, '#ffd84a', flota)
+    c(2, 9, 1, 1, '#4a4f58', flota); c(6, 9, 1, 1, '#4a4f58', flota)
+    return g
   }
 
-  // Muebles
-  function escritorio(dx: number, dy: number) {
-    r(dx, dy + 2, 30, 9, '#c88d55'); r(dx, dy + 2, 30, 1, '#dba06a'); r(dx, dy + 11, 30, 3, '#8a5a33')
-    r(dx + 1, dy + 14, 2, 2, '#6e4626'); r(dx + 27, dy + 14, 2, 2, '#6e4626')
-    r(dx + 7, dy - 9, 16, 11, '#2b2b33'); r(dx + 14, dy + 2, 2, 2, '#2b2b33')
-    r(dx + 8, dy - 8, 14, 8, '#11131a')
-    r(dx + 9, dy + 6, 12, 3, '#d9d6cf'); r(dx + 9, dy + 8, 12, 1, '#b7b3aa')
-    r(dx + 24, dy + 4, 3, 3, '#f4f1ea'); r(dx + 24, dy + 4, 3, 1, '#6b3e1f')
-  }
-  // Pantalla: código que corre si teclea; barra de progreso si espera un proceso.
-  function pantalla(dx: number, dy: number, t: number, espera: boolean) {
-    r(dx + 8, dy - 8, 14, 8, PAL.monitor)
-    if (espera) {
-      r(dx + 10, dy - 5, 10, 2, '#1d3a5c')
-      r(dx + 10, dy - 5, 1 + ((reducido ? 5 : t) % 10), 2, PAL.resalte)
-      return
-    }
-    for (let k = 0; k < 4; k++) {
-      const w = 3 + ((k * 7 + (reducido ? 0 : t)) % 9)
-      r(dx + 9 + (k % 2) * 2, dy - 7 + k * 2, Math.min(w, 11), 1, PAL.codigo[k % 2 ? 1 : 0])
-    }
-  }
-  function planta(x: number, y: number) {
-    r(x + 2, y + 8, 8, 6, '#a0522d'); r(x + 2, y + 8, 8, 1, '#c0703f')
-    r(x + 3, y + 1, 6, 7, '#3f9b4f'); r(x + 1, y + 3, 3, 4, '#2f7a3c'); r(x + 8, y + 3, 3, 4, '#2f7a3c'); r(x + 5, y, 2, 2, '#58b866')
-  }
-
-  // Fondo estático (pisos, muros, puertas y muebles): se pinta una vez en otro lienzo.
-  const fondo = document.createElement('canvas')
-  fondo.width = W; fondo.height = H
-  const pintarFondo = () => en(fondo.getContext('2d')!, () => {
-    for (let y = 0; y < H; y += 16) for (let x = 0; x < W; x += 16) r(x, y, 16, 16, PAL.pasillo[((x + y) / 16) % 2])
-    r(0, 145, W, 2, PAL.linea); r(287, 0, 2, H, PAL.linea)
-    for (const s of Object.values(SALAS)) {
-      for (let y = s.y + 14; y < s.y + s.h; y += 8) for (let x = s.x; x < s.x + s.w; x += 8) {
-        r(x, y, 8, 8, s.piso[((x - s.x) / 8 + (y - s.y - 14) / 8) % 2])
-      }
-      r(s.x, s.y, s.w, 2, PAL.muroAlto); r(s.x, s.y + 2, s.w, 10, PAL.muro); r(s.x, s.y + 12, s.w, 2, PAL.zocalo)
-      r(s.x, s.y, 2, s.h, PAL.borde); r(s.x + s.w - 2, s.y, 2, s.h, PAL.borde); r(s.x, s.y + s.h - 2, s.w, 2, PAL.borde)
-      const px = s.puerta - 12
-      if (s.abajo) { r(px, s.y + s.h - 2, 24, 2, s.piso[0]); r(px - 2, s.y + s.h - 5, 2, 5, PAL.marco); r(px + 24, s.y + s.h - 5, 2, 5, PAL.marco) }
-      else { r(px, s.y, 24, 14, PAL.pasillo[0]); r(px - 2, s.y, 2, 14, PAL.marco); r(px + 24, s.y, 2, 14, PAL.marco) }
-    }
-    r(150, 3, 52, 9, '#f2f2ee'); r(150, 3, 52, 1, '#9a9a96'); r(153, 5, 18, 1, '#3a7bd5'); r(153, 7, 26, 1, '#d5573a'); r(153, 9, 14, 1, '#3aa66b')
-    r(208, 4, 9, 7, '#e9d9a6'); r(220, 5, 9, 6, '#a6d9e9'); r(232, 4, 9, 7, '#f0b7ca')
-    for (const e of ESCRITORIOS) escritorio(e.dx, e.dy)
-    planta(4, 104); planta(224, 18)
-    const p = SALAS.puerta
-    r(p.x + 12, p.y + 16, 50, 6, '#8a5a33'); r(p.x + 12, p.y + 22, 50, 2, '#6e4626')
-    r(p.puerta - 16, p.y + p.h - 18, 32, 12, '#a8323f'); r(p.puerta - 14, p.y + p.h - 16, 28, 8, '#c64656')
-    planta(p.x + p.w - 18, p.y + 16)
-    const b = SALAS.bloqueados
-    r(b.x + 84, b.y + 86, 16, 14, '#8a6a42'); r(b.x + 84, b.y + 86, 16, 2, '#a9845a'); r(b.x + 6, b.y + 90, 12, 10, '#8a6a42'); r(b.x + 6, b.y + 90, 12, 2, '#a9845a')
-    const d = SALAS.descanso
-    r(d.x + 8, d.y + 16, 56, 14, '#b5523b'); r(d.x + 8, d.y + 16, 56, 4, '#cf6a50'); r(d.x + 6, d.y + 18, 4, 12, '#8f3f2d'); r(d.x + 62, d.y + 18, 4, 12, '#8f3f2d')
-    r(d.x + 128, d.y + 15, 16, 20, '#4a4a52'); r(d.x + 131, d.y + 18, 10, 6, '#22222a'); r(d.x + 133, d.y + 27, 6, 5, '#f4f1ea')
-    r(d.x + 104, d.y + 18, 14, 10, '#8a5a33'); r(d.x + 107, d.y + 16, 4, 3, '#f4f1ea')
-    planta(d.x + d.w - 18, d.y + d.h - 22)
-    const o = SALAS.oficina
-    r(o.x + 106, o.y + 2, 30, 12, '#6e4626');
-    ['#d5573a', '#3a7bd5', '#e0a526', '#3aa66b', '#9b59b6', '#f4f1ea'].forEach((c, k) => r(o.x + 108 + k * 4, o.y + 4, 3, 8, c))
-    r(o.x + 140, o.y + 2, 18, 11, '#f4f1ea'); r(o.x + 140, o.y + 2, 18, 3, '#d5573a')
-    for (let k = 0; k < 8; k++) r(o.x + 142 + (k % 4) * 4, o.y + 6 + Math.floor(k / 4) * 3, 2, 2, '#9a9a96')
-    r(MESA_YO.dx - 10, MESA_YO.dy - 18, 60, 44, '#3e6b4b'); r(MESA_YO.dx - 8, MESA_YO.dy - 16, 56, 40, '#457656')
-    planta(o.x + 6, o.y + o.h - 22)
-  })
-  leerPaleta(); pintarFondo()
-  let sucio = true // hay que volver a pintar aunque nada se mueva (datos, tamaño o tema nuevos)
-  const alCambiarTema = () => { leerPaleta(); pintarFondo(); sucio = true }
-  addEventListener('oficina-tema', alCambiarTema)
+  // Fondo (pisos, muros, puertas, muebles y pantallas): se construye una vez; los tokens --esc-* lo recolorean al cambiar de tema.
+  const fondo = escenario()
+  capaFondo.append(fondo)
+  const pantallas = [...fondo.querySelectorAll('.pantalla')]
+  // La lámpara roja de Bloqueados parpadea (CSS) mientras haya alguien quieto ahí.
+  const lampara = nodo('g', {}, fondo, 'lampara')
+  nodo('rect', { x: SALAS.bloqueados.x + 98, y: SALAS.bloqueados.y + 3, width: 10, height: 6, fill: '#ff4d3d' }, lampara)
+  nodo('rect', { x: SALAS.bloqueados.x + 98, y: SALAS.bloqueados.y + 3, width: 10, height: 6, fill: '#7a1e18' }, lampara, 'apagada')
+  nodo('rect', { x: SALAS.bloqueados.x + 100, y: SALAS.bloqueados.y + 9, width: 6, height: 2, fill: '#2b2b33' }, lampara)
+  lampara.style.display = 'none'
+  let sucio = true // hay que sincronizar aunque nada se mueva (datos o tamaño nuevos)
   let yo: Aspecto = aspecto('yo', YO_FABRICA)
 
   // ── Actores: un personaje por sesión viva ──
@@ -250,6 +169,11 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
     el('span', { class: 'insignia neutra' }, icono('pizarra'), el('span'))), ' translate(-50%, -50%)')
   fijo('vacio', 136, 64, el('span', { class: 'aviso-vacio' }, 'Sin agentes de Claude Code activos'), ' translate(-50%, -50%)')
 
+  function quitar(id: string, a: Actor) {
+    a.boton.remove(); a.g.remove(); actores.delete(id)
+    a.pantalla?.setAttribute('class', 'pantalla')
+  }
+
   function actualizarActores(d: Datos) {
     const tareas = tareaPorId(d)
     const vivas = d.sesiones.filter((s) => ROL[s.estado])
@@ -263,7 +187,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
         const guardado = guardadoDe(d, s)
         if (!a) {
           const look = aspecto(s.id, guardado, baseDe(d, s), s.rol)
-          a = { x: SALIDA.x, y: SALIDA.y, ruta: [], sala: null, aspecto: look, boton: crearBoton(s.id, look) }
+          a = { x: SALIDA.x, y: SALIDA.y, ruta: [], sala: null, aspecto: look, boton: crearBoton(s.id, look), g: nodo('g', {}, capaActores, 'actor') }
           actores.set(s.id, a)
         }
         const destino = lugar(sala, i)
@@ -327,7 +251,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
     // La sesión que se cierra sale caminando por el pasillo y desaparece al llegar a la orilla.
     for (const [id, a] of actores) {
       if (a.saliendo || vivas.some((s) => s.id === id)) continue
-      if (reducido || !a.sala) { a.boton.remove(); actores.delete(id); continue }
+      if (reducido || !a.sala) { quitar(id, a); continue }
       a.saliendo = true
       a.boton.disabled = true
       a.boton.classList.add('saliendo')
@@ -360,13 +284,13 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
   }
 
   function escalar() {
-    e = lienzo.clientWidth / W
+    e = svg.clientWidth / W
     sucio = true
     escena.style.setProperty('--e', String(e))
     for (const f of Object.values(fijos)) f.el.style.transform = `translate(${f.x * e}px, ${f.y * e}px)${f.centro}`
   }
   const observador = new ResizeObserver(escalar)
-  observador.observe(lienzo)
+  observador.observe(svg)
 
   // ── Tú llevas tus mensajes: tu avatar se levanta de su escritorio, entrega en mano y regresa ──
   // Si mandas varios seguidos, los lleva uno tras otro. La entrega real no espera a la animación.
@@ -411,18 +335,54 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
       if (estado !== 'enviando' && performance.now() - o.llego! > 900) { o.fase = 'regresa'; o.ruta = o.regreso! }
     } else entregas.shift()
   }
-  function dibujarMensajero(o: Entrega, f: number, fCamina: number) {
-    if (o.fase === 'espera') return
-    const caminando = o.ruta.length > 0
-    personaje(o.x, o.y, yo, caminando ? 'camina' : 'parado', caminando ? fCamina : f)
-    const ox = Math.round(o.x) - 6, oy = Math.round(o.y) - 16
-    if (o.fase === 'va') { r(ox + 9, oy + 8, 4, 3, '#fffdf5'); r(ox + 9, oy + 8, 4, 1, '#c9c6bd') } // sobre en la mano
-    if (o.fase === 'entrega') { // globo con el sobre (o una X si no se pudo entregar)
-      const bx = ox - 1, by = oy - 13
-      r(bx, by, 14, 10, '#1a1922'); r(bx + 1, by + 1, 12, 8, o.resultado === 'error' ? '#ff6b57' : '#fffdf5'); r(bx + 6, by + 10, 2, 2, '#1a1922')
-      if (o.resultado === 'error') { for (let k = 0; k < 4; k++) { r(bx + 5 + k, by + 3 + k, 1, 1, '#fff'); r(bx + 8 - k, by + 3 + k, 1, 1, '#fff') } }
-      else { r(bx + 3, by + 3, 8, 5, '#f4f1ea'); r(bx + 3, by + 3, 8, 1, '#c9c6bd'); r(bx + 4, by + 4, 2, 1, '#c9c6bd'); r(bx + 8, by + 4, 2, 1, '#c9c6bd'); r(bx + 6, by + 5, 2, 1, '#c9c6bd') }
+  // Capas de #efectos, de abajo arriba: el mensajero, los sobres, los destellos, tu avatar y tu escritorio (que tapa sus piernas).
+  const rect = (g: Element, x: number, y: number, width: number, height: number, fill: string) => nodo('rect', { x, y, width, height, fill }, g)
+  const mensajero = grupo(capaEfectos, 'actor') // rig, sobre en la mano y globo; solo se ve mientras entrega
+  const capaSobres = grupo(capaEfectos, 'sobres'), capaDestellos = grupo(capaEfectos, 'destellos')
+  const avatarMesa = grupo(capaEfectos, 'actor')
+  capaEfectos.append(mesaYo())
+  const pila = capaEfectos.querySelector('.pila')!
+  avatarMesa.style.transform = px(EN_MESA)
+  const sobreMano = grupo(mensajero, 'sobre-mano')
+  rect(sobreMano, 4.5, -9, 4, 3, '#fffdf5'); rect(sobreMano, 4.5, -9, 4, 1, '#c9c6bd')
+  const globo = nodo('g', { transform: 'translate(-7 -40)' }, mensajero, 'globo') // globo con el sobre (o una X si no se pudo entregar)
+  rect(globo, 0, 0, 14, 10, '#1a1922'); rect(globo, 6, 10, 2, 2, '#1a1922')
+  const fondoGlobo = rect(globo, 1, 1, 12, 8, '#fffdf5')
+  const carta = grupo(globo, 'carta'), cruz = grupo(globo, 'cruz')
+  for (const [x, y, w, h] of [[3, 3, 8, 5], [3, 3, 8, 1], [4, 4, 2, 1], [8, 4, 2, 1], [6, 5, 2, 1]]) rect(carta, x, y, w, h, y === 3 && h === 5 ? '#f4f1ea' : '#c9c6bd')
+  for (let k = 0; k < 4; k++) { rect(cruz, 5 + k, 3 + k, 1, 1, '#fff'); rect(cruz, 8 - k, 3 + k, 1, 1, '#fff') }
+  let claveYo = '', claveMensajero = '', rigMensajero: SVGGElement | null = null
+  function construirYo() { // tu avatar de pie en el escritorio y el mismo para el mensajero, con tu equipo de la Armería
+    const clave = JSON.stringify(yo)
+    if (clave === claveYo) return
+    claveYo = clave
+    const pieza = { aspecto: yo, vista: 'frente' as Vista }
+    const rigMesa = construirPersonaje(pieza, temaActual(), 'yo')
+    rigMesa.setAttribute('class', clasePose('parado'))
+    avatarMesa.replaceChildren(rigMesa)
+    rigMensajero?.remove()
+    rigMensajero = construirPersonaje(pieza, temaActual(), 'yo')
+    mensajero.prepend(rigMensajero)
+    claveMensajero = ''
+  }
+  function sincronizarMensajero() { // solo cambia el DOM cuando cambia algo; el loop únicamente mueve su transform
+    const o = entregas[0], visible = !!o && o.fase !== 'espera'
+    const clave = `${entregas.length > 0}|${visible ? `${o.fase}|${o.ruta.length > 0}|${o.resultado}` : ''}`
+    const cambio = clave !== claveMensajero
+    if (cambio) {
+      claveMensajero = clave
+      avatarMesa.style.display = entregas.length ? 'none' : '' // si va a entregar, su lugar queda vacío
+      mensajero.style.display = visible ? '' : 'none'
+      if (visible) {
+        rigMensajero?.setAttribute('class', clasePose(o.ruta.length ? 'camina' : 'parado'))
+        sobreMano.style.display = o.fase === 'va' ? '' : 'none'
+        globo.style.display = o.fase === 'entrega' ? '' : 'none'
+        const error = o.resultado === 'error'
+        fondoGlobo.setAttribute('fill', error ? '#ff6b57' : '#fffdf5')
+        carta.style.display = error ? 'none' : ''; cruz.style.display = error ? '' : 'none'
+      }
     }
+    if (visible && (cambio || o.ruta.length)) mensajero.style.transform = px(o)
   }
 
   // ── Sobres entre sesiones: salen del origen (o de la orilla) y llegan al destino ──
@@ -437,90 +397,120 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
       const dest = actores.get(f.a_sesion)
       if (!filasIniciadas || !dest || dest.saliendo || !dest.sala) continue // lo anterior a abrir la página no se anima
       const fin = { x: dest.x + 12, y: dest.y - 6 }
-      if (reducido) { destellos.push({ ...fin, t0: reloj, tipo: f.tipo }); continue }
+      if (reducido) { destellos.push({ ...fin, t0: reloj, tipo: f.tipo, g: nuevoDestello(fin, f.tipo) }); continue }
       const ori = f.de_sesion ? actores.get(f.de_sesion) : undefined
       const desde = ori && !ori.saliendo ? { x: ori.x + 12, y: ori.y - 6 } : { ...SALIDA }
-      sobres.push({ ...desde, tipo: f.tipo, ruta: rutaA(desde, dest.sala, [fin]) })
+      sobres.push({ ...desde, tipo: f.tipo, ruta: rutaA(desde, dest.sala, [fin]), g: nuevoSobre(desde, f.tipo) })
     }
     filasIniciadas = true
   }
   function moverSobres(dt: number) {
-    for (const o of sobres) avanzar(o, dt * 1.8)
-    for (let i = sobres.length - 1; i >= 0; i--) if (!sobres[i].ruta.length) { destellos.push({ x: sobres[i].x, y: sobres[i].y, t0: reloj, tipo: sobres[i].tipo }); sobres.splice(i, 1) }
-    for (let i = destellos.length - 1; i >= 0; i--) if (reloj - destellos[i].t0 > 0.9) destellos.splice(i, 1)
+    for (const o of sobres) { avanzar(o, dt * 1.8); o.g.style.transform = px(o) }
+    for (let i = sobres.length - 1; i >= 0; i--) {
+      const o = sobres[i]
+      if (o.ruta.length) continue
+      o.g.remove(); sobres.splice(i, 1)
+      destellos.push({ x: o.x, y: o.y, t0: reloj, tipo: o.tipo, g: nuevoDestello(o, o.tipo) })
+    }
+    for (let i = destellos.length - 1; i >= 0; i--) if (reloj - destellos[i].t0 > 0.9) { destellos[i].g.remove(); destellos.splice(i, 1) }
   }
-  function dibujarSobre(x: number, y: number, tipo: EntreSesiones['tipo']) {
-    const ox = Math.round(x) - 5, oy = Math.round(y) - 4
-    r(ox - 1, oy - 1, 12, 9, '#1a1922'); r(ox, oy, 10, 7, COLOR_SOBRE[tipo])
-    r(ox, oy, 10, 1, 'rgba(0,0,0,.25)'); r(ox + 1, oy + 1, 2, 1, 'rgba(0,0,0,.25)'); r(ox + 7, oy + 1, 2, 1, 'rgba(0,0,0,.25)'); r(ox + 3, oy + 2, 4, 1, 'rgba(0,0,0,.25)')
-    if (tipo === 'encargo') { r(ox + 4, oy + 3, 2, 3, '#1a1922') } // rayita de "pendiente"
-    else if (tipo === 'entrega') { r(ox + 3, oy + 4, 1, 1, '#1a1922'); r(ox + 4, oy + 5, 1, 1, '#1a1922'); r(ox + 5, oy + 4, 1, 1, '#1a1922'); r(ox + 6, oy + 3, 1, 1, '#1a1922') } // palomita
+  function nuevoSobre(p: Punto, tipo: EntreSesiones['tipo']) { // sobre de 10×7 px centrado en su punto
+    const g = grupo(capaSobres, 'sobre'), sombra = 'rgba(0,0,0,.25)'
+    g.style.transform = px(p)
+    rect(g, -6, -5, 12, 9, '#1a1922'); rect(g, -5, -4, 10, 7, COLOR_SOBRE[tipo])
+    rect(g, -5, -4, 10, 1, sombra); rect(g, -4, -3, 2, 1, sombra); rect(g, 2, -3, 2, 1, sombra); rect(g, -2, -2, 4, 1, sombra)
+    if (tipo === 'encargo') rect(g, -1, -1, 2, 3, '#1a1922') // rayita de "pendiente"
+    else if (tipo === 'entrega') for (const [x, y] of [[-2, 0], [-1, 1], [0, 0], [1, -1]]) rect(g, x, y, 1, 1, '#1a1922') // palomita
+    return g
   }
-  function dibujarDestello(o: Destello) {
-    const k = Math.min(1, (reloj - o.t0) / 0.9), c = COLOR_SOBRE[o.tipo]
-    const rad = reducido ? 7 : 3 + Math.round(k * 8)
-    ctx.globalAlpha = 1 - k
-    r(o.x - rad, o.y - rad, rad * 2, 2, c); r(o.x - rad, o.y + rad - 2, rad * 2, 2, c); r(o.x - rad, o.y - rad, 2, rad * 2, c); r(o.x + rad - 2, o.y - rad, 2, rad * 2, c)
-    ctx.globalAlpha = 1
+  function nuevoDestello(p: Punto, tipo: EntreSesiones['tipo']) { // aro que crece y se desvanece (CSS); con movimiento reducido queda quieto 0,9 s
+    const g = grupo(capaDestellos, 'destello')
+    g.style.transform = px(p)
+    nodo('rect', { x: -6, y: -6, width: 12, height: 12, fill: 'none', stroke: COLOR_SOBRE[tipo], 'stroke-width': 2 }, g)
+    return g
   }
 
   // ── Bucle de animación ──
-  let reloj = 0, previo = performance.now(), cuadroId = 0, ultimoF = -1
+  let reloj = 0, previo = performance.now(), cuadroId = 0
+  // Fija lo que hace el actor: sentado en su escritorio (de espaldas, con pantalla), caminando o en la pose de su estado.
+  // Cambiar de pose es cambiar una clase; el rig solo se reconstruye si cambia la vista o el equipo.
+  function aplicar(a: Actor) {
+    const s = a.s!
+    a.camina = a.ruta.length > 0
+    const sentado = !a.camina && a.lugar?.escritorio != null && s.estado === 'trabajando'
+    const pose: Pose = sentado ? (a.espera ? 'espera' : 'teclea') : a.camina ? 'camina' : a.lugar?.pose ?? ROL[s.estado]?.pose ?? 'parado'
+    const claveRig = `${sentado}|${JSON.stringify(a.aspecto)}`
+    if (a.claveRig !== claveRig) {
+      a.claveRig = claveRig; a.pose = undefined
+      const rig = construirPersonaje({ aspecto: a.aspecto, vista: sentado ? 'espalda' : 'frente' }, temaActual(), actorDe(s.id, s.rol))
+      if (a.g.firstElementChild) a.g.firstElementChild.replaceWith(rig); else a.g.prepend(rig)
+    }
+    if (a.pose !== pose) { a.pose = pose; a.g.firstElementChild!.setAttribute('class', clasePose(pose)) }
+    // Pantalla del escritorio: código que corre si teclea, barra de progreso si espera un proceso.
+    const pantalla = sentado ? pantallas[a.lugar!.escritorio!] : null
+    if (a.pantalla && a.pantalla !== pantalla) a.pantalla.setAttribute('class', 'pantalla')
+    a.pantalla = pantalla
+    pantalla?.setAttribute('class', `pantalla ${a.espera ? 'espera' : 'teclea'}`)
+    // Subagentes trabajando: hasta 3 robots que flotan a un lado.
+    const subs = (datos?.subagentes ?? []).filter((x) => x.sesion_id === s.id && x.estado === 'trabajando').slice(0, 3).length
+    const claveRobots = `${subs}|${sentado}`
+    if (a.claveRobots !== claveRobots) {
+      a.claveRobots = claveRobots
+      a.g.querySelector('.robots')?.remove()
+      if (subs) {
+        const robots = grupo(a.g, 'robots')
+        for (let k = 0; k < subs; k++) {
+          const bot = robot(k) // el origen del robot son sus pies
+          bot.setAttribute('transform', `translate(${(sentado ? 23 : 13) + k * 10 - 4} ${-(sentado ? 6 : 0) - (k % 2) * 3 - 10})`)
+          robots.append(bot)
+        }
+      }
+    }
+  }
+  // Mueve al actor y su botón; la etiqueta no se despega del personaje al caminar. Al frente, el que está más abajo.
+  function posicionar(a: Actor) {
+    a.g.style.transform = px(a)
+    const x = Math.round(a.x) * e
+    a.boton.style.transform = `translate(${x}px, ${Math.round(a.y) * e}px)`
+    const z = String(Math.round(a.y) + 10)
+    if (a.boton.style.zIndex !== z) a.boton.style.zIndex = z
+    const etiqueta = a.boton.lastElementChild as HTMLElement // se recorre para no salirse por los bordes de la escena
+    a.anchoEtiqueta ??= etiqueta.offsetWidth
+    const mitad = a.anchoEtiqueta / 2 + 2
+    const margen = `${Math.min(Math.max(x, mitad), W * e - mitad) - x}px`
+    if (a.margen !== margen) { a.margen = margen; etiqueta.style.marginLeft = margen }
+  }
+  // El SVG se pinta en orden de documento: el actor más abajo va al frente. Solo se reordena si el orden cambió.
+  function ordenar() {
+    const orden = [...actores.values()].sort((p, q) => p.y - q.y)
+    orden.forEach((a, i) => { if (capaActores.children[i] !== a.g) capaActores.insertBefore(a.g, capaActores.children[i] ?? null) })
+    lampara.style.display = orden.some((a) => a.s?.estado === 'bloqueado' && !a.ruta.length) ? '' : 'none'
+  }
+  function sincronizar() { // tras datos nuevos o un cambio de tamaño
+    construirYo()
+    for (const a of actores.values()) if (a.s) { aplicar(a); posicionar(a) }
+    ordenar()
+    const n = Math.min(datos ? pendientesParaMi(datos).length : 0, 6)
+    ;[...pila.children].forEach((hoja, k) => { (hoja as SVGElement).style.display = k < n ? '' : 'none' })
+  }
   function cuadro(ahora: number) {
     const dt = Math.min(0.1, (ahora - previo) / 1000)
     previo = ahora; reloj += dt
+    let cambio = false
     for (const [id, a] of actores) {
-      if (a.saliendo && !a.ruta.length) { a.boton.remove(); actores.delete(id); continue }
+      if (a.saliendo && !a.ruta.length) { quitar(id, a); cambio = true; continue }
+      if (!a.ruta.length && !a.camina) continue
       avanzar(a, dt)
+      if ((a.ruta.length > 0) !== a.camina) aplicar(a) // empezó o dejó de caminar: otra pose, otra vista, otra pantalla
+      posicionar(a)
+      cambio = true
     }
     moverMensajeros(dt)
     moverSobres(dt)
-    // Quieto, se pinta solo cuando cambia el cuadro de animación (4 por segundo) y no a cada refresco de pantalla.
-    const mueve = entregas.length > 0 || sobres.length > 0 || destellos.length > 0 || [...actores.values()].some((a) => a.ruta.length > 0)
-    const f = Math.floor(reloj * 4)
-    if (!mueve && !sucio && f === ultimoF) { cuadroId = requestAnimationFrame(cuadro); return }
-    ultimoF = f; sucio = false
-    dibujar(f, Math.floor(reloj * 8))
-    const ancho = W * e
-    for (const a of actores.values()) {
-      // Mismo redondeo que el sprite: la etiqueta no se despega del personaje al caminar. Al frente, el que está más abajo.
-      const x = Math.round(a.x) * e
-      a.boton.style.transform = `translate(${x}px, ${Math.round(a.y) * e}px)`
-      const z = String(Math.round(a.y) + 10)
-      if (a.boton.style.zIndex !== z) a.boton.style.zIndex = z
-      const etiqueta = a.boton.lastElementChild as HTMLElement // se recorre para no salirse por los bordes de la escena
-      a.anchoEtiqueta ??= etiqueta.offsetWidth
-      const mitad = a.anchoEtiqueta / 2 + 2
-      etiqueta.style.marginLeft = `${Math.min(Math.max(x, mitad), ancho - mitad) - x}px`
-    }
+    sincronizarMensajero()
+    if (sucio) { sucio = false; sincronizar() } else if (cambio) ordenar()
     cuadroId = requestAnimationFrame(cuadro)
   }
-  function dibujar(f: number, fCamina: number) {
-    ctx.drawImage(fondo, 0, 0)
-    const lista = [...actores.values()].filter((a) => a.s && a.lugar).sort((a, b) => a.y - b.y)
-    const sentado = (a: Actor) => !a.ruta.length && a.lugar?.escritorio != null && a.s!.estado === 'trabajando'
-    for (const a of lista) if (sentado(a)) { const d = ESCRITORIOS[a.lugar!.escritorio!]; pantalla(d.dx, d.dy, f + a.lugar!.escritorio! * 3, !!a.espera) }
-    if (lista.some((a) => a.s!.estado === 'bloqueado' && !a.ruta.length)) {
-      const b = SALAS.bloqueados; r(b.x + 98, b.y + 3, 10, 6, reducido || f % 2 ? '#ff4d3d' : '#7a1e18'); r(b.x + 100, b.y + 9, 6, 2, '#2b2b33')
-    }
-    for (const a of lista) {
-      if (sentado(a)) personaje(a.x, a.y, a.aspecto, a.espera ? 'espera' : 'teclea', f, 'espalda')
-      else personaje(a.x, a.y, a.aspecto, a.ruta.length ? 'camina' : (a.lugar!.pose ?? ROL[a.s!.estado]?.pose ?? 'parado'), a.ruta.length ? fCamina : f)
-      const subs = (datos?.subagentes ?? []).filter((x) => x.sesion_id === a.s!.id && x.estado === 'trabajando').slice(0, 3)
-      subs.forEach((_, k) => robot(a.x + (sentado(a) ? 23 : 13) + k * 10, a.y - (sentado(a) ? 6 : 0) - (k % 2) * 3, f, k))
-    }
-    if (entregas[0]) dibujarMensajero(entregas[0], f, fCamina)
-    for (const o of sobres) dibujarSobre(o.x, o.y, o.tipo)
-    for (const o of destellos) dibujarDestello(o)
-    const m = MESA_YO
-    if (!entregas.length) personaje(EN_MESA.x, EN_MESA.y, yo, 'parado', f) // si va a entregar, su lugar queda vacío
-    r(m.dx, m.dy, 40, 10, '#c88d55'); r(m.dx, m.dy, 40, 1, '#dba06a'); r(m.dx, m.dy + 10, 40, 6, '#8a5a33')
-    r(m.dx + 25, m.dy - 9, 12, 10, '#2b2b33'); r(m.dx + 30, m.dy + 1, 2, 2, '#2b2b33')
-    const n = datos ? pendientesParaMi(datos).length : 0
-    r(m.dx + 2, m.dy + 2, 9, 6, '#6e4626')
-    for (let k = 0; k < Math.min(n, 6); k++) r(m.dx + 3, m.dy + 5 - k, 7, 1, k % 2 ? '#e8e4da' : '#ffffff')
-  }
-
   // Pestaña oculta: el bucle se detiene; al volver sigue desde donde iba, sin un salto de tiempo.
   const arrancar = () => { if (!cuadroId && !document.hidden) { previo = performance.now(); cuadroId = requestAnimationFrame(cuadro) } }
   const alCambiarVisibilidad = () => { if (document.hidden) { cancelAnimationFrame(cuadroId); cuadroId = 0 } else arrancar() }
@@ -537,7 +527,6 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
     destruir() {
       cancelAnimationFrame(cuadroId); cuadroId = 0
       document.removeEventListener('visibilitychange', alCambiarVisibilidad)
-      removeEventListener('oficina-tema', alCambiarTema)
       movimiento.removeEventListener('change', alCambiarMovimiento)
       observador.disconnect(); capa.replaceChildren()
     },

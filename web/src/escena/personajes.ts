@@ -18,7 +18,7 @@ export type Kit = (p: Pieza) => SVGGElement
 export const actorDe = (clave: string | null | undefined, rol?: RolId | null): Actor =>
   clave === 'yo' ? 'yo' : rol ? `rol:${rol}` : 'fondo'
 
-function nodo<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number> = {}, padre?: Element, clase?: string) {
+export function nodo<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number> = {}, padre?: Element, clase?: string) {
   const e = document.createElementNS(NS, tag)
   for (const k in attrs) e.setAttribute(k, String(attrs[k]))
   if (clase) e.setAttribute('class', clase)

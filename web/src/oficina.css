@@ -95,7 +95,7 @@
     :root { --dur-rapida: 0ms; --dur-media: 0ms; --dur-lenta: 0ms; }
     *, ::before, ::after { animation-duration: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 0ms !important; scroll-behavior: auto !important; }
     /* Los personajes quedan en la postura de su pose: con duración 0 los keyframes saltarían a su último cuadro. */
-    .pj, .pj * { animation: none !important; }
+    .pj, .pj *, .escena svg *, .retrato * { animation: none !important; }
   }
   * { box-sizing: border-box; }
   html { scrollbar-color: var(--borde-fuerte) transparent; accent-color: var(--acento); }
@@ -153,7 +153,7 @@
     .escenario { overflow-x: auto; justify-content: flex-start; overscroll-behavior-x: contain; }
     .escena { width: 680px; flex: none; }
   }
-  .escena canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+  .escena svg { display: block; width: 100%; height: auto; }
   .capa { position: absolute; inset: 0; pointer-events: none; }
   .fijo { position: absolute; left: 0; top: 0; }
   /* Letras de la capa: crecen con la escena (--e = px de pantalla por px lógico) sin bajar de 12 px. */
@@ -166,7 +166,7 @@
   .agente.saliendo { pointer-events: none; }
   .agente.saliendo .etiqueta, .agente.saliendo .burbuja { opacity: .5; transition: opacity var(--dur-lenta) var(--curva-salida); }
   /* Zona de clic: el personaje, nunca menos de 32 × 36 px; los pies quedan en el mismo punto. */
-  .agente .caja { position: absolute; --ancho: max(calc(var(--e) * 18px), 32px); --alto: max(calc(var(--e) * 21px), 36px);
+  .agente .caja { position: absolute; --ancho: max(calc(var(--e) * 18px), 32px); --alto: max(calc(var(--e) * 28px), 36px);
     left: calc(var(--ancho) / -2); top: calc(var(--e) * 2px - var(--alto)); width: var(--ancho); height: var(--alto); border-radius: var(--r1); }
   .agente:focus-visible { outline: none; }
   .agente:hover .caja { outline: 2px dashed var(--esc-resalte); box-shadow: 0 0 0 4px rgba(26, 25, 34, .55); }
@@ -175,7 +175,7 @@
   /* Al señalarlo o enfocarlo, su nombre completo pasa al frente. */
   .agente:hover, .agente:focus-visible { z-index: var(--z-encima) !important; }
   .agente:hover .etiqueta, .agente:focus-visible .etiqueta { max-width: calc(var(--e) * 470px) !important; }
-  .burbuja { position: absolute; left: 0; bottom: calc(var(--e) * 19px); transform: translateX(-50%); transform-origin: 50% 100%;
+  .burbuja { position: absolute; left: 0; bottom: calc(var(--e) * 29px); transform: translateX(-50%); transform-origin: 50% 100%;
     font: 700 var(--letra-burbuja)/1 var(--pixel); background: var(--esc-papel); color: var(--esc-tinta); border: 2px solid var(--esc-tinta); border-radius: var(--r1);
     padding: .12em .4em .18em; white-space: nowrap; display: flex; gap: 3px; align-items: center; box-shadow: 0 3px 0 var(--esc-sombra);
     animation: brota var(--dur-media) var(--curva-entrada); }
@@ -546,6 +546,9 @@
   .pj :is(.carpeta, .taza, .zz, .punto, .ojo-cerrado, .boca-t) { display: none; }
   .pj .ojos { animation: pj-parpadeo 4s infinite; }
   .pose-parado .cuerpo { animation: pj-respira 3.2s ease-in-out infinite; }
+  /* Paso congelado (con movimiento reducido): una pierna adelante y la otra atrás, brazos al revés; la animación lo pisa. */
+  .pose-camina .pierna.i { transform: rotate(-14deg); } .pose-camina .pierna.d { transform: rotate(14deg); }
+  .pose-camina .brazo.i { transform: rotate(10deg); } .pose-camina .brazo.d { transform: rotate(-10deg); }
   .pose-camina .pierna.i { animation: pj-paso .5s ease-in-out infinite alternate; }
   .pose-camina .pierna.d { animation: pj-paso .5s ease-in-out infinite alternate-reverse; }
   .pose-camina .brazo.i { animation: pj-braceo .5s ease-in-out infinite alternate-reverse; }
@@ -589,6 +592,25 @@
   @keyframes pj-zz { 0% { transform: translate(0, 2px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translate(2px, -3px); opacity: 0; } }
   @keyframes pj-alza { to { transform: translateY(-.8px); } }
   @keyframes pj-vapor { 0% { transform: translateY(1px); opacity: 0; } 40% { opacity: .8; } 100% { transform: translateY(-2px); opacity: 0; } }
+  /* Extras de la escena SVG (escena.ts): pantallas, robots, lámpara y destellos. Solo transform y opacity; con movimiento
+     reducido (animation: none, arriba) quedan en su postura base: líneas completas, barra al 50 %, LED verde, lámpara encendida. */
+  .pantalla { display: none; }
+  .pantalla:is(.teclea, .espera) { display: inline; }
+  .pantalla.teclea .progreso, .pantalla.espera .lineas { display: none; }
+  .pantalla .lineas rect { transform-box: fill-box; transform-origin: 0 50%; animation: pj-linea 1.4s ease-in-out infinite alternate; }
+  .pantalla .barra { transform-box: fill-box; transform-origin: 0 50%; transform: scaleX(.5); animation: pj-barra 1.25s steps(10) infinite; }
+  .robot-flota { animation: pj-flota .5s steps(1) infinite; }
+  .robot-led { opacity: 0; animation: pj-led 1s steps(1) infinite; }
+  .robot-ojos { animation: pj-ojos 1.5s steps(1) infinite; }
+  .lampara .apagada { opacity: 0; animation: pj-lampara .5s steps(1) infinite; }
+  .destello rect { transform-box: fill-box; transform-origin: 50% 50%; animation: pj-destello .9s linear forwards; }
+  @keyframes pj-linea { from { transform: scaleX(.27); } }
+  @keyframes pj-barra { from { transform: scaleX(.1); } to { transform: scaleX(1); } }
+  @keyframes pj-flota { 50% { transform: translateY(-1px); } }
+  @keyframes pj-led { 50% { opacity: 1; } }
+  @keyframes pj-ojos { 0% { opacity: 0; } 8% { opacity: 1; } }
+  @keyframes pj-lampara { 0% { opacity: 1; } 50% { opacity: 0; } }
+  @keyframes pj-destello { from { transform: scale(.43); } to { transform: scale(1.57); opacity: 0; } }
   .retrato { display: block; flex: none; background: var(--escenario); border-radius: var(--r3); border: 1px solid var(--borde); }
   .arm-escaparate { display: flex; gap: var(--s4); align-items: center; flex-wrap: wrap; }
   .arm-ficha { display: grid; gap: var(--s1); min-width: 0; flex: 1; }

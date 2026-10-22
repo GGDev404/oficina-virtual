@@ -27,7 +27,7 @@ export function aplicarTema(t: TemaId) {
   dispatchEvent(new Event('oficina-tema'))
 }
 // El tema en uso, para componentes que dibujan según él (se actualiza solo al cambiarlo).
-const temaActual = (): TemaId => { const t = document.documentElement.dataset.tema; return t && t in TEMAS ? (t as TemaId) : 'auto' }
+export const temaActual = (): TemaId => { const t = document.documentElement.dataset.tema; return t && t in TEMAS ? (t as TemaId) : 'auto' }
 export const useTema = () => useSyncExternalStore(
   (cb) => { addEventListener('oficina-tema', cb); return () => removeEventListener('oficina-tema', cb) }, temaActual)
 sistema.addEventListener('change', () => { if (temaGuardado() === 'auto') aplicarTema('auto') })
