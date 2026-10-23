@@ -16,7 +16,7 @@ export function Retrato({ aspecto, pose = 'parado', tam = 96, etiqueta, actor }:
     if (!fig.current) { fig.current = figura(); caja.current!.append(fig.current.el) }
     fig.current.poner(tiraPersonaje(JSON.parse(clave) as Aspecto, tema, quien, pose))
   }, [clave, tema, quien, pose])
-  // 26 × 32,5 px lógicos alrededor del personaje (pies a 31 px del borde de arriba), como el retrato de antes.
-  return <span ref={caja} className="retrato" style={{ width: tam, height: tam * 1.25, '--e': tam / 26 } as React.CSSProperties}
+  // 30 × 37,5 px lógicos alrededor del personaje (pies a 34 px del borde de arriba): cabe la mano en alto al saludar.
+  return <span ref={caja} className="retrato" style={{ width: tam, height: tam * 1.25, '--e': tam / 30 } as React.CSSProperties}
     role={etiqueta ? 'img' : undefined} aria-label={etiqueta} aria-hidden={etiqueta ? undefined : true} />
 }

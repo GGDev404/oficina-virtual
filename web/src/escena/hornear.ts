@@ -9,7 +9,7 @@ import { OCULTOS, type Mov, type PoseDef, type Vaiven } from './animacion'
 
 const NS = 'http://www.w3.org/2000/svg'
 /** Caja de cada cuadro en px lógicos, con los pies en (0, 0). */
-export const CELDA = { x: -16, y: -38, w: 32, h: 42 }
+export const CELDA = { x: -20, y: -38, w: 40, h: 42 } // ancho de sobra para props y alas en la mano
 /** Resolución del pixel art: px de imagen por px lógico (se reduce suave al mostrarlo: píxeles parejos a cualquier escala). */
 const PIXEL = 6
 

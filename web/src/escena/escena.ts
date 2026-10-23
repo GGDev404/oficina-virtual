@@ -8,9 +8,9 @@ import type { Datos, EntreSesiones, RolId, Sesion } from '@/lib/tipos'
 import { temaActual } from '@/lib/tema'
 import { pulso, type PoseDef } from './animacion'
 import { ESCRITORIOS, MESA_YO, SALAS, W, escenario, mesaYo, type Sala } from './escenarios'
-import { claveTema, colorDe, enCache, figura, hornearVector, type Figura } from './hornear'
+import { CELDA, claveTema, colorDe, enCache, figura, hornearVector, type Figura } from './hornear'
 import { actorDe, tiraPersonaje } from './personajes'
-import { nodo } from './rig'
+import { color as colorValido, nodo } from './rig'
 import { aspecto, YO_FABRICA, type Aspecto, type Pose } from './sprites'
 
 // Íconos de trazo (formas de Lucide, ISC) que usa la capa: insignias y burbujas.
@@ -164,6 +164,8 @@ function globoRig(error: boolean) {
 const decorado = (clave: string, rig: () => SVGGElement, pose = QUIETA) => enCache(`deco|${clave}|${claveTema()}`, () => hornearVector(rig(), pose))
 /** Coloca una figura por sus pies en px lógicos (CSS con --e: sigue sola al cambiar de tamaño). */
 function fijar(f: Figura, x: number, y: number) { f.el.style.left = `calc(var(--e) * ${x}px)`; f.el.style.top = `calc(var(--e) * ${y}px)`; return f }
+/** Coloca una figura dentro de otra, por sus pies relativos a los pies de la de afuera (su caja empieza en CELDA.x, CELDA.y). */
+const colgar = (f: Figura, x: number, y: number) => fijar(f, x - CELDA.x, y - CELDA.y)
 
 export interface Acciones { abrirAgente: (id: string) => void; abrirOficina: (seccion?: string) => void; abrirPizarra: () => void }
 
@@ -198,8 +200,8 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
   function crearBoton(id: string, look: Aspecto) {
     // Cada agente lleva su etiqueta del color de su camisa, para reconocerlo de un vistazo.
     const etiqueta = el('span', { class: 'etiqueta' }, el('span', { class: 'txt' }), el('span', { class: 'ctx' }), el('span', { class: 'rol' }))
-    etiqueta.style.background = look.camisa
-    etiqueta.style.color = textoSobre(look.camisa)
+    etiqueta.style.background = colorValido(look.camisa, '#336fc6')
+    etiqueta.style.color = textoSobre(colorValido(look.camisa, '#336fc6'))
     const b = el('button', { class: 'agente', type: 'button', 'aria-haspopup': 'dialog', onclick: () => acciones.abrirAgente(id) },
       el('span', { class: 'burbuja' }), el('span', { class: 'caja' }), etiqueta) as HTMLButtonElement
     // El nombre se despliega completo al señalarlo o enfocarlo: se vuelve a medir para que no se salga de la escena.
@@ -257,7 +259,7 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
         if (JSON.stringify(look) !== JSON.stringify(a.aspecto)) { // cambió su equipo en la Armería
           a.aspecto = look
           const et = a.boton.querySelector<HTMLElement>('.etiqueta')!
-          et.style.background = look.camisa; et.style.color = textoSobre(look.camisa)
+          et.style.background = colorValido(look.camisa, '#336fc6'); et.style.color = textoSobre(colorValido(look.camisa, '#336fc6'))
         }
         a.espera = esperaProcesos(s, d)
         const n = procesosDe(s).length
@@ -407,7 +409,7 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
   pintarMesa(0)
   // Tu avatar de pie tras el escritorio y el mensajero (con el sobre en la mano o el globo de la entrega).
   const avatarMesa = figura(), mensajero = figura()
-  const sobreMano = fijar(figura(), 6.5, -7), globo = fijar(figura(), 0, -12)
+  const sobreMano = colgar(figura(), 6.5, -7), globo = colgar(figura(), 0, -12)
   mensajero.el.append(sobreMano.el, globo.el)
   figuras.append(avatarMesa.el, mensajero.el)
   let claveMensajero = ''
@@ -504,7 +506,7 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
       a.claveRobots = claveRobots
       for (const r of a.fig.el.querySelectorAll(':scope > .robot')) r.remove()
       for (let k = 0; k < subs; k++) {
-        const bot = fijar(figura('robot'), (sentado ? 23 : 13) + k * 10, -(sentado ? 6 : 0) - (k % 2) * 3)
+        const bot = colgar(figura('robot'), (sentado ? 23 : 13) + k * 10, -(sentado ? 6 : 0) - (k % 2) * 3)
         bot.poner(decorado('robot', robotRig, ROBOT))
         a.fig.el.append(bot.el)
       }
@@ -577,7 +579,7 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
       document.removeEventListener('visibilitychange', alCambiarVisibilidad)
       movimiento.removeEventListener('change', alCambiarMovimiento)
       removeEventListener('oficina-tema', alCambiarTema)
-      observador.disconnect(); capa.replaceChildren(); figuras.remove()
+      observador.disconnect(); capa.replaceChildren(); capaFondo.replaceChildren(); figuras.remove()
     },
   }
 }

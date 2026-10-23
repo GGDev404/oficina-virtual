@@ -155,11 +155,11 @@
   }
   .escena svg { display: block; width: 100%; height: auto; }
   .capa { position: absolute; inset: 0; pointer-events: none; }
-  /* Figuras (escena.ts, hornear.ts): tiras de sprites que la GPU recorre. Cada figura mide una celda de 32 × 42 px lógicos
-     con los pies en (16, 38); se coloca por sus pies con transform (las que caminan) o left/top (las fijas). */
+  /* Figuras (escena.ts, hornear.ts): tiras de sprites que la GPU recorre. Cada figura mide una celda de 40 × 42 px lógicos
+     con los pies en (20, 38); se coloca por sus pies con transform (las que caminan) o left/top (las fijas). */
   .figuras { position: absolute; inset: 0; pointer-events: none; isolation: isolate; overflow: hidden; }
-  .figura { position: absolute; left: 0; top: 0; width: calc(var(--e) * 32px); height: calc(var(--e) * 42px);
-    margin: calc(var(--e) * -38px) 0 0 calc(var(--e) * -16px); pointer-events: none; }
+  .figura { position: absolute; left: 0; top: 0; width: calc(var(--e) * 40px); height: calc(var(--e) * 42px);
+    margin: calc(var(--e) * -38px) 0 0 calc(var(--e) * -20px); pointer-events: none; }
   .figura[hidden] { display: none; }
   .figura.vuela { z-index: 999; }
   .figura .vaiven { position: absolute; inset: 0; transform-origin: 50% 90.5%; }
@@ -555,7 +555,7 @@
   input[type=color] { inline-size: 100%; block-size: var(--control-alto); padding: 2px; border: 1px solid var(--borde-control);
     border-radius: var(--r2); background: var(--panel); cursor: pointer; }
   .retrato { display: block; position: relative; overflow: hidden; flex: none; background: var(--escenario); border-radius: var(--r3); border: 1px solid var(--borde); }
-  .retrato .figura { left: calc(var(--e) * 13px); top: calc(var(--e) * 31px); }
+  .retrato .figura { left: calc(var(--e) * 15px); top: calc(var(--e) * 34px); }
   .arm-escaparate { display: flex; gap: var(--s4); align-items: center; flex-wrap: wrap; }
   .arm-ficha { display: grid; gap: var(--s1); min-width: 0; flex: 1; }
   .arm-nombre { margin: 0; font: 700 var(--t-xl)/1.2 var(--pixel); letter-spacing: .02em; }
