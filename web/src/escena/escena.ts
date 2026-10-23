@@ -184,7 +184,23 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
   const px = (o: Punto) => `translate(${o.x * e}px, ${o.y * e}px)` // figura y botón con el mismo valor: la etiqueta no se despega
 
   // Fondo (pisos, muros, puertas y muebles): se construye una vez; los tokens --esc-* lo recolorean al cambiar de tema.
-  capaFondo.append(escenario())
+  // Fondo del tema (estático) y su decorado animado en .figuras; se rehace solo si cambia el tema o su modo.
+  const decorados: Figura[] = []
+  let temaFondo = ''
+  function ponerFondo() {
+    if (temaFondo === claveTema()) return
+    temaFondo = claveTema()
+    const esc = escenario(temaActual())
+    capaFondo.replaceChildren(esc.g)
+    for (const f of decorados.splice(0)) f.el.remove()
+    for (const a of esc.animados) {
+      const f = fijar(figura('decorado'), a.x, a.y)
+      f.el.style.zIndex = String(a.z ?? 0)
+      f.poner(decorado(`esc-${a.clave}`, a.rig, a.pose))
+      figuras.append(f.el); decorados.push(f)
+    }
+  }
+  ponerFondo()
   // Pantallas de los escritorios (encendidas mientras alguien teclea o espera ahí) y la lámpara de Bloqueados.
   const pantallas = ESCRITORIOS.map((d) => { const f = fijar(figura('pantalla'), d.dx + 15, d.dy); f.el.hidden = true; f.el.style.zIndex = String(d.dy); figuras.append(f.el); return f })
   const lampara = fijar(figura('decorado'), SALAS.bloqueados.x + 103, SALAS.bloqueados.y + 11)
@@ -532,6 +548,7 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
     if (!lampara.el.hidden) lampara.poner(decorado('lampara', lamparaRig, LAMPARA))
   }
   function sincronizar() { // tras datos nuevos, un cambio de tamaño o de tema
+    ponerFondo()
     construirYo()
     const vivos = [...actores.values()].filter((a) => a.s)
     for (const a of vivos) aplicar(a)
