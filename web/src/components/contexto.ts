@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react'
 import type { Datos, Memoria, Tarea, Yo } from '@/lib/tipos'
 
-export type Seccion = 'agenda' | 'pizarra' | 'pendientes' | 'parati' | 'memoria' | 'roles'
+export type Seccion = 'agenda' | 'pendientes' | 'parati' | 'memoria' | 'roles'
 export interface OpcionesNueva {
   tareaId?: string | null
   cwd?: string | null
@@ -18,7 +18,8 @@ export interface Oficina {
   mem: Memoria | null
   cargarMemoria: () => void
   abrirAgente: (id: string, opciones?: { escribir?: boolean }) => void
-  abrirOficina: (seccion?: Seccion) => void
+  abrirOficina: (seccion?: Seccion) => void // sin sección: Tu día con todas sus pestañas; con una: solo esa sección
+  abrirPizarra: () => void
   abrirNecesitan: () => void
   abrirNueva: (opciones?: OpcionesNueva) => void
   abrirArmeria: (clave?: string) => void

@@ -1,7 +1,7 @@
 // Tarjetas de resumen debajo de la escena: un ítem cada una; cada una abre solo lo suyo.
 import { useOficina } from '@/components/contexto'
 import { Icono, type NombreIcono } from '@/components/icono'
-import { ESTADOS, colaUrgente, gb, miles, nombreSesion, pendientesParaMi, proximoCorte, veredicto } from '@/lib/oficina'
+import { ESTADOS, colaUrgente, gb, miles, nombreSesion, pendientesParaMi, proximoCorte, resumenPizarra, veredicto } from '@/lib/oficina'
 
 export const NIVEL_MEM = { bien: ['Memoria bien', 'verde', 'bien'], alto: ['Memoria alta', 'naranja', 'aviso'], critico: ['Memoria casi agotada', 'rojo', 'alerta'] } as const
 
@@ -16,13 +16,14 @@ function Tarjeta({ icon, tono = '', titulo, detalle, accion }: { icon: NombreIco
 }
 
 export function Tarjetas() {
-  const { datos: d, tareas, mem, abrirNecesitan, abrirOficina, abrirAgente } = useOficina()
+  const { datos: d, tareas, mem, abrirNecesitan, abrirOficina, abrirPizarra, abrirAgente } = useOficina()
   const cola = colaUrgente(d)
   const v = veredicto(d)
   const paraMi = pendientesParaMi(d).sort((a, b) => b.ts - a.ts)
   const c = proximoCorte()
   const p = d.pendientes
   const pend = p.sesiones.length + p.notas.length + p.solicitudes.length
+  const pz = resumenPizarra(d)
   const pausados = mem?.sesiones.filter((s) => s.pausada).length ?? 0
   // Gasto de tokens de las sesiones abiertas: total, caché ponderada y quién gasta más (su ficha se abre al hacer clic).
   const gastos = Object.entries(d.gastos ?? {}).map(([id, g]) => ({ id, g, total: g.entrada + g.cache_leida + g.cache_creada + g.salida }))
@@ -44,6 +45,8 @@ export function Tarjetas() {
         titulo={c ? `${c.nombre} · ${c.hora}` : 'Sin cortes por hoy'}
         detalle={[c && `En ${c.faltan >= 60 ? `${Math.floor(c.faltan / 60)} h ` : ''}${c.faltan % 60} min`, v.vencidas.length || v.hoy.length ? v.texto.split(' · ')[0] : 'Al día'].filter(Boolean).join(' · ')}
         accion={() => abrirOficina('agenda')} />
+      <Tarjeta icon="pizarra" tono={pz.tocan ? 'aviso' : ''} titulo={pz.tocan ? `Pizarra · te toca en ${pz.tocan}` : 'Pizarra'}
+        detalle={`${pz.enCurso} en curso · ${pz.revisar} por revisar · ${pz.tocan} te tocan`} accion={abrirPizarra} />
       <Tarjeta icon="listo" tono={p.sesiones.length || p.solicitudes.length ? 'aviso' : ''} titulo={pend ? `Pendientes · ${pend}` : 'Sin pendientes'}
         detalle={p.solicitudes.length ? `${p.solicitudes.length} sesiones por aprobar`
           : p.sesiones.length ? `${p.sesiones.length} sesiones por retomar` : p.notas[0]?.texto ?? 'Nada por retomar'}

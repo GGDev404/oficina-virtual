@@ -27,7 +27,7 @@ escena vuelve a leer su paleta y repinta el fondo.
 | Espacio | `--s1..--s6` = 4 / 8 / 12 / 16 / 24 / 32 px |
 | Radio | `--r1..--r5` = 4 / 8 / 10 / 12 / 16 px, `--r-pill` (Minecraft los pone en 0) |
 | Letra | `--t-xs 12 · --t-sm 12.5 · --t-md 13 · --t-base 14 · --t-lg 16 · --t-xl 18`; familias `--letra --pixel --mono` |
-| Controles | `--control` 32 px, `--control-alto` 36 px (campos y selects) |
+| Controles | `--control` 32 px, `--control-alto` 36 px (campos y selects), `--icono-grande` 24 px (icono de estado de la pizarra) |
 | Movimiento | `--dur-rapida 120 · --dur-media 200 · --dur-lenta 320 ms · --dur-pulso`; `--curva-entrada` (desacelera) y `--curva-salida` (acelera). Con movimiento reducido valen 0 |
 | Escena | `--escenario` y `--esc-*`: tinta, papel, velo, resalte, alerta, aviso, ok, info, insignias, sombra; y la paleta del lienzo (pasillo, muros, pisos por cuarto, monitor, código) que `escena.ts` lee con `getComputedStyle` |
 
@@ -47,6 +47,7 @@ Letra de píxel (`--pixel`) solo en títulos, etiquetas de la escena, insignias 
 | Campos | `input` (text, search, password, number, email, date, url), `select`, `textarea`, `input[type=color]` | hover, disabled, `aria-invalid` |
 | Opciones | `.opcion[aria-pressed]`, `.opcion-pregunta` (radio/checkbox) | |
 | Maquetación | `.pila(-chica/-media/-grande)`, `.fila`, `.acciones`, `.sin-margen`, `.subtitulo`, `.una-linea`, `.crece`, `.empuja`, `.relleno(-chico)` | |
+| Pizarra | `.pz-tarjeta[data-tono=azul\|verde\|naranja]` (estado: franja con icono + frase, `--tono`/`--tono-bg`), `.pz-linea` (pasos como segmentos), `.pz-cols` (Hecho / Falta), `.pz-ti[data-tono]` (qué falta de ti), `.pz-rejilla` | el tono va en `data-tono`, no como clase, para no heredar `.rojo`/`.naranja` globales; siempre icono + texto además del color |
 | Juego | `.retrato` (sprite; clase = silueta, rol = rasgo a la izquierda: lupa, martillo, escudo, libro, paleta, enchufe, ver `RASGOS` en `escena/sprites.ts`), `.arm-hotbar` (9 casillas), `.arm-insignia` (nivel), `.logro` (aviso de logro) | |
 
 ## Accesibilidad (no negociable)
