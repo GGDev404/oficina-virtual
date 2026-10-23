@@ -59,14 +59,16 @@ function lugar(sala: Sala, i: number): Lugar {
     if (i < ESCRITORIOS.length) { const e = ESCRITORIOS[i]; return { x: e.dx + 15, y: e.dy + 24, escritorio: i } }
     return { x: 14 + ((i - ESCRITORIOS.length) % 10) * 22, y: 122, pose: 'parado' }
   }
+  // Entre filas cabe la burbuja de la de adelante sin tapar la etiqueta de la de atrás (personajes de ~26 px de alto).
   if (sala === 'puerta') { // fila frente a tu puerta: el más urgente queda junto a ella
-    const xs = [370, 414, 326, 458]
-    return { x: xs[i % 4], y: [112, 74, 38][Math.floor(i / 4) % 3] }
+    if (i % 11 >= 8) return { x: [392, 348, 436][i % 11 - 8], y: 86 } // del noveno en adelante: entre columnas, a media altura
+    return { x: [370, 414, 326, 458][i % 4], y: [116, 56][Math.floor(i / 4) % 2] }
   }
   const s = SALAS[sala]
   const paso = sala === 'descanso' ? 36 : 32 // más aire entre sillones: caben nombres más largos
   const cols = Math.floor((s.w - 16) / paso)
-  return { x: s.x + 22 + (i % cols) * paso, y: s.y + 58 + (Math.floor(i / cols) % 2) * 36 }
+  const fila = Math.floor(i / cols) % 2 // la segunda fila, adelante y corrida media celda: su burbuja cae entre dos etiquetas
+  return { x: s.x + 22 + (i % cols) * paso + (fila * paso) / 2, y: s.y + (fila ? 94 : 54) }
 }
 const entrada = (sala: Sala) => { const s = SALAS[sala]; return { x: s.puerta, y: s.abajo ? s.y + s.h - 6 : s.y + 26 } }
 const enPasillo = (sala: Sala) => ({ x: SALAS[sala].puerta, y: 146 })
@@ -171,7 +173,7 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
   const alCambiarMovimiento = () => { reducido = movimiento.matches }
   movimiento.addEventListener('change', alCambiarMovimiento)
   // Otro tema puede repartir otros personajes: las claves de rig llevan el tema y sincronizar() los rehace.
-  const alCambiarTema = () => { sucio = true }
+  const alCambiarTema = () => { sucio = true; arrancar() }
   addEventListener('oficina-tema', alCambiarTema)
   let datos: Datos | null = null
   const capaFondo = svg.querySelector('#fondo')!
@@ -201,7 +203,7 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
     const b = el('button', { class: 'agente', type: 'button', 'aria-haspopup': 'dialog', onclick: () => acciones.abrirAgente(id) },
       el('span', { class: 'burbuja' }), el('span', { class: 'caja' }), etiqueta) as HTMLButtonElement
     // El nombre se despliega completo al señalarlo o enfocarlo: se vuelve a medir para que no se salga de la escena.
-    for (const ev of ['mouseenter', 'mouseleave', 'focus', 'blur']) b.addEventListener(ev, () => { const a = actores.get(id); if (a) a.anchoEtiqueta = null })
+    for (const ev of ['mouseenter', 'mouseleave', 'focus', 'blur']) b.addEventListener(ev, () => { const a = actores.get(id); if (a?.s) { a.anchoEtiqueta = null; posicionar(a) } })
     capa.append(b)
     return b
   }
@@ -262,11 +264,10 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
         const [contenido, color]: Burbuja = a.espera ? [{ icono: 'reloj', texto: String(n) }, 'azul'] : ROL[s.estado].burbuja ?? ['', '']
         const burbuja = a.boton.querySelector<HTMLElement>('.burbuja')!
         const clave = `${typeof contenido === 'string' ? contenido : `${contenido.icono}${contenido.texto ?? ''}`}|${color}`
-        if (burbuja.dataset.clave !== clave) {
-          burbuja.dataset.clave = clave
-          burbuja.replaceChildren(...(typeof contenido === 'string' ? [contenido] : [icono(contenido.icono), contenido.texto ?? '']))
-          burbuja.className = `burbuja ${color}`
-          burbuja.style.animation = 'none'; void burbuja.offsetWidth; burbuja.style.animation = '' // brota de nuevo con el estado nuevo
+        if (burbuja.dataset.clave !== clave) { // una burbuja nueva brota sola con el estado nuevo (sin forzar layout)
+          const nueva = el('span', { class: `burbuja ${color}` }, ...(typeof contenido === 'string' ? [contenido] : [icono(contenido.icono), contenido.texto ?? '']))
+          nueva.dataset.clave = clave
+          burbuja.replaceWith(nueva)
         }
         const nombre = guardado?.apodo ?? baseDe(d, s)?.apodo ?? s.nombre ?? s.tarea_id ?? base(s.cwd)
         const etiqueta = a.boton.querySelector<HTMLElement>('.etiqueta')!
@@ -342,6 +343,7 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
     for (const f of Object.values(fijos)) f.el.style.transform = `translate(${f.x * e}px, ${f.y * e}px)${f.centro}`
     avatarMesa.el.style.transform = px(EN_MESA); avatarMesa.el.style.zIndex = String(EN_MESA.y)
     claveMensajero = '' // el mensajero se recoloca con la escala nueva
+    arrancar()
   }
   const observador = new ResizeObserver(escalar)
   observador.observe(svg)
@@ -529,7 +531,10 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
   }
   function sincronizar() { // tras datos nuevos, un cambio de tamaño o de tema
     construirYo()
-    for (const a of actores.values()) if (a.s) { aplicar(a); posicionar(a) }
+    const vivos = [...actores.values()].filter((a) => a.s)
+    for (const a of vivos) aplicar(a)
+    for (const a of vivos) a.anchoEtiqueta ??= (a.boton.lastElementChild as HTMLElement).offsetWidth // un solo layout para todas
+    for (const a of vivos) posicionar(a)
     lamparaSegun()
     pintarMesa(Math.min(datos ? pendientesParaMi(datos).length : 0, 6))
   }
@@ -549,7 +554,9 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
     moverSobres(dt)
     sincronizarMensajero()
     if (sucio) { sucio = false; sincronizar() } else if (cambio) lamparaSegun()
-    cuadroId = requestAnimationFrame(cuadro)
+    // En reposo el bucle se duerme: un cuadro del hilo principal haría que Chrome recalculara el estilo de cada figura
+    // animada. Lo despiertan datos nuevos, un cambio de tamaño o de tema (arrancar).
+    cuadroId = cambio || entregas.length || sobres.length || destellos.length ? requestAnimationFrame(cuadro) : 0
   }
   // Pestaña oculta: el bucle se detiene; al volver sigue desde donde iba, sin un salto de tiempo.
   const arrancar = () => { if (!cuadroId && !document.hidden) { previo = performance.now(); cuadroId = requestAnimationFrame(cuadro) } }
@@ -563,6 +570,7 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
       datos = d; sucio = true
       yo = aspecto('yo', d.aspectos?.yo, YO_FABRICA)
       actualizarActores(d); despacharMensajeros(d); despacharEntreSesiones(d)
+      arrancar()
     },
     destruir() {
       cancelAnimationFrame(cuadroId); cuadroId = 0

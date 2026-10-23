@@ -94,8 +94,8 @@
   @media (prefers-reduced-motion: reduce) {
     :root { --dur-rapida: 0ms; --dur-media: 0ms; --dur-lenta: 0ms; }
     *, ::before, ::after { animation-duration: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 0ms !important; scroll-behavior: auto !important; }
-    /* Las figuras quedan en su primer cuadro, la postura de su pose: con duración 0 saltarían al último. */
-    .tira, .vaiven, .destello i { animation: none !important; }
+    /* Las tiras y vaivenes no se animan (hornear.ts); el destello queda quieto: con duración 0 saltaría al final. */
+    .destello i { animation: none !important; }
   }
   * { box-sizing: border-box; }
   html { scrollbar-color: var(--borde-fuerte) transparent; accent-color: var(--acento); }
@@ -164,21 +164,8 @@
   .figura.vuela { z-index: 999; }
   .figura .vaiven { position: absolute; inset: 0; transform-origin: 50% 90.5%; }
   .figura .cuadro { position: absolute; inset: 0; overflow: hidden; }
-  .figura .tira { position: absolute; left: 0; top: 0; height: 100%; max-width: none; user-select: none;
-    animation-timing-function: step-end; animation-iteration-count: infinite; will-change: transform; }
-  .vaiven.respira { animation: v-respira 3.2s ease-in-out infinite; }
-  .vaiven.respira-lenta { animation: v-respira 4.8s ease-in-out infinite; }
-  .vaiven.balanceo { animation: v-balanceo 4s ease-in-out infinite alternate; }
-  .vaiven.alza { animation: v-alza 1.6s ease-in-out infinite alternate; }
-  .vaiven.flota { animation: v-flota 2.4s ease-in-out infinite; }
-  .vaiven.reposo { animation: v-reposo 6s ease-in-out infinite; }
-  .vaiven.suspiro { animation: v-suspiro 5s ease-in-out infinite; }
-  @keyframes v-respira { 50% { transform: scale(1.012, 1.025); } }
-  @keyframes v-balanceo { from { transform: rotate(-1.6deg); } to { transform: rotate(1.6deg); } }
-  @keyframes v-alza { to { transform: translateY(calc(var(--e) * -1px)); } }
-  @keyframes v-reposo { 25% { transform: scale(1.01, 1.022) rotate(.3deg); } 50% { transform: none; } 75% { transform: scale(1.01, 1.022) rotate(-.3deg); } }
-  @keyframes v-suspiro { 35% { transform: translateY(.8%) scale(1.006, .985); } 55% { transform: translateY(.8%) scale(1.006, .985); } 100% { transform: none; } }
-  @keyframes v-flota { 50% { transform: translateY(calc(var(--e) * -1.5px)); } }
+  .figura .tira { position: absolute; left: 0; top: 0; height: 100%; max-width: none; user-select: none; }
+  /* Recorrido de la tira y vaivenes (respira, balanceo, alza, flota, reposo, suspiro): Web Animations en hornear.ts. */
   .mueble { position: absolute; display: block; pointer-events: none; user-select: none; }
   .destello { position: absolute; left: 0; top: 0; z-index: 999; width: 0; height: 0; }
   .destello i { position: absolute; left: calc(var(--e) * -6px); top: calc(var(--e) * -6px); width: calc(var(--e) * 12px); height: calc(var(--e) * 12px);
