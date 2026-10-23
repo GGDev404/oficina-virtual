@@ -149,7 +149,10 @@ const cortana: KitVector = {
     brazo: (g, ab, s) => { const x = s * 5.9; R(g, x - 1.1, -15, 2.2, 4.6, AZUL, 1.1, { 'fill-opacity': 0.55 }); R(ab, x - 1.1, -11.6, 2.2, 4.6, AZUL, 1.1, { 'fill-opacity': 0.55 }); C(ab, x, -7.6, 1.3, HIELO, { 'fill-opacity': 0.75 }) },
     cabeza: (g, esp) => {
       cara(g, esp, '#a8e8ff', '#0a3050', '#0a3050', 0.82, '#0a3050')
-      if (esp) { C(g, 0, -20.2, 5.4, ONDA, { 'fill-opacity': 0.9 }); L(g, 'M-3-22h3l1 1.4M-1-18.4h3', HIELO, 0.5, { opacity: 0.7 }); return }
+      if (esp) { // nuca: media melena con circuitos que bajan hasta las puntas
+        C(g, 0, -20.2, 5.5, ONDA, { 'fill-opacity': 0.92 }); P(g, 'M-5.4-19.4h10.8q.2 2.6-.6 3.8l-1.1-.6-1.2.8-1.2-.8-1.2.8-1.2-.8-1.2.8-1.2-.8-1.1.6q-.8-1.2-.6-3.8z', ONDA)
+        L(g, 'M-3.4-24.4h2.6l1 1.4h2.6M-2-22.4v3l-1.4 1.4v1.8M1.6-21.6v2.4l1.4 1.2v2.6M0-20v4', HIELO, 0.5, { opacity: 0.85 }); C(g, -3.4, -15.8, 0.5, HIELO); C(g, 3, -15.4, 0.5, HIELO); return
+      }
       R(g, -5.9, -21, 1.8, 6.2, ONDA, 0.9, { 'fill-opacity': 0.9 }); R(g, 4.1, -21, 1.8, 6.2, ONDA, 0.9, { 'fill-opacity': 0.9 })
       P(g, 'M-5.5-20.4C-6-26.8 6-26.8 5.5-20.4 3.6-22.8-1-23.2-5.5-20.4z', ONDA)
       L(g, 'M-3.6-24h3.2l1 1.4M1.2-24.6h2.4', HIELO, 0.5, { opacity: 0.8 })
@@ -227,7 +230,11 @@ const halsey: KitVector = {
       cabeza: (g, esp) => {
         E(g, 0, -19.2, 6.1, 6.2, pelo)
         cara(g, esp, piel, '#6f7078', '#9a5a52')
-        if (esp) { E(g, 0, -19.2, 6.1, 6.2, pelo); L(g, 'M-2.6-23.6q2.6-1 5.2 0', '#e6e9ee', 0.6, { opacity: 0.6 }); return }
+        if (esp) { // nuca: media melena gris con mechones y puntas
+          E(g, 0, -19.2, 6.1, 6.2, pelo); P(g, 'M-6-19.4h12q.2 3-.8 4.4l-1.2-.8-1.4 1-1.4-1-1.4 1-1.4-1-1.4 1-1.4-1-1.2.8q-1-1.4-.8-4.4z', pelo)
+          L(g, 'M-3.4-24.6q-2.2 4-1.6 8.6M0-25.6v9.6M3.4-24.6q2.2 4 1.6 8.6M-1.8-25q-1 4.4-.6 8M1.8-25q1 4.4.6 8', '#e2e6ec', 0.5, { opacity: 0.75 })
+          L(g, 'M-4.6-15.6q4.6 1.6 9.2 0', oscurecer(pelo, 0.7), 0.7); return
+        }
         P(g, 'M-5.6-20.4C-6.2-26.8 6.2-26.8 5.6-20.4 4-23.2-.8-23.8-5.6-20.4z', pelo); R(g, -6.1, -21, 1.9, 6.4, pelo, 0.9); R(g, 4.2, -21, 1.9, 6.4, pelo, 0.9)
         L(g, 'M-2.6-24.6q2-.8 4.2 0', '#e6e9ee', 0.6, { opacity: 0.7 })
       },
@@ -253,9 +260,10 @@ const keyes: KitVector = {
       brazo: (g, ab, s) => { const x = s * 7.2; R(g, x - 1.4, -15.8, 2.8, 5.2, saco, 1.3); R(g, x - 1.7, -16.6, 3.4, 1.3, oro, 0.6); R(ab, x - 1.4, -11.6, 2.8, 4.2, saco, 1.3); R(ab, x - 1.4, -9.2, 2.8, 0.8, oro, 0.3); C(ab, x, -7.2, 1.5, piel) },
       cabeza: (g, esp) => {
         cara(g, esp, piel, '#1b120c', '#3a2014')
-        if (esp) C(g, 0, -20, 5.2, '#aab0b8')
+        if (esp) { C(g, 0, -20, 5.3, '#2b2c33'); L(g, 'M-3.8-18.4q3.8 1.6 7.6 0', '#16171c', 0.9); R(g, -5.3, -21.4, 1.1, 2.4, '#aab0b8', 0.5); R(g, 4.2, -21.4, 1.1, 2.4, '#aab0b8', 0.5) } // nuca: pelo corto con canas
         for (const x of [-4.7, 4.7]) C(g, x, -21.6, 1, '#aab0b8')
         P(g, 'M-6-22.4c.2-4.4 2.6-5.4 6-5.4s5.8 1 6 5.4z', '#222c43'); R(g, -6, -23.4, 12, 1.5, oro, 0.4)
+        if (esp) { L(g, 'M0-27.6v4.2M-3.2-27q-.4 1.8-.4 3.6M3.2-27q.4 1.8.4 3.6', '#3a4766', 0.6); C(g, 0, -27.7, 0.8, oro) } // costuras y botón de la gorra
         if (!esp) { P(g, 'M-5.6-21.9h11.2l1.4 1.5h-14z', '#10131b'); C(g, 0, -22.7, 0.9, brillo) }
       },
     })
