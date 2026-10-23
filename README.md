@@ -254,8 +254,9 @@ Cada tarjeta responde en orden: **estado** en una frase con color e icono (En cu
 falta tu revisión · Aparcada, necesita tu decisión · Pausada · Sin empezar), **hecho** (pasos y commits), **falta** (pasos,
 con el que va en curso resaltado) y **qué falta de ti**: contestar a una sesión del worktree que espera (permiso, duda,
 te espera, bloqueada; abre su ficha), revisar y abrir el PR (todo hecho o noche «LISTA PARA REVISIÓN»), decidir (aparcada)
-o archivos sin commit; si no hay nada, «Nada de ti por ahora». Arriba va «Te toca a ti · N» con esas tareas, ordenadas por
-urgencia; debajo, «Avanza sin ti». Se ocultan los worktrees de revisión (`rev-*`, `pr<N>`, `*revision*`), los vacíos y,
+o archivos sin commit; si no hay nada, «Nada de ti por ahora». Las tarjetas van en pestañas: «Te toca a ti» (abre ahí,
+ordenadas por urgencia) y una por estado (En curso, Esperan respuesta, Terminadas, Aparcadas, Pausadas, Sin empezar; las
+vacías no se muestran). Se ocultan los worktrees de revisión (`rev-*`, `pr<N>`, `*revision*`), los vacíos y,
 salvo que lo pidas, los que llevan 14 días sin movimiento. El resto de «Tu día» (Agenda, Pendientes, Para ti, Memoria,
 Roles) abierto desde una tarjeta u objeto de la escena muestra solo esa sección; con «Tu oficina» trae todas las pestañas.
 
