@@ -171,9 +171,13 @@
   .vaiven.balanceo { animation: v-balanceo 4s ease-in-out infinite alternate; }
   .vaiven.alza { animation: v-alza 1.6s ease-in-out infinite alternate; }
   .vaiven.flota { animation: v-flota 2.4s ease-in-out infinite; }
+  .vaiven.reposo { animation: v-reposo 6s ease-in-out infinite; }
+  .vaiven.suspiro { animation: v-suspiro 5s ease-in-out infinite; }
   @keyframes v-respira { 50% { transform: scale(1.012, 1.025); } }
   @keyframes v-balanceo { from { transform: rotate(-1.6deg); } to { transform: rotate(1.6deg); } }
   @keyframes v-alza { to { transform: translateY(calc(var(--e) * -1px)); } }
+  @keyframes v-reposo { 25% { transform: scale(1.01, 1.022) rotate(.3deg); } 50% { transform: none; } 75% { transform: scale(1.01, 1.022) rotate(-.3deg); } }
+  @keyframes v-suspiro { 35% { transform: translateY(.8%) scale(1.006, .985); } 55% { transform: translateY(.8%) scale(1.006, .985); } 100% { transform: none; } }
   @keyframes v-flota { 50% { transform: translateY(calc(var(--e) * -1.5px)); } }
   .mueble { position: absolute; display: block; pointer-events: none; user-select: none; }
   .destello { position: absolute; left: 0; top: 0; z-index: 999; width: 0; height: 0; }

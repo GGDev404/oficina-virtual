@@ -22,16 +22,19 @@ export const oficina: KitVector = {
       nodo('ellipse', { cx: x + 1.5, cy: -1.4, rx: 2.1, ry: 1.2, fill: zapato }, p)
       nodo('ellipse', { cx: x + 1.1, cy: -1.9, rx: 0.9, ry: 0.35, fill: '#fff', opacity: 0.18 }, p)
     }
-    const cuerpo = nodo('g', {}, f, 'cuerpo')
-    const brazo = (lado: 'i' | 'd') => { // pivote en el hombro (arriba al centro de su caja)
-      const x = lado === 'i' ? -7.9 : 5.4
-      const b = nodo('g', {}, cuerpo, `brazo ${lado}`)
-      nodo('rect', { x, y: -15, width: 2.5, height: 8, rx: 1.25, fill: camisa }, b)
-      nodo('rect', { x: x + (lado === 'i' ? 0 : 1.5), y: -14.4, width: 1, height: 6.6, rx: 0.5, fill: lado === 'i' ? luz : sombra, opacity: 0.6 }, b)
-      nodo('circle', { cx: x + 1.25, cy: -6.6, r: 1.5, fill: piel }, b)
-      return b
+    const cuerpo = nodo('g', { 'data-pivote': '0 -6' }, f, 'cuerpo')
+    const brazo = (lado: 'i' | 'd') => { // pivote en el hombro; el antebrazo (con la mano) gira desde el codo
+      const x = lado === 'i' ? -7.9 : 5.4, cx = x + 1.25
+      const b = nodo('g', { 'data-pivote': `${cx} -15` }, cuerpo, `brazo ${lado}`)
+      nodo('rect', { x, y: -15, width: 2.5, height: 5.4, rx: 1.25, fill: camisa }, b)
+      nodo('rect', { x: x + (lado === 'i' ? 0 : 1.5), y: -14.4, width: 1, height: 4, rx: 0.5, fill: lado === 'i' ? luz : sombra, opacity: 0.6 }, b)
+      const ab = nodo('g', { 'data-pivote': `${cx} -11` }, b, `antebrazo ${lado}`)
+      nodo('rect', { x, y: -12, width: 2.5, height: 5.6, rx: 1.25, fill: camisa }, ab)
+      nodo('rect', { x: x + (lado === 'i' ? 0 : 1.5), y: -11.4, width: 1, height: 4, rx: 0.5, fill: lado === 'i' ? luz : sombra, opacity: 0.6 }, ab)
+      nodo('circle', { cx, cy: -6.4, r: 1.5, fill: piel }, ab)
+      return { b, ab }
     }
-    const izq = brazo('i')
+    const { ab: izq } = brazo('i')
     nodo('rect', { x: -5.2, y: -16, width: 10.4, height: 10, rx: 3.2, fill: camisa }, cuerpo, 'torso')
     nodo('rect', { x: -5.2, y: -8, width: 10.4, height: 2, rx: 1, fill: sombra }, cuerpo)
     if (!espalda) {
@@ -41,8 +44,7 @@ export const oficina: KitVector = {
       nodo('path', { d: 'M0-13.6l-.9 1 .6 4.4.3.4.3-.4.6-4.4z', fill: brillo }, cuerpo)
       nodo('path', { d: 'M-.9-12.6l.9-1 .9 1z', fill: oscurecer(brillo, 0.75) }, cuerpo)
     } else nodo('rect', { x: -5.2, y: -16, width: 10.4, height: 1.4, rx: 0.7, fill: oscurecer(camisa, 0.9) }, cuerpo)
-    brazo('d')
-    const cab = nodo('g', {}, cuerpo, 'cabeza')
+    const cab = nodo('g', { 'data-pivote': '0 -14.5' }, cuerpo, 'cabeza')
     nodo('rect', { x: -1.6, y: -17, width: 3.2, height: 3, fill: pielSombra }, cab)
     if (!espalda) for (const x of [-5.3, 5.3]) nodo('circle', { cx: x, cy: -19.6, r: 1.1, fill: pielSombra }, cab) // orejas
     nodo('circle', { cx: 0, cy: -20, r: 5.2, fill: espalda ? pelo : piel }, cab)
@@ -59,10 +61,12 @@ export const oficina: KitVector = {
         nodo('circle', { cx: x + 0.25, cy: -19.65, r: 0.22, fill: '#fff' }, ojos)
       }
       for (const x of [-2, 2]) nodo('path', { d: `M${x - 1}-19.4q1 .9 2 0`, fill: 'none', stroke: tinta, 'stroke-width': 0.6, 'stroke-linecap': 'round' }, cab, 'ojo-cerrado')
+      nodo('path', { d: 'M-3.6-18.4q-.9 1.3 0 1.9.9-.6 0-1.9z', fill: '#7fc4ff' }, cab, 'lagrima')
       for (const x of [-3.4, 3.4]) nodo('circle', { cx: x, cy: -18, r: 0.8, fill: '#e8806a', opacity: 0.25 }, cab) // mejillas
       nodo('path', { d: 'M-1.2-17.2q1.2 .9 2.4 0', fill: 'none', stroke: '#8b5a44', 'stroke-width': 0.6, 'stroke-linecap': 'round' }, cab, 'boca-s')
       nodo('path', { d: 'M-1.2-16.6q1.2-.9 2.4 0', fill: 'none', stroke: '#8b5a44', 'stroke-width': 0.6, 'stroke-linecap': 'round' }, cab, 'boca-t')
     }
+    const { ab: abd } = brazo('d') // el derecho va al final: sobre la cabeza al saludar y sobre la cara al beber
     // Rasgo del rol: en la mano izquierda (se mueve con el brazo) al estar de pie; asoma junto a la silla al estar sentado.
     if (a.rol) PROPS[a.rol]?.(espalda ? nodo('g', { transform: 'translate(-9.4 -4)' }, f, 'prop') : nodo('g', { transform: 'translate(-6.7 -6.4)' }, izq, 'prop'))
     // Extras de cada pose (animacion.ts los muestra según la pose).
@@ -71,11 +75,11 @@ export const oficina: KitVector = {
     nodo('rect', { x: -4.2, y: -13, width: 8.4, height: 6.6, rx: 0.9, fill: '#e0a526' }, carpeta)
     nodo('path', { d: 'M-4.2-12.2h3l.8-1.2h4.4', fill: 'none', stroke: '#c78a10', 'stroke-width': 0.9 }, carpeta)
     nodo('path', { d: 'M-2.4-9.6h4.8M-2.4-8h3', stroke: '#fff', 'stroke-width': 0.6, 'stroke-linecap': 'round' }, carpeta)
-    const taza = nodo('g', {}, extra, 'taza')
-    nodo('rect', { x: 5.2, y: -10.8, width: 3.2, height: 3.8, rx: 0.8, fill: '#f4f1ea' }, taza)
-    nodo('path', { d: 'M8.4-10h.7c.8 0 .8 1.8 0 1.8h-.7', fill: 'none', stroke: '#f4f1ea', 'stroke-width': 0.7 }, taza)
-    nodo('rect', { x: 5.2, y: -10.8, width: 3.2, height: 0.9, fill: '#6b3e1f' }, taza)
-    for (const [i, x] of [6.1, 7.5].entries()) nodo('path', { d: `M${x}-12q-.9-1 0-2 .9-1 0-2`, fill: 'none', stroke: '#fff', 'stroke-width': 0.6, 'stroke-linecap': 'round', opacity: 0.8 }, taza, `vapor v${i}`)
+    const taza = nodo('g', { 'data-pivote': '6.65 -6.4' }, abd, 'taza') // en la mano derecha: sube con el antebrazo
+    nodo('rect', { x: 5.05, y: -10.8, width: 3.2, height: 3.8, rx: 0.8, fill: '#f4f1ea' }, taza)
+    nodo('path', { d: 'M8.25-10h.7c.8 0 .8 1.8 0 1.8h-.7', fill: 'none', stroke: '#f4f1ea', 'stroke-width': 0.7 }, taza)
+    nodo('rect', { x: 5.05, y: -10.8, width: 3.2, height: 0.9, fill: '#6b3e1f' }, taza)
+    for (const [i, x] of [5.95, 7.35].entries()) nodo('path', { d: `M${x}-12q-.9-1 0-2 .9-1 0-2`, fill: 'none', stroke: '#fff', 'stroke-width': 0.6, 'stroke-linecap': 'round', opacity: 0.8 }, taza, `vapor v${i}`)
     for (const [i, [x, y]] of ([[4, -25], [6.8, -27.6], [9.4, -30]] as const).entries())
       nodo('path', { d: `M${x} ${y}h2.6l-2.6 2.8h2.6`, fill: 'none', stroke: '#6b7a99', 'stroke-width': 0.8, 'stroke-linejoin': 'round' }, extra, `zz z${i}`)
     for (const i of [0, 1, 2]) nodo('circle', { cx: 6 + i * 2.4, cy: -26, r: 0.8, fill: '#6b7a99' }, extra, `punto p${i}`)

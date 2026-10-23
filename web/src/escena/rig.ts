@@ -1,9 +1,12 @@
 // Contrato del rig de personajes (lo comparten todos los kits de kits/*.ts):
 // - Pies en (0, 0); el cuerpo cabe en x −14…14, y −36…3 (CELDA de hornear.ts). Alto de referencia: unos 26 px lógicos.
 // - Partes con estas clases, que las poses de animacion.ts mueven: .cuerpo (torso, brazos y cabeza), .cabeza, .ojos,
-//   .brazo.i / .brazo.d (pivote en el hombro), .pierna.i / .pierna.d (pivote en la cadera), .prop (rasgo del rol, dentro
-//   de .brazo.i al estar de pie) y los extras .carpeta, .taza > .vapor.v0/.v1, .zz.z0–z2, .punto.p0–p2, .ojo-cerrado,
-//   .boca-s / .boca-t. Una parte que el kit no tenga simplemente no se mueve. data-pivote="x y" fija un pivote a mano.
+//   .brazo.i / .brazo.d (pivote en el hombro) con .antebrazo.i / .antebrazo.d anidado (pivote en el codo; mano incluida),
+//   .pierna.i / .pierna.d (pivote en la cadera), .prop (rasgo del rol, dentro de .brazo.i al estar de pie) y los extras
+//   .carpeta, .taza > .vapor.v0/.v1 (dentro de .antebrazo.d: se la lleva a la boca), .zz.z0–z2, .punto.p0–p2,
+//   .ojo-cerrado, .boca-s / .boca-t, .lagrima (en .cabeza). El brazo derecho se dibuja después de la cabeza (al saludar
+//   y beber queda encima). Una parte que el kit no tenga simplemente no se mueve. data-pivote="x y" fija un pivote a
+//   mano (kits/oficina.ts los fija en hombros, codos, cuerpo y cabeza: es la referencia).
 // - Vista «espalda»: sentado en su escritorio, de espaldas, con silla (poses teclea y espera).
 // - Nodos con createElementNS (nunca innerHTML); colores guardados validados como #rrggbb con color().
 // - Arte original estilizado: nunca calcar ni incrustar arte, logos o tipografías oficiales de los juegos.
@@ -29,9 +32,9 @@ export interface Reparto { kits: Record<string, Kit>; quien: Partial<Record<Acto
 export const SENTADO = new Set<Pose>(['teclea', 'espera']) // de espaldas, frente al monitor
 // Ritmo de las poses en pixel art (cuadros por ciclo); los vaivenes son los mismos que en vector.
 export const RITMOS: Record<Pose, Ritmo> = {
-  parado: { cuadros: 2, dur: 4, pesos: [23, 1], vaiven: 'respira' }, camina: { cuadros: 4, dur: 0.6 }, teclea: { cuadros: 4, dur: 0.8 },
-  espera: { cuadros: 4, dur: 2.4 }, mano: { cuadros: 2, dur: 0.6 }, triste: { cuadros: 1, dur: 1, vaiven: 'balanceo' },
-  duerme: { cuadros: 3, dur: 2.4, vaiven: 'respira-lenta' }, entrega: { cuadros: 1, dur: 1, vaiven: 'alza' }, cafe: { cuadros: 3, dur: 1.5, vaiven: 'respira' },
+  parado: { cuadros: 3, dur: 6, pesos: [56, 2, 62], vaiven: 'reposo' }, camina: { cuadros: 4, dur: 0.6 }, teclea: { cuadros: 4, dur: 0.8 },
+  espera: { cuadros: 4, dur: 2.4 }, mano: { cuadros: 4, dur: 0.8, vaiven: 'respira' }, triste: { cuadros: 2, dur: 3.4, pesos: [10, 1], vaiven: 'suspiro' },
+  duerme: { cuadros: 3, dur: 2.4, vaiven: 'respira-lenta' }, entrega: { cuadros: 2, dur: 2.4, pesos: [3, 1], vaiven: 'respira' }, cafe: { cuadros: 4, dur: 2.4, vaiven: 'respira' },
 }
 
 export const actorDe = (clave: string | null | undefined, rol?: RolId | null): Actor =>
