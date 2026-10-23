@@ -1,4 +1,5 @@
-// Tu día: pestañas Agenda, Pizarra, Pendientes, Para ti, Memoria y Roles; cada tarjeta y objeto de la escena abre la suya.
+// Tu día: pestañas Agenda, Pendientes, Para ti, Memoria y Roles. Abierta desde una tarjeta u objeto de la escena muestra solo esa sección,
+// sin la fila de pestañas; abierta sin sección («Tu oficina») trae todas.
 import { useEffect, useRef, useState } from 'react'
 import { Tabs } from 'radix-ui'
 import { BotonAccion, Chip, ChipPrioridad, Enlace, NombreTarea } from '@/components/comunes'
@@ -6,17 +7,17 @@ import { useOficina, type Seccion } from '@/components/contexto'
 import { Icono } from '@/components/icono'
 import { Cerrar, Descripcion, Titulo, Ventana } from '@/components/ventana'
 import { leer, post, postSeguro, rutaSesion } from '@/lib/api'
-import { DIA, ESTADOS, VIVOS, carpeta, esperaProcesos, fecha, gb, hace, horaDe, inicioDia, nombreSesion, pendientesParaMi, plano, proximoCorte, resumenPizarra, veredicto } from '@/lib/oficina'
+import { DIA, ESTADOS, VIVOS, carpeta, esperaProcesos, fecha, gb, hace, horaDe, inicioDia, nombreSesion, pendientesParaMi, plano, proximoCorte, veredicto } from '@/lib/oficina'
 import type { Datos, Tarea } from '@/lib/tipos'
 import { RolesVista } from './encargos'
-import { PizarraVista } from './pizarra'
 import { NIVEL_MEM } from './tarjetas'
 
-const PESTANAS: [Seccion, string][] = [['agenda', 'Agenda'], ['pizarra', 'Pizarra'], ['pendientes', 'Pendientes'], ['parati', 'Para ti'], ['memoria', 'Memoria'], ['roles', 'Roles']]
+const PESTANAS: [Seccion, string][] = [['agenda', 'Agenda'], ['pendientes', 'Pendientes'], ['parati', 'Para ti'], ['memoria', 'Memoria'], ['roles', 'Roles']]
 
-export function TuDia({ seccion: inicial }: { seccion: Seccion }) {
+export function TuDia({ seccion: inicial }: { seccion?: Seccion }) {
   const { datos: d, mem, cerrarVentana } = useOficina()
-  const [seccion, setSeccion] = useState(inicial)
+  const [seccion, setSeccion] = useState<Seccion>(inicial ?? 'agenda')
+  const sola = inicial != null
   const cuerpo = useRef<HTMLDivElement>(null)
   useEffect(() => { if (cuerpo.current) cuerpo.current.scrollTop = 0 }, [seccion])
   const v = veredicto(d)
@@ -25,7 +26,6 @@ export function TuDia({ seccion: inicial }: { seccion: Seccion }) {
   const p = d.pendientes
   const cuentas: Record<Seccion, [number | null, string]> = {
     agenda: [hoy.length, v.vencidas.length ? 'rojo' : hoy.length ? 'aviso' : ''],
-    pizarra: [resumenPizarra(d).enCurso || null, ''],
     pendientes: [p.sesiones.length + p.notas.length + p.solicitudes.length, p.solicitudes.length || p.sesiones.length ? 'aviso' : ''],
     parati: [pendientesParaMi(d).length, ''],
     memoria: [null, mem?.nivel === 'critico' ? 'rojo' : mem?.nivel === 'alto' ? 'aviso' : ''],
@@ -33,24 +33,23 @@ export function TuDia({ seccion: inicial }: { seccion: Seccion }) {
   }
   return (
     <Ventana alCerrar={cerrarVentana} id="v-oficina">
-      <header className="vo-cabeza"><Titulo>Tu día</Titulo>
-        <Descripcion oculta>Tu agenda, la pizarra de tus worktrees, lo pendiente, los comentarios para ti y la memoria de la computadora.</Descripcion>
-        <div className="fila">
+      <header className="vo-cabeza"><Titulo>{sola ? PESTANAS.find(([id]) => id === seccion)![1] : 'Tu día'}</Titulo>
+        <Descripcion oculta>{sola ? 'Solo esta sección de tu día.' : 'Tu agenda, lo pendiente, los comentarios para ti, la memoria de la computadora y los roles.'}</Descripcion>
+        {(!sola || seccion === 'agenda') && <div className="fila">
           <span className={`chip ${v.color} veredicto`}>{v.texto}</span>
           {corte && <span className="meta fila gap-s1"><Icono n="hora" />{corte.nombre} a las {corte.hora}</span>}
-        </div>
+        </div>}
         <Cerrar /></header>
       <Tabs.Root value={seccion} onValueChange={(x) => setSeccion(x as Seccion)} className="flex min-h-0 flex-1 flex-col">
-        <Tabs.List className="vo-tabs" aria-label="Secciones">
+        {!sola && <Tabs.List className="vo-tabs" aria-label="Secciones">
           {PESTANAS.map(([id, texto]) => {
             const [n, tono] = cuentas[id]
             return <Tabs.Trigger key={id} value={id}>{texto}
               {n != null ? <span className={`cuenta ${tono}`}>{n}</span> : tono && <span className="punto naranja" />}</Tabs.Trigger>
           })}
-        </Tabs.List>
+        </Tabs.List>}
         <div className="cuerpo" ref={cuerpo}>
           <Tabs.Content value="agenda"><Agenda d={d} hoy={hoy} /></Tabs.Content>
-          <Tabs.Content value="pizarra"><PizarraVista /></Tabs.Content>
           <Tabs.Content value="pendientes"><Pendientes /></Tabs.Content>
           <Tabs.Content value="parati"><ParaTi /></Tabs.Content>
           <Tabs.Content value="memoria"><MemoriaVista /></Tabs.Content>

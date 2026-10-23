@@ -1,7 +1,7 @@
 // Íconos de trazo (Lucide): los mismos nombres que usaba la página para no buscar el componente en cada vista.
 import {
   AtSignIcon, BellIcon, BotIcon, CalendarIcon, CheckIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon,
-  CopyIcon, CpuIcon, DoorOpenIcon, EllipsisIcon, ExternalLinkIcon, FolderIcon, GitBranchIcon, HourglassIcon, ImageIcon,
+  CircleCheckIcon, CircleDashedIcon, CircleHelpIcon, CopyIcon, CpuIcon, DoorOpenIcon, EllipsisIcon, ExternalLinkIcon, EyeIcon, FilePenIcon, FolderIcon, GitBranchIcon, GitCommitHorizontalIcon, PauseIcon, PlayIcon, HourglassIcon, ImageIcon,
   MailIcon, OctagonXIcon, RefreshCwIcon, SendIcon, ShieldIcon, SquareKanbanIcon, TerminalIcon, XIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -12,6 +12,8 @@ const ICONOS = {
   imagen: ImageIcon, terminal: TerminalIcon, flecha: ChevronRightIcon, arroba: AtSignIcon, puerta: DoorOpenIcon,
   campana: BellIcon, hora: ClockIcon, recargar: RefreshCwIcon, copiar: CopyIcon, mas: EllipsisIcon,
   abajo: ChevronDownIcon, izquierda: ChevronLeftIcon, chip: CpuIcon, escudo: ShieldIcon, pizarra: SquareKanbanIcon,
+  terminada: CircleCheckIcon, curso: PlayIcon, pausa: PauseIcon, decidir: CircleHelpIcon, nueva: CircleDashedIcon, ojo: EyeIcon,
+  archivo: FilePenIcon, commit: GitCommitHorizontalIcon,
 }
 export type NombreIcono = keyof typeof ICONOS
 

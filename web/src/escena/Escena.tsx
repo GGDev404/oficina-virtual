@@ -14,6 +14,7 @@ export function Escena({ datos, acciones }: { datos: Datos | null; acciones: Acc
     const m = montarEscena(lienzo.current!, escena.current!, capa.current!, {
       abrirAgente: (id) => ultimas.current.abrirAgente(id),
       abrirOficina: (s) => ultimas.current.abrirOficina(s),
+      abrirPizarra: () => ultimas.current.abrirPizarra(),
     })
     montada.current = m
     return () => { m.destruir(); montada.current = null }

@@ -140,19 +140,46 @@ export function enWorktree(w: Worktree, d: Datos) {
   return { sesiones, subagentes: d.subagentes.filter((a) => ids.has(a.sesion_id) && a.estado === 'trabajando').length }
 }
 
-// Columna de la pizarra: aparcada o sin avance = falta; todo el plan hecho (o la noche la dejó lista) = para revisar.
-export type Columna = 'falta' | 'progreso' | 'revisar'
-export function columnaDe(w: Worktree, activos: Sesion[]): Columna {
-  const hechos = w.pasos.filter((p) => p.estado === 'hecho').length
-  const enCurso = activos.length > 0 || !!w.noche?.corriendo
-  if (!enCurso && /^aparcada/i.test(w.noche?.estado ?? '')) return 'falta'
-  if (!enCurso && ((w.pasos.length > 0 && hechos === w.pasos.length) || /lista para revisi/i.test(w.noche?.estado ?? ''))) return 'revisar'
-  if (enCurso || hechos > 0 || w.pasos.some((p) => p.estado === 'progreso') || w.commits > 0 || w.sin_commit > 0) return 'progreso'
-  return 'falta'
+// Pizarra: una tarea por worktree con su estado en una frase y lo que falta de ti.
+// curso = alguien trabaja (sesión trabajando o turno nocturno); espera = una sesión te pide algo; terminada = todo hecho o la noche
+// la dejó lista (falta tu revisión); aparcada = la noche la aparcó (decides tú); pausada = hay avance y nadie trabaja; nueva = nada aún.
+export type ClavePz = 'curso' | 'espera' | 'terminada' | 'aparcada' | 'pausada' | 'nueva'
+export type TonoPz = 'rojo' | 'naranja' | 'amarillo' | 'verde'
+export interface PedidoPz { tipo: 'sesion' | 'listo' | 'revisar' | 'decidir' | 'commit'; sev: number; tono: TonoPz; texto: string; sid?: string }
+export interface TareaPz { w: Worktree; nombre: string; sesiones: Sesion[]; subagentes: number; clave: ClavePz; pedidos: PedidoPz[]; orden: number; quieto: boolean }
+const VIEJO = 14 * DIA
+const ORDEN_CLAVE: Record<ClavePz, number> = { espera: 0, terminada: 1, aparcada: 2, curso: 3, pausada: 4, nueva: 5 }
+
+export function tareasPizarra(d: Datos, ahora = Date.now()): TareaPz[] {
+  const tareas = tareaPorId(d)
+  return (d.worktrees ?? []).map((w) => {
+    const { sesiones, subagentes } = enWorktree(w, d)
+    const noche = w.noche?.estado ?? ''
+    const hechos = w.pasos.filter((p) => p.estado === 'hecho').length
+    const trabaja = !!w.noche?.corriendo || sesiones.some((s) => s.estado === 'trabajando')
+    const urgentes = sesiones.filter((s) => s.estado in URGENCIA).sort((a, b) => URGENCIA[a.estado] - URGENCIA[b.estado])
+    const listos = sesiones.filter((s) => s.estado === 'listo_para_revisar')
+    const aparcada = /^aparcada/i.test(noche)
+    const todo = (w.pasos.length > 0 && hechos === w.pasos.length) || /lista para revisi/i.test(noche)
+    const avance = hechos > 0 || w.commits > 0 || w.sin_commit > 0 || w.pasos.some((p) => p.estado === 'progreso')
+    const clave: ClavePz = trabaja ? 'curso' : urgentes.length ? 'espera' : aparcada ? 'aparcada' : todo || listos.length ? 'terminada' : avance ? 'pausada' : 'nueva'
+    const pedidos: PedidoPz[] = urgentes.map((s) => { const rojo = URGENCIA[s.estado] < 2
+      return { tipo: 'sesion', sev: rojo ? 0 : 1, tono: rojo ? 'rojo' : 'naranja', texto: `${nombreSesion(s, tareas)} · ${ESTADOS[s.estado][0].toLowerCase()}`, sid: s.id } })
+    if (clave === 'terminada') pedidos.push({ tipo: 'revisar', sev: 2, tono: 'verde', texto: 'Revisa lo hecho y abre el PR', sid: listos[0]?.id })
+    else pedidos.push(...listos.map((s): PedidoPz => ({ tipo: 'listo', sev: 2, tono: 'amarillo', texto: `${nombreSesion(s, tareas)} terminó su turno`, sid: s.id })))
+    if (clave === 'aparcada') pedidos.push({ tipo: 'decidir', sev: 3, tono: 'naranja', texto: 'Decide si se retoma o se descarta' })
+    // Archivos sin commit solo te tocan en una tarea con plan; en worktrees sueltos (pruebas, demos) es ruido.
+    if (w.sin_commit && !trabaja && w.pasos.length) pedidos.push({ tipo: 'commit', sev: 4, tono: 'amarillo', texto: `${w.sin_commit} archivo${w.sin_commit > 1 ? 's' : ''} sin commit` })
+    const quieto = !sesiones.length && !w.noche?.corriendo && !w.sin_commit && ahora - Math.max(w.ultimo_ts ?? 0, Date.parse(w.noche?.fecha ?? '') || 0) > VIEJO
+    return { w, nombre: tareas[w.id]?.nombre ?? w.titulo ?? w.nombre, sesiones, subagentes, clave, pedidos, quieto, orden: Math.min(9, ...pedidos.map((p) => p.sev)) }
+  })
+    // Sin plan, sin commits, sin cambios, sin noche y sin nadie: un worktree vacío (develop, main, pruebas).
+    .filter(({ w, sesiones }) => w.pasos.length || w.commits || w.sin_commit || w.noche || sesiones.length)
+    .sort((a, b) => a.orden - b.orden || ORDEN_CLAVE[a.clave] - ORDEN_CLAVE[b.clave] || (b.w.ultimo_ts ?? 0) - (a.w.ultimo_ts ?? 0))
 }
 
-// Insignia de la escena y cuenta de la pestaña: tareas con alguien trabajando y tareas listas para tu revisión.
+// Insignia de la escena, tarjeta y cabecera: tareas con alguien trabajando, listas para revisar y las que te tocan (sin las de 14 días quietas).
 export function resumenPizarra(d: Datos) {
-  const cols = (d.worktrees ?? []).map((w) => { const { sesiones } = enWorktree(w, d); return { activo: sesiones.length > 0 || !!w.noche?.corriendo, col: columnaDe(w, sesiones) } })
-  return { enCurso: cols.filter((c) => c.activo).length, revisar: cols.filter((c) => c.col === 'revisar').length }
+  const t = tareasPizarra(d).filter((x) => !x.quieto)
+  return { enCurso: t.filter((x) => x.clave === 'curso').length, revisar: t.filter((x) => x.clave === 'terminada').length, tocan: t.filter((x) => x.pedidos.length).length }
 }

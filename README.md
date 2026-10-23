@@ -241,7 +241,7 @@ antes de los hooks, ignora las de claude-mem y cierra las que ya no tienen proce
 **Notificaciones** (`notify-send`): una sesión pasa a necesita permiso, bloqueada, duda o te espera, o llega una
 corrección nueva. Las del minuto siguiente se juntan; las urgentes no se cierran solas.
 
-**Pizarra** («Tu día → Pizarra», y la insignia en tu oficina: «N en curso · M por revisar»). Una tarjeta por worktree de
+**Pizarra** (ventana propia: la insignia de tu oficina «N en curso · M por revisar» o la tarjeta «Pizarra»; ya no es pestaña de «Tu día»). Una tarjeta por worktree de
 los repos donde trabajaron tus sesiones en los últimos 30 días (`server/worktrees.js`, cada 30 s, solo lectura). El
 avance sale de lo que comparten la sesión de día, sus subagentes y el turno nocturno:
 - **Plan** `.local-context/plan-<ID>.md` (el ID es la carpeta o un ID de ClickUp en la carpeta o la rama): casillas
@@ -250,9 +250,14 @@ avance sale de lo que comparten la sesión de día, sus subagentes y el turno no
 - **Noche** `.local-context/noche/<fecha>/<ID>.md` (línea «Estado:») y `<ID>.pid` mientras corre.
 - **Quién**: sesiones vivas con `cwd` dentro del worktree y sus subagentes trabajando.
 
-Columnas: Falta (sin avance o aparcada), En progreso (alguien trabaja, la noche corre o hay avance) y Para revisar
-(todo el plan marcado o la noche la dejó «LISTA PARA REVISIÓN»). Se ocultan los worktrees de revisión (`rev-*`,
-`pr<N>`, `*revision*`), los vacíos y, salvo que lo pidas, los que llevan 14 días sin movimiento.
+Cada tarjeta responde en orden: **estado** en una frase con color e icono (En curso · Parada, espera tu respuesta · Terminada,
+falta tu revisión · Aparcada, necesita tu decisión · Pausada · Sin empezar), **hecho** (pasos y commits), **falta** (pasos,
+con el que va en curso resaltado) y **qué falta de ti**: contestar a una sesión del worktree que espera (permiso, duda,
+te espera, bloqueada; abre su ficha), revisar y abrir el PR (todo hecho o noche «LISTA PARA REVISIÓN»), decidir (aparcada)
+o archivos sin commit; si no hay nada, «Nada de ti por ahora». Arriba va «Te toca a ti · N» con esas tareas, ordenadas por
+urgencia; debajo, «Avanza sin ti». Se ocultan los worktrees de revisión (`rev-*`, `pr<N>`, `*revision*`), los vacíos y,
+salvo que lo pidas, los que llevan 14 días sin movimiento. El resto de «Tu día» (Agenda, Pendientes, Para ti, Memoria,
+Roles) abierto desde una tarjeta u objeto de la escena muestra solo esa sección; con «Tu oficina» trae todas las pestañas.
 
 ## Roles y encargos
 

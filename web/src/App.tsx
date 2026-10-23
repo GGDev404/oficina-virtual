@@ -11,12 +11,13 @@ import { Armeria } from '@/vistas/armeria'
 import { Entrar } from '@/vistas/entrar'
 import { Ficha } from '@/vistas/ficha'
 import { NuevaSesion } from '@/vistas/nueva-sesion'
+import { PizarraVentana } from '@/vistas/pizarra'
 import { Tarjetas } from '@/vistas/tarjetas'
 import { TeNecesitan } from '@/vistas/te-necesitan'
 import { TuDia } from '@/vistas/tu-dia'
 
 // Una ventana a la vez (abrir otra la reemplaza); «Entra a tu oficina» puede ir encima de cualquiera.
-type Abierta = { tipo: 'agente'; id: string; escribir: boolean } | { tipo: 'oficina'; seccion: Seccion } | { tipo: 'necesitan' }
+type Abierta = { tipo: 'agente'; id: string; escribir: boolean } | { tipo: 'oficina'; seccion?: Seccion } | { tipo: 'pizarra' } | { tipo: 'necesitan' }
   | { tipo: 'nueva'; opciones: OpcionesNueva; carpetas: string[] } | { tipo: 'armeria'; clave?: string } | null
 
 export default function App() {
@@ -50,7 +51,8 @@ export default function App() {
 
   const cerrarVentana = useCallback(() => setVentana(null), [])
   const abrirAgente = useCallback((id: string, { escribir = false } = {}) => setVentana({ tipo: 'agente', id, escribir }), [])
-  const abrirOficina = useCallback((seccion: Seccion = 'agenda') => setVentana({ tipo: 'oficina', seccion }), [])
+  const abrirOficina = useCallback((seccion?: Seccion) => setVentana({ tipo: 'oficina', seccion }), [])
+  const abrirPizarra = useCallback(() => setVentana({ tipo: 'pizarra' }), [])
   const abrirNecesitan = useCallback(() => setVentana({ tipo: 'necesitan' }), [])
   const abrirNueva = useCallback(async (opciones: OpcionesNueva = {}) => {
     const carpetas = await leer<string[]>('/api/carpetas').catch(() => [])
@@ -59,9 +61,9 @@ export default function App() {
   const abrirArmeria = useCallback((clave?: string) => setVentana({ tipo: 'armeria', clave }), [])
   const tareas = useMemo(() => (datos ? tareaPorId(datos) : {}), [datos])
   // Memorizado: un estado nuevo del SSE no vuelve a pintar las vistas si lo que leen no cambió de referencia.
-  const oficina: Oficina | null = useMemo(() => datos && { datos, tareas, yo, mem, cargarMemoria, abrirAgente, abrirOficina, abrirNecesitan, abrirNueva, abrirArmeria, cerrarVentana },
-    [datos, tareas, yo, mem, cargarMemoria, abrirAgente, abrirOficina, abrirNecesitan, abrirNueva, abrirArmeria, cerrarVentana])
-  const acciones = useMemo(() => ({ abrirAgente: (id: string) => abrirAgente(id), abrirOficina: (s?: string) => abrirOficina(s as Seccion | undefined) }), [abrirAgente, abrirOficina])
+  const oficina: Oficina | null = useMemo(() => datos && { datos, tareas, yo, mem, cargarMemoria, abrirAgente, abrirOficina, abrirPizarra, abrirNecesitan, abrirNueva, abrirArmeria, cerrarVentana },
+    [datos, tareas, yo, mem, cargarMemoria, abrirAgente, abrirOficina, abrirPizarra, abrirNecesitan, abrirNueva, abrirArmeria, cerrarVentana])
+  const acciones = useMemo(() => ({ abrirAgente: (id: string) => abrirAgente(id), abrirOficina: (s?: string) => abrirOficina(s as Seccion | undefined), abrirPizarra }), [abrirAgente, abrirOficina, abrirPizarra])
 
   const sync = datos?.sync
   const textoSync = !sync ? 'Sin sincronizar' : sync.corriendo ? 'Sincronizando ClickUp…'
@@ -82,6 +84,7 @@ export default function App() {
     {oficina && <ContextoOficina.Provider value={oficina}>
       {ventana?.tipo === 'agente' && <Ficha id={ventana.id} escribir={ventana.escribir} />}
       {ventana?.tipo === 'oficina' && <TuDia seccion={ventana.seccion} />}
+      {ventana?.tipo === 'pizarra' && <PizarraVentana />}
       {ventana?.tipo === 'necesitan' && <TeNecesitan />}
       {ventana?.tipo === 'armeria' && <Armeria inicial={ventana.clave} />}
       {ventana?.tipo === 'nueva' && <NuevaSesion opciones={ventana.opciones} carpetas={ventana.carpetas} />}

@@ -120,7 +120,7 @@ interface Destello extends Punto { t0: number; tipo: EntreSesiones['tipo'] }
 const COLOR_SOBRE = { mensaje: '#fffdf5', encargo: '#ffb347', entrega: '#6fe39a', duda: '#ff6b6b', respuesta: '#fffdf5' }
 const ROL_CORTO: Record<RolId, string> = { 'analisis-plan': 'PLAN', implementacion: 'IMPL', 'revision-qa': 'QA', 'docs-entrega': 'DOCS', diseno: 'DISEÑO', integracion: 'INTEG' }
 
-export interface Acciones { abrirAgente: (id: string) => void; abrirOficina: (seccion?: string) => void }
+export interface Acciones { abrirAgente: (id: string) => void; abrirOficina: (seccion?: string) => void; abrirPizarra: () => void }
 
 export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, capa: HTMLElement, acciones: Acciones) {
   const movimiento = matchMedia('(prefers-reduced-motion: reduce)')
@@ -246,7 +246,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
     el('span', { class: 'insignia' }, icono('correo'), el('span'))), ' translate(-50%, -50%)')
   fijo('calendario', SALAS.oficina.x + 149, SALAS.oficina.y + 24, el('button', { class: 'objeto', type: 'button', 'aria-haspopup': 'dialog', onclick: () => acciones.abrirOficina('agenda') },
     el('span', { class: 'insignia' }, icono('calendario'), el('span'))), ' translate(-50%, -50%)')
-  fijo('pizarra', SALAS.oficina.x + 44, SALAS.oficina.y + 24, el('button', { class: 'objeto', type: 'button', 'aria-haspopup': 'dialog', onclick: () => acciones.abrirOficina('pizarra') },
+  fijo('pizarra', SALAS.oficina.x + 44, SALAS.oficina.y + 24, el('button', { class: 'objeto', type: 'button', 'aria-haspopup': 'dialog', onclick: () => acciones.abrirPizarra() },
     el('span', { class: 'insignia neutra' }, icono('pizarra'), el('span'))), ' translate(-50%, -50%)')
   fijo('vacio', 136, 64, el('span', { class: 'aviso-vacio' }, 'Sin agentes de Claude Code activos'), ' translate(-50%, -50%)')
 
@@ -356,7 +356,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
       !v.vencidas.length && !v.hoy.length, `Calendario: ${v.texto}`)
     const pz = resumenPizarra(d)
     insignia('pizarra', [pz.enCurso && `${pz.enCurso} en curso`, pz.revisar && `${pz.revisar} por revisar`].filter(Boolean).join(' · ') || 'pizarra', false,
-      `Pizarra: ${pz.enCurso} tareas en curso y ${pz.revisar} por revisar`)
+      `Pizarra: en curso ${pz.enCurso}, por revisar ${pz.revisar}, te tocan ${pz.tocan}`)
   }
 
   function escalar() {
