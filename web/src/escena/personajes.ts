@@ -1,7 +1,7 @@
 // Personajes: quién se dibuja con qué kit, y su tira de sprites horneada para cada pose.
 // El REPARTO de cada tema (kits/<tema>.ts) asigna un kit a «yo», a cada rol y a las sesiones de fondo; en Claro/Oscuro/
 // Automático decide la clase guardada (KIT_DE_CLASE). Sumar un personaje = escribir su kit y una línea en su reparto.
-import type { Clase } from '@/lib/tipos'
+import type { AspectoGuardado, Clase } from '@/lib/tipos'
 import type { TemaId } from '@/lib/tema'
 import { poseDe } from './animacion'
 import { claveTema, enCache, hornearPixel, hornearVector, type Tira } from './hornear'
@@ -24,6 +24,16 @@ export function elegirKit(tema: TemaId, actor: Actor, clase: Clase): string {
   const id = TEMAS[tema]?.quien[actor] ?? KIT_DE_CLASE[clase] ?? 'oficina'
   return id in KITS ? id : 'oficina'
 }
+
+/** ¿El reparto del tema asigna personaje a este actor? (si no, manda la clase guardada) */
+export const hayReparto = (tema: TemaId, actor: Actor) => !!TEMAS[tema]?.quien[actor]
+
+/** Nombre del personaje que se ve y los colores guardados que de verdad lo tiñen. */
+export function personajeDe(tema: TemaId, actor: Actor, clase: Clase): { nombre: string; usa: (keyof AspectoGuardado)[] } {
+  const k = KITS[elegirKit(tema, actor, clase)]
+  return { nombre: k.nombre ?? 'Personaje', usa: k.usa ?? COLORES_TODOS }
+}
+const COLORES_TODOS: (keyof AspectoGuardado)[] = ['camisa', 'pantalon', 'brillo', 'pelo', 'piel']
 
 /** Tira de sprites del personaje en una pose (horneada una vez; la comparten escena, Armería y ficha). */
 export function tiraPersonaje(aspecto: Aspecto, tema: TemaId, actor: Actor, pose: Pose): Tira {

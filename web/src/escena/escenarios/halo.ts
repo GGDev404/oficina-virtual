@@ -85,7 +85,20 @@ export function escenario(): Escenario {
     ...Array.from({ length: 8 }, (_, k): Rect => [o.x + 142 + (k % 4) * 4, o.y + 4 + Math.floor(k / 4) * 4, 3, 2, k === 5 ? '#d9ab1f' : '#2f8fb0']),
     [MESA_YO.dx - 10, MESA_YO.dy - 18, 60, 44, '#1d2a30'], [MESA_YO.dx - 8, MESA_YO.dy - 16, 56, 40, '#2a3b43'], [MESA_YO.dx - 8, MESA_YO.dy - 16, 56, 1, '#3d9cbc'], [MESA_YO.dx - 8, MESA_YO.dy + 23, 56, 1, '#3d9cbc']])
   usar(g, 'esc-caja', o.x + 6, o.y + o.h - 18)
-  return { g, animados: [radar(), ...luces()] }
+  return { g, animados: [radar(), ...luces()], mesa }
+}
+
+// Tu mesa: consola de mando de acero con monitor holográfico, panel frontal con tira cian y bandeja con las 6 hojas (.pila).
+function mesa(): SVGGElement {
+  const m = MESA_YO, g = nodo('g', { 'shape-rendering': 'crispEdges' })
+  rects(g, [[m.dx, m.dy, 40, 10, '#56666e'], [m.dx, m.dy, 40, 1, '#8196a0'], [m.dx, m.dy + 10, 40, 6, '#2c383e'], [m.dx + 1, m.dy + 16, 3, 1, '#1c252a'], [m.dx + 36, m.dy + 16, 3, 1, '#1c252a'],
+    [m.dx + 3, m.dy + 12, 34, 1, '#2f8fb0'], [m.dx + 24, m.dy - 10, 14, 11, '#27353c'], [m.dx + 24, m.dy - 10, 14, 1, '#3f525b'], [m.dx + 25, m.dy - 9, 12, 8, '#06161d'], [m.dx + 25, m.dy - 9, 12, 1, '#3d9cbc'],
+    [m.dx + 27, m.dy - 6, 6, 1, CIAN], [m.dx + 27, m.dy - 4, 8, 1, '#2f8fb0'], [m.dx + 30, m.dy + 1, 2, 2, '#27353c'],
+    [m.dx + 14, m.dy + 3, 8, 4, '#0d2d38'], [m.dx + 14, m.dy + 3, 8, 1, CIAN], [m.dx + 23, m.dy + 4, 3, 3, '#1c252a'], [m.dx + 24, m.dy + 5, 1, 1, '#a7d36b'],
+    [m.dx + 1, m.dy + 1, 11, 8, '#27353c'], [m.dx + 2, m.dy + 2, 9, 6, '#1c252a']]) // bandeja hundida
+  const pila = nodo('g', {}, g, 'pila')
+  for (let k = 0; k < 6; k++) nodo('rect', { x: m.dx + 3, y: m.dy + 5 - k, width: 7, height: 1, fill: k % 2 ? '#e8e4da' : '#ffffff' }, pila)
+  return g
 }
 
 // Radar de movimiento: pantalla redonda con anillos, un barrido que da una vuelta cada 4 s y blips que brillan al pasar.

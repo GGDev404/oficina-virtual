@@ -90,6 +90,7 @@ function cara(cab: G, esp: boolean, piel: string, ceja: string, boca = '#7a4a38'
 // ───────────── Spartan: el Jefe Maestro (verde MJOLNIR, visor dorado) y el Spartan-IV genérico ─────────────
 function spartan(chief: boolean): KitVector {
   return {
+    nombre: chief ? 'Jefe Maestro' : 'Spartan', usa: chief ? ['pantalon'] : ['camisa', 'pantalon', 'brillo'],
     dibujar: (p) => {
       const a = p.aspecto
       const camisa = color(a.camisa, '#336fc6'), pantalon = color(a.pantalon, '#30364a'), brillo = color(a.brillo, '#ffd84a')
@@ -135,6 +136,7 @@ function spartan(chief: boolean): KitVector {
 // ───────────── Cortana: holograma azul translúcido ─────────────
 const AZUL = '#5fd4f4', AZUL2 = '#2d8fd6', HIELO = '#d6f6ff', ONDA = '#6f86ff'
 const cortana: KitVector = {
+  nombre: 'Cortana', usa: [],
   dibujar: (p) => armar(p, {
     x: 5.9, hombro: -15, codo: -11, mano: -7.6, prop: [-8.8, -4],
     pierna: (g, s) => {
@@ -162,6 +164,7 @@ const cortana: KitVector = {
 
 // ───────────── 343 Guilty Spark: esfera flotante de un solo ojo ─────────────
 const spark: KitVector = {
+  nombre: '343 Guilty Spark', usa: ['camisa'],
   dibujar: (p) => {
     const banda = mezcla('#7f93a0', color(p.aspecto.camisa, '#336fc6'), 0.35)
     return armar(p, {
@@ -187,6 +190,7 @@ const spark: KitVector = {
 
 // ───────────── Sgt. Johnson: chaleco, brazos al aire, cabeza rapada y puro ─────────────
 const johnson: KitVector = {
+  nombre: 'Sgt. Johnson', usa: ['camisa', 'pantalon', 'brillo'],
   dibujar: (p) => {
     const a = p.aspecto, camisa = color(a.camisa, '#336fc6'), pantalon = color(a.pantalon, '#30364a'), brillo = color(a.brillo, '#ffd84a')
     const chaleco = mezcla('#6b7448', camisa, 0.18), tela = mezcla('#566043', pantalon, 0.2), piel = '#74492c', tee = '#2a2d2e'
@@ -212,6 +216,7 @@ const johnson: KitVector = {
 
 // ───────────── Dra. Halsey: bata blanca, pelo gris a la altura de la barbilla ─────────────
 const halsey: KitVector = {
+  nombre: 'Dra. Halsey', usa: ['camisa', 'pantalon', 'brillo'],
   dibujar: (p) => {
     const a = p.aspecto, camisa = color(a.camisa, '#336fc6'), pantalon = color(a.pantalon, '#30364a'), brillo = color(a.brillo, '#ffd84a')
     const bata = mezcla('#eef2f3', camisa, 0.1), interior = mezcla('#2f5f6e', camisa, 0.2), tela = mezcla('#2b3340', pantalon, 0.3)
@@ -244,6 +249,7 @@ const halsey: KitVector = {
 
 // ───────────── Cap. Keyes: guerrera de gala azul marino, charreteras y gorra de plato ─────────────
 const keyes: KitVector = {
+  nombre: 'Cap. Keyes', usa: ['camisa', 'pantalon', 'brillo'],
   dibujar: (p) => {
     const a = p.aspecto, camisa = color(a.camisa, '#336fc6'), pantalon = color(a.pantalon, '#30364a'), brillo = color(a.brillo, '#ffd84a')
     const saco = mezcla('#2c3a55', camisa, 0.2), tela = mezcla('#1f2736', pantalon, 0.3), oro = '#d1a640', piel = '#8a5a3a'
@@ -272,6 +278,7 @@ const keyes: KitVector = {
 
 // ───────────── El Arbiter: Sangheili alto y delgado, mandíbulas de cuatro puntas, ámbar y oro ─────────────
 const arbiter: KitVector = {
+  nombre: 'El Arbiter', usa: ['camisa', 'brillo'],
   dibujar: (p) => {
     const a = p.aspecto, camisa = color(a.camisa, '#336fc6'), brillo = color(a.brillo, '#ffd84a')
     const armor = mezcla('#34404e', camisa, 0.22), luz = aclarar(armor, 0.25), piel = '#55646b', hondo = '#3d4a51', oro = mezcla('#d1a640', brillo, 0.3)

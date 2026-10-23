@@ -149,5 +149,20 @@ export function escenario(): Escenario {
     { clave: 'lava-a', x: CELDA_A[0], y: CELDA_A[1], z: 0, rig: lavaRig(CELDA_A, GRIETA_A, []), pose: LAVA(0) },
     { clave: 'lava-b', x: CELDA_B[0], y: CELDA_B[1], z: 0, rig: lavaRig(CELDA_B, GRIETA_B, BRASAS_B), pose: LAVA(BRASAS_B.length) },
   ]
-  return { g, animados }
+  return { g, animados, mesa }
+}
+
+// Tu mesa: escritorio de acero oxidado con filo de latón, terminal ámbar, luz de aviso y bandeja con las 6 hojas (.pila).
+function mesa(): SVGGElement {
+  const m = MESA_YO, g = nodo('g', { 'shape-rendering': 'crispEdges' })
+  rects(g, [[m.dx, m.dy, 40, 10, '#6a4a38'], [m.dx, m.dy, 40, 1, LATON], [m.dx, m.dy + 10, 40, 6, '#3d2a22'], [m.dx + 1, m.dy + 16, 3, 1, '#2a1c16'], [m.dx + 36, m.dy + 16, 3, 1, '#2a1c16'],
+    [m.dx + 3, m.dy + 12, 34, 1, OXIDO], [m.dx + 4, m.dy + 11, 1, 1, LATON], [m.dx + 35, m.dy + 11, 1, 1, LATON],
+    [m.dx + 24, m.dy - 10, 14, 11, '#26201c'], [m.dx + 24, m.dy - 10, 14, 1, '#8a6248'], [m.dx + 25, m.dy - 9, 12, 8, '#2a0d06'],
+    [m.dx + 27, m.dy - 7, 6, 1, AMBAR], [m.dx + 27, m.dy - 5, 8, 1, ASCUA], [m.dx + 27, m.dy - 3, 4, 1, AMBAR], [m.dx + 30, m.dy + 1, 2, 2, '#26201c'],
+    [m.dx + 14, m.dy + 3, 8, 4, NEGRO], [m.dx + 15, m.dy + 4, 2, 1, AMBAR], [m.dx + 18, m.dy + 4, 2, 1, AMBAR], [m.dx + 23, m.dy + 4, 3, 3, '#a6281c'], [m.dx + 24, m.dy + 5, 1, 1, HUESO],
+    [m.dx + 1, m.dy + 1, 11, 8, '#3d2a22'], [m.dx + 2, m.dy + 2, 9, 6, NEGRO]]) // bandeja hundida
+  r(g, m.dx + 24.5, m.dy - 9.5, 13, 9, AMBAR, 0.12) // brillo del terminal: trazo duplicado tenue, sin filter
+  const pila = nodo('g', {}, g, 'pila')
+  for (let k = 0; k < 6; k++) nodo('rect', { x: m.dx + 3, y: m.dy + 5 - k, width: 7, height: 1, fill: k % 2 ? HUESO : '#ffffff' }, pila)
+  return g
 }

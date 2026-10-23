@@ -114,6 +114,7 @@ const cuello = (cab: E, fill: string, y = -17, w = 3.6) => rect(cab, -w / 2, y, 
 
 // ── Doom Slayer ─────────────────────────────────────────────────────────────────────────────────
 const slayer: KitVector = {
+  nombre: 'Doom Slayer', usa: ['pantalon', 'brillo'],
   dibujar: (p) => {
     const a = p.aspecto, camisa = '#3f6b2a', pant = color(a.pantalon, '#4a3a2a'), brillo = color(a.brillo, '#9aa3ad')
     const luz = aclarar(camisa, 0.22), sombra = oscurecer(camisa, 0.65), casco = oscurecer(camisa, 0.92)
@@ -153,6 +154,7 @@ const slayer: KitVector = {
 
 // ── Samuel Hayden: cuerpo robótico alto ────────────────────────────────────────────────────────
 const hayden: KitVector = {
+  nombre: 'Samuel Hayden', usa: ['pantalon'],
   dibujar: (p) => {
     const a = p.aspecto, camisa = '#8a4a2a', pant = color(a.pantalon, '#2f3640')
     const metal = '#8d9bab', oscuro = '#566372', claro = aclarar(metal, 0.35)
@@ -187,6 +189,7 @@ const hayden: KitVector = {
 
 // ── VEGA: núcleo holográfico flotante ─────────────────────────────────────────────────────────
 const vega: KitVector = {
+  nombre: 'VEGA', usa: ['camisa'],
   poses: {
     parado: { vaiven: 'flota' },
     camina: { vaiven: 'flota', partes: { '.pierna.i': () => ({}), '.pierna.d': () => ({}), '.brazo.i': (t) => ({ r: 9 * onda(t, 1, 0.25) }), '.brazo.d': (t) => ({ r: -9 * onda(t, 1, 0.25) }), '.cabeza': (t) => ({ r: 3 * onda(t, 1, 0.25) }) } },
@@ -234,6 +237,7 @@ const vega: KitVector = {
 
 // ── Night Sentinel herrero ────────────────────────────────────────────────────────────────────
 const centinela: KitVector = {
+  nombre: 'Night Sentinel herrero', usa: ['camisa', 'pantalon'],
   dibujar: (p) => {
     const a = p.aspecto, camisa = color(a.camisa, '#2f5ea8'), pant = color(a.pantalon, '#3a3a44')
     const acero = '#b4bcc7', luz = aclarar(acero, 0.45), sombra = oscurecer(acero, 0.7), cuero = '#6b4226', capa = oscurecer(camisa, 0.75)
@@ -273,6 +277,7 @@ const centinela: KitVector = {
 
 // ── el Maykr: ser angelical estilizado ────────────────────────────────────────────────────────
 const maykr: KitVector = {
+  nombre: 'El Maykr', usa: ['camisa'],
   dibujar: (p) => {
     const a = p.aspecto, camisa = color(a.camisa, '#2a6fb0'), oro = '#e6c36a', oroOsc = '#b8863a'
     return armar(p, {
@@ -316,6 +321,7 @@ const maykr: KitVector = {
 
 // ── Guardián del códice (escriba) ─────────────────────────────────────────────────────────────
 const escriba: KitVector = {
+  nombre: 'Guardián del códice', usa: ['camisa', 'piel'],
   dibujar: (p) => {
     const a = p.aspecto, camisa = color(a.camisa, '#7a3f22'), piel = color(a.piel, '#d9b08c')
     const tela = oscurecer(camisa, 0.72), claro = aclarar(tela, 0.18), hondo = oscurecer(tela, 0.7)
@@ -352,6 +358,7 @@ const escriba: KitVector = {
 
 // ── Ingeniero Argent / UAC ────────────────────────────────────────────────────────────────────
 const ingeniero: KitVector = {
+  nombre: 'Ingeniero Argent', usa: ['camisa', 'pantalon', 'pelo', 'piel'],
   dibujar: (p) => {
     const a = p.aspecto, camisa = color(a.camisa, '#d9731a'), pant = color(a.pantalon, '#3a3530'), piel = color(a.piel, '#e8b98f'), pelo = color(a.pelo, '#2b1d14')
     const luz = aclarar(camisa, 0.2), sombra = oscurecer(camisa, 0.75), casco = '#e0a526', pielOsc = oscurecer(piel, 0.88), ARG = '#ffb000'
@@ -398,6 +405,7 @@ const ingeniero: KitVector = {
 
 // ── Marines UAC de fondo: casco, hombrera y franja varían con los colores guardados ────────────
 const marine: KitVector = {
+  nombre: 'Marine UAC', usa: ['camisa', 'pantalon', 'brillo', 'piel'],
   dibujar: (p) => {
     const a = p.aspecto, camisa = color(a.camisa, '#616e7c'), pant = color(a.pantalon, '#3a3530'), brillo = color(a.brillo, '#9aa3ad'), piel = color(a.piel, '#e8b98f')
     const h = hash(`${a.camisa}${a.pantalon}${a.brillo}${a.pelo}${a.piel}`), tipo = h % 3, pie = (h >>> 3) & 1, raya = (h >>> 4) & 1

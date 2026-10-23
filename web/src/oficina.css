@@ -18,7 +18,7 @@
     --azul: light-dark(#1f5fa8, #8cc4ff); --azul-bg: light-dark(#e3eefb, #13263d);
     --gris: light-dark(#615f59, #a8a69f); --gris-bg: light-dark(#eeece7, #262523); --resalte: light-dark(#fff4bf, #39330f);
     /* Rellenos sólidos (botón que aprueba o borra) y el texto que va encima: 4.5:1 en los dos modos. */
-    --verde-solido: light-dark(#1f7a43, #2f9a5a); --rojo-solido: light-dark(#b3261e, #d8453a); --sobre-solido: #ffffff;
+    --verde-solido: #1f7a43; --rojo-solido: light-dark(#b3261e, #c0372e); --sobre-solido: #ffffff;
     --foco: var(--acento); --velo: rgba(10, 10, 14, .55);
     --sombra-color: light-dark(rgba(28, 27, 25, .18), rgba(0, 0, 0, .55)); --sombra-color-2: light-dark(rgba(28, 27, 25, .12), rgba(0, 0, 0, .4));
     --sombra-1: 0 1px 2px var(--sombra-color-2); --sombra: 0 12px 32px var(--sombra-color), 0 2px 6px var(--sombra-color-2);
@@ -34,7 +34,7 @@
     --dur-rapida: 120ms; --dur-media: 200ms; --dur-lenta: 320ms; --dur-pulso: 1.4s;
     --curva-entrada: cubic-bezier(.16, 1, .3, 1); --curva-salida: cubic-bezier(.55, 0, 1, .45);
     /* Escena: tinta y papel de la capa (letreros, burbujas, etiquetas) y la paleta del lienzo (escena.ts la lee). */
-    --escenario: light-dark(#d8d3c6, #16151d);
+    --escenario: light-dark(#2a2833, #16151d);
     --esc-tinta: #1a1922; --esc-papel: #fffdf5; --esc-velo: rgba(12, 11, 18, .78); --esc-resalte: #ffd84a; --esc-lleno: #b4590f;
     --esc-alerta: #ff6b57; --esc-aviso: #ffb347; --esc-ok: #6fe39a; --esc-info: #9fd3ff; --esc-amarillo: #ffe066; --esc-gris: #d4d0e4;
     --esc-sombra: rgba(0, 0, 0, .32); --esc-insignia: #c8372d; --esc-insignia-bien: #2f7a48; --esc-insignia-neutra: #2d2b3a;
@@ -43,6 +43,17 @@
     --esc-taller: #a8754a; --esc-taller-2: #9d6c44; --esc-puerta: #6e4f80; --esc-puerta-2: #674a78;
     --esc-bloqueados: #71757f; --esc-bloqueados-2: #696d77; --esc-descanso: #d2ab72; --esc-descanso-2: #c8a16a;
     --esc-oficina: #4f7d5c; --esc-oficina-2: #4a7657; --esc-codigo: #7dffa8; --esc-codigo-2: #5fd3ff; --esc-monitor: #0f2740;
+    /* Piel de cada tema (los temas de juego los reemplazan). Títulos: familia, mayúsculas y espaciado. Paneles (.barra,
+       .ventana, .bloque): textura estática, bisel y filete de esquina (ancho 0 = sin filete). --corte es el polígono de
+       esquinas cortadas: solo se usa en un ::before decorativo, nunca en un elemento enfocable (cortaría el anillo de foco). */
+    --rajdhani: 'Rajdhani', 'Arial Narrow', system-ui, sans-serif;
+    --titulo-letra: var(--letra); --titulo-mayus: none; --titulo-espaciado: normal; --boton-letra: inherit;
+    --panel-textura: none; --bisel: 0 0 0 0 transparent; --corte: none; --filete: 0px; --filete-color: var(--acento);
+    /* Letreros de cuarto (.cuarto) y burbujas (.burbuja): píldora sans en claro y oscuro. Fondo y texto cumplen 4.5:1. */
+    --cuarto-fondo: var(--esc-velo); --cuarto-texto: #ffffff; --cuarto-lleno-fondo: #9c4a0c; --cuarto-lleno-texto: #ffffff;
+    --cuarto-letra: var(--letra); --cuarto-mayus: none; --cuarto-espaciado: 0; --cuarto-radio: 99px; --cuarto-pad: .55em;
+    --cuarto-adorno: none; --cuarto-bisel: none; --rotulo-letra: var(--letra); --rotulo-radio: 8px;
+    --boton-fondo: var(--gris-bg); --boton-texto: var(--texto); --boton-borde: var(--borde);
   }
   :root[data-modo=claro] { color-scheme: light; }
   :root[data-modo=oscuro] { color-scheme: dark; }
@@ -57,6 +68,18 @@
     --esc-taller: #5b6a5a; --esc-taller-2: #546253; --esc-puerta: #3b5560; --esc-puerta-2: #374f59;
     --esc-bloqueados: #5a3b34; --esc-bloqueados-2: #52362f; --esc-descanso: #6b6248; --esc-descanso-2: #635a42;
     --esc-oficina: #3f5c3a; --esc-oficina-2: #3a5536; --esc-codigo: #a7d36b; --esc-codigo-2: #5fd4f4;
+    /* Cubierta de acero: rejilla tenue; títulos de Rajdhani en mayúsculas cian; letrero con corchetes en las esquinas. */
+    --r1: 2px; --r2: 3px; --r3: 3px; --r4: 4px; --r5: 4px;
+    --titulo-letra: var(--rajdhani); --titulo-mayus: uppercase; --titulo-espaciado: .08em; --boton-letra: var(--rajdhani);
+    --panel-textura: repeating-linear-gradient(135deg, rgba(95, 212, 244, .045) 0 2px, transparent 2px 9px);
+    --bisel: inset 0 0 0 1px rgba(95, 212, 244, .14); --filete: 56px;
+    --cuarto-fondo: rgba(6, 18, 24, .88); --cuarto-texto: var(--acento); --cuarto-lleno-fondo: var(--esc-lleno); --cuarto-lleno-texto: #04171d;
+    --cuarto-letra: var(--rajdhani); --cuarto-mayus: uppercase; --cuarto-espaciado: .1em; --cuarto-radio: 0; --cuarto-pad: .85em;
+    --cuarto-adorno: linear-gradient(var(--acento), var(--acento)) 0 0 / 8px 2px no-repeat, linear-gradient(var(--acento), var(--acento)) 0 0 / 2px 8px no-repeat,
+      linear-gradient(var(--acento), var(--acento)) 100% 0 / 8px 2px no-repeat, linear-gradient(var(--acento), var(--acento)) 100% 0 / 2px 8px no-repeat,
+      linear-gradient(var(--acento), var(--acento)) 0 100% / 8px 2px no-repeat, linear-gradient(var(--acento), var(--acento)) 0 100% / 2px 8px no-repeat,
+      linear-gradient(var(--acento), var(--acento)) 100% 100% / 8px 2px no-repeat, linear-gradient(var(--acento), var(--acento)) 100% 100% / 2px 8px no-repeat;
+    --rotulo-letra: var(--rajdhani); --rotulo-radio: 2px;
   }
   :root[data-tema=cyberpunk] { /* Night City: amarillo neón, cian y magenta sobre morado oscuro */
     --fondo: #0b0912; --panel: #13101d; --hundido: #0e0c16; --borde: #2a2340; --borde-fuerte: #463a66; --borde-control: #8a7bb0;
@@ -67,6 +90,14 @@
     --esc-taller: #24304a; --esc-taller-2: #202b43; --esc-puerta: #3e1d47; --esc-puerta-2: #381a40;
     --esc-bloqueados: #4a1426; --esc-bloqueados-2: #421222; --esc-descanso: #193a3f; --esc-descanso-2: #163439;
     --esc-oficina: #2b2646; --esc-oficina-2: #27223f; --esc-codigo: #fcee0a; --esc-codigo-2: #ff2a6d; --esc-monitor: #05202a;
+    /* Líneas de barrido tenues; filete amarillo de esquina cortada; letrero = etiqueta amarilla con texto negro. */
+    --r1: 0; --r2: 0; --r3: 0; --r4: 0; --r5: 0; --r-pill: 0;
+    --titulo-letra: var(--rajdhani); --titulo-mayus: uppercase; --titulo-espaciado: .06em; --boton-letra: var(--rajdhani);
+    --panel-textura: repeating-linear-gradient(0deg, rgba(255, 255, 255, .03) 0 1px, transparent 1px 3px);
+    --corte: polygon(0 0, 100% 0, 100% 60%, calc(100% - 6px) 100%, 0 100%); --filete: 48px;
+    --cuarto-fondo: var(--acento); --cuarto-texto: #0b0912; --cuarto-lleno-fondo: var(--esc-lleno); --cuarto-lleno-texto: #0b0912;
+    --cuarto-letra: var(--rajdhani); --cuarto-mayus: uppercase; --cuarto-espaciado: .08em; --cuarto-radio: 0; --cuarto-pad: .75em;
+    --rotulo-letra: var(--rajdhani); --rotulo-radio: 0px;
   }
   :root[data-tema=doom] { /* Infierno: óxido, latón y rojo brasa */
     --fondo: #120a08; --panel: #1b100d; --hundido: #150c0a; --borde: #3a2219; --borde-fuerte: #5a3526; --borde-control: #9a7461;
@@ -77,19 +108,35 @@
     --esc-taller: #5e4a3a; --esc-taller-2: #564334; --esc-puerta: #5c2a1f; --esc-puerta-2: #54261c;
     --esc-bloqueados: #6e1a10; --esc-bloqueados-2: #64170e; --esc-descanso: #7a5a2c; --esc-descanso-2: #705228;
     --esc-oficina: #3e3a2a; --esc-oficina-2: #383426; --esc-codigo: #ffb000; --esc-codigo-2: #ff6a2b; --esc-monitor: #2a0d06;
+    /* Reja de óxido; títulos en mayúsculas del sistema; letrero = placa ámbar estarcida de esquinas achaflanadas y remaches. */
+    --r1: 0; --r2: 0; --r3: 0; --r4: 0; --r5: 0; --r-pill: 0;
+    --titulo-mayus: uppercase; --titulo-espaciado: .1em;
+    --panel-textura: repeating-linear-gradient(45deg, rgba(255, 106, 43, .05) 0 3px, transparent 3px 10px);
+    --bisel: inset 0 0 0 1px rgba(255, 176, 0, .2);
+    --corte: polygon(3px 0, calc(100% - 3px) 0, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 0 calc(100% - 3px), 0 3px); --filete: 56px;
+    --cuarto-fondo: #ffb000; --cuarto-texto: #1a0700; --cuarto-lleno-fondo: #c01d0c; --cuarto-lleno-texto: #ffffff;
+    --cuarto-mayus: uppercase; --cuarto-espaciado: .14em; --cuarto-radio: 0; --cuarto-pad: 1em;
+    --cuarto-adorno: radial-gradient(circle at 5px 50%, rgba(26, 7, 0, .75) 1.5px, transparent 2px), radial-gradient(circle at calc(100% - 5px) 50%, rgba(26, 7, 0, .75) 1.5px, transparent 2px);
+    --rotulo-letra: var(--letra); --rotulo-radio: 0px;
   }
   :root[data-tema=minecraft] { /* Bloques: pasto, tierra y piedra con letra de píxel */
     --fondo: #e9e3d3; --panel: #f7f3e8; --hundido: #ece5d3; --borde: #cfc5ad; --borde-fuerte: #ab9f84; --borde-control: #7d725c;
     --texto: #1f1a12; --suave: #5b5242; --acento: #33661a; --acento-suave: #e6f0dc; --acento-texto: #ffffff;
-    --escenario: #7fb1e8; --esc-resalte: #ffe066;
+    --escenario: #24508a; --esc-resalte: #ffe066;
     --esc-pasillo: #8a8a8a; --esc-pasillo-2: #7d7d7d; --esc-linea: #9c9c9c; --esc-muro: #6b4a2f; --esc-muro-alto: #4d3420; --esc-zocalo: #3a2716;
     --esc-taller: #b8945f; --esc-taller-2: #a8854f; --esc-puerta: #6a8d3a; --esc-puerta-2: #5f8034;
     --esc-bloqueados: #6e6e6e; --esc-bloqueados-2: #646464; --esc-descanso: #d9c88f; --esc-descanso-2: #cdbb80;
     --esc-oficina: #5b8731; --esc-oficina-2: #527a2c;
+    /* Letra de píxel en títulos y botones (en el cuerpo cansa); paneles y letreros con bisel de piedra. */
+    --titulo-letra: var(--pixel); --titulo-espaciado: .02em; --boton-letra: var(--pixel);
+    --bisel: inset 2px 2px 0 rgba(255, 255, 255, .6), inset -2px -2px 0 rgba(0, 0, 0, .16);
+    --boton-fondo: #6a6a6a; --boton-texto: #ffffff; --boton-borde: #1f1a12;
+    --cuarto-fondo: #686868; --cuarto-texto: #ffffff; --cuarto-lleno-fondo: #8a3a12; --cuarto-lleno-texto: #ffffff;
+    --cuarto-letra: var(--pixel); --cuarto-espaciado: .02em; --cuarto-radio: 0; --cuarto-pad: .7em;
+    --cuarto-bisel: inset 2px 2px 0 #a8a8a8, inset -2px -2px 0 #383838, 0 0 0 2px #1f1a12;
+    --rotulo-letra: var(--pixel); --rotulo-radio: 0px;
   }
   :root[data-tema=minecraft] { --r1: 0; --r2: 0; --r3: 0; --r4: 0; --r5: 0; --r-pill: 0; } /* todo en bloques */
-  /* Letra de píxel solo en títulos: en el cuerpo cansa y baja la legibilidad. */
-  :root[data-tema] :is(.barra h1, .ventana h2) { font-family: var(--pixel); letter-spacing: .02em; }
 
   @media (prefers-reduced-motion: reduce) {
     :root { --dur-rapida: 0ms; --dur-media: 0ms; --dur-lenta: 0ms; }
@@ -102,7 +149,7 @@
   body { margin: 0; background: var(--fondo); color: var(--texto); font: var(--t-base)/1.5 var(--letra); }
   ::selection { background: var(--acento-suave); color: var(--texto); }
   a { color: var(--acento); text-underline-offset: 2px; }
-  :focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; border-radius: var(--r1); }
+  :focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; border-radius: var(--r1); }
   svg.icono { width: 16px; height: 16px; flex: none; vertical-align: -3px; display: inline-block; }
   /* El preflight de Tailwind quita negritas, bordes de campos y márgenes del navegador: se devuelven los que se usan. */
   h1, h2, h4 { font-weight: 700; }
@@ -111,8 +158,20 @@
     padding: var(--s1) var(--s3); cursor: pointer; min-height: var(--control); display: inline-flex; gap: 6px; align-items: center;
     transition: background-color var(--dur-rapida) var(--curva-entrada), border-color var(--dur-rapida) var(--curva-entrada),
       color var(--dur-rapida) var(--curva-entrada), box-shadow var(--dur-rapida) var(--curva-entrada); }
+  /* Botones llanos (sin clase) y chicos: piel del tema (en Minecraft, piedra con bisel y letra de píxel). */
+  button:is(.boton-chico, :not([class])) { font-family: var(--boton-letra); color: var(--boton-texto); background: var(--boton-fondo); border-color: var(--boton-borde); box-shadow: var(--bisel); }
   button:hover { border-color: var(--borde-fuerte); }
   button:disabled { opacity: .5; cursor: default; }
+  /* Botones de acción: mayúsculas y espaciado del tema (los de juego); el fondo plano del Minecraft viene de --boton-fondo. */
+  button:is(.primario, .aprobar, .peligro-solido, .peligro) { font-family: var(--boton-letra); text-transform: var(--titulo-mayus); letter-spacing: var(--titulo-espaciado); box-shadow: var(--bisel); }
+  /* Chrome de paneles: textura estática, bisel y un filete de esquina (::before decorativo, con --corte). El filete nunca
+     toca el contenido ni el anillo de foco: es una tira de 6 px sobre el borde, sin eventos. */
+  .barra, .ventana, .bloque { background-image: var(--panel-textura); box-shadow: var(--bisel); }
+  .ventana { box-shadow: var(--bisel), var(--sombra); }
+  .bloque { position: relative; }
+  .barra h1, .ventana h2, .bloque h4 { font-family: var(--titulo-letra); text-transform: var(--titulo-mayus); letter-spacing: var(--titulo-espaciado); }
+  .barra::before, .ventana::before, .bloque::before { content: ''; position: absolute; top: -1px; left: var(--s4); width: var(--filete); height: 6px;
+    background: var(--filete-color); clip-path: var(--corte); pointer-events: none; }
   button.primario { background: var(--acento); color: var(--acento-texto); border-color: transparent; font-weight: 600; }
   select, textarea { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--borde-control); border-radius: var(--r2);
     padding: var(--s1) var(--s2); min-height: var(--control); max-width: 100%; }
@@ -140,7 +199,7 @@
   /* Barra superior */
   .barra { position: sticky; top: 0; z-index: var(--z-barra); background: var(--panel); border-bottom: 1px solid var(--borde);
     padding: var(--s2) var(--s5); display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); align-items: center; }
-  .barra h1 { font-size: var(--t-lg); margin: 0; letter-spacing: -0.01em; margin-right: auto; }
+  .barra h1 { font-size: var(--t-lg); margin: 0; margin-right: auto; }
   .sync { color: var(--suave); display: flex; gap: var(--s2); align-items: center; font-size: var(--t-md); min-width: 0; }
   .sync > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sync button { white-space: nowrap; }
@@ -174,9 +233,15 @@
   .fijo { position: absolute; left: 0; top: 0; }
   /* Letras de la capa: crecen con la escena (--e = px de pantalla por px lógico) sin bajar de 12 px. */
   .escena { --letra: clamp(13px, calc(var(--e, 2) * 5.6px), 18px); --letra-burbuja: clamp(15px, calc(var(--e, 2) * 6.4px), 22px); }
-  .cuarto { font: 700 var(--letra)/1 var(--pixel); letter-spacing: .02em; color: var(--sobre-solido); background: var(--esc-velo);
-    padding: .3em .55em .35em; border-radius: var(--r1); white-space: nowrap; margin: 4px 0 0 6px; }
-  .cuarto.lleno { background: var(--esc-lleno); }
+  /* Letrero de cuarto: el fondo y su forma (--corte, esquinas, bisel) van en ::before y el adorno (corchetes, remaches) en ::after,
+     ambos decorativos y sin eventos; el texto queda en su propia caja. */
+  .cuarto { position: relative; isolation: isolate; font: 700 var(--letra)/1 var(--cuarto-letra); text-transform: var(--cuarto-mayus); letter-spacing: var(--cuarto-espaciado);
+    color: var(--cuarto-texto); padding: .3em var(--cuarto-pad) .35em; white-space: nowrap; margin: 4px 0 0 6px; }
+  .cuarto::before, .cuarto::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+  .cuarto::before { background: var(--cuarto-fondo); border-radius: var(--cuarto-radio); clip-path: var(--corte); box-shadow: var(--cuarto-bisel); }
+  .cuarto::after { background: var(--cuarto-adorno); z-index: 0; }
+  .cuarto.lleno { color: var(--cuarto-lleno-texto); }
+  .cuarto.lleno::before { background: var(--cuarto-lleno-fondo); }
   .agente { position: absolute; left: 0; top: 0; width: 0; height: 0; padding: 0; border: 0; background: none; min-height: 0;
     pointer-events: auto; cursor: pointer; transition: none; }
   .agente.saliendo { pointer-events: none; }
@@ -192,7 +257,7 @@
   .agente:hover, .agente:focus-visible { z-index: var(--z-encima) !important; }
   .agente:hover .etiqueta, .agente:focus-visible .etiqueta { max-width: calc(var(--e) * 470px) !important; }
   .burbuja { position: absolute; left: 0; bottom: calc(var(--e) * 29px); transform: translateX(-50%); transform-origin: 50% 100%;
-    font: 700 var(--letra-burbuja)/1 var(--pixel); background: var(--esc-papel); color: var(--esc-tinta); border: 2px solid var(--esc-tinta); border-radius: var(--r1);
+    font: 700 var(--letra-burbuja)/1 var(--rotulo-letra); background: var(--esc-papel); color: var(--esc-tinta); border: 2px solid var(--esc-tinta); border-radius: var(--rotulo-radio);
     padding: .12em .4em .18em; white-space: nowrap; display: flex; gap: 3px; align-items: center; box-shadow: 0 3px 0 var(--esc-sombra);
     animation: brota var(--dur-media) var(--curva-entrada); }
   @keyframes brota { from { opacity: 0; transform: translateX(-50%) translateY(4px) scale(.8); } }
@@ -206,8 +271,8 @@
   .burbuja:empty { display: none; }
   .burbuja svg.icono { width: 1em; height: 1em; stroke-width: 2.5; vertical-align: 0; }
   .etiqueta { position: absolute; left: 0; top: calc(var(--e) * 1px); transform: translateX(-50%);
-    font: 500 var(--letra)/1.2 var(--pixel); color: var(--sobre-solido); background: var(--esc-velo); border: 2px solid var(--esc-tinta);
-    display: flex; flex-direction: column; padding: 1px 5px 2px; border-radius: var(--r1); white-space: nowrap; max-width: 150px; box-shadow: 0 2px 0 var(--esc-sombra); }
+    font: 500 var(--letra)/1.2 var(--rotulo-letra); color: var(--sobre-solido); background: var(--esc-velo); border: 2px solid var(--esc-tinta);
+    display: flex; flex-direction: column; padding: 1px 5px 2px; border-radius: var(--rotulo-radio); white-space: nowrap; max-width: 150px; box-shadow: 0 2px 0 var(--esc-sombra); }
   .etiqueta .txt { display: block; overflow: hidden; text-overflow: ellipsis; }
   /* Barra de contexto bajo el nombre: verde, ámbar desde 80 %, roja desde 95 % */
   .etiqueta .rol { display: block; order: -1; width: max-content; margin: -1px 0 2px -3px; padding: 0 4px; border-radius: 3px;
@@ -220,7 +285,7 @@
   .etiqueta .ctx i.lleno { background: var(--esc-alerta); }
   .objeto { pointer-events: auto; padding: 0; border: 0; background: none; cursor: pointer; min-width: 32px; min-height: var(--control);
     display: grid; place-items: center; transition: none; }
-  .insignia { display: inline-flex; gap: 4px; align-items: center; font: 700 var(--letra)/1 var(--pixel); color: var(--sobre-solido); background: var(--esc-insignia);
+  .insignia { display: inline-flex; gap: 4px; align-items: center; font: 700 var(--letra)/1 var(--rotulo-letra); color: var(--sobre-solido); background: var(--esc-insignia);
     border: 2px solid var(--esc-tinta); border-radius: var(--r-pill); padding: .25em .6em .3em; box-shadow: 0 2px 0 var(--esc-sombra); white-space: nowrap; }
   .insignia.bien { background: var(--esc-insignia-bien); }
   .insignia.neutra { background: var(--esc-insignia-neutra); }
@@ -229,8 +294,8 @@
   .objeto:focus-visible { outline: none; }
   .objeto:hover .insignia { outline: 2px dashed var(--esc-resalte); outline-offset: 2px; }
   .objeto:focus-visible .insignia { outline: 3px solid var(--esc-resalte); outline-offset: 0; box-shadow: 0 0 0 5px var(--esc-tinta); }
-  .aviso-vacio { font: 500 clamp(14px, calc(var(--e, 2) * 5.4px), 20px)/1.3 var(--pixel); color: var(--sobre-solido); background: var(--esc-velo);
-    padding: 6px 10px; border-radius: var(--r1); white-space: nowrap; }
+  .aviso-vacio { font: 500 clamp(14px, calc(var(--e, 2) * 5.4px), 20px)/1.3 var(--rotulo-letra); color: var(--sobre-solido); background: var(--esc-velo);
+    padding: 6px 10px; border-radius: var(--rotulo-radio); white-space: nowrap; }
 
   /* Tarjetas de resumen debajo de la escena: un ítem cada una */
   .tarjetas { max-width: 1920px; margin: 0 auto; padding: var(--s3) var(--s5) var(--s5); display: grid; gap: var(--s3);
@@ -558,9 +623,9 @@
   .retrato .figura { left: calc(var(--e) * 15px); top: calc(var(--e) * 34px); }
   .arm-escaparate { display: flex; gap: var(--s4); align-items: center; flex-wrap: wrap; }
   .arm-ficha { display: grid; gap: var(--s1); min-width: 0; flex: 1; }
-  .arm-nombre { margin: 0; font: 700 var(--t-xl)/1.2 var(--pixel); letter-spacing: .02em; }
+  .arm-nombre { margin: 0; font: 700 var(--t-xl)/1.2 var(--titulo-letra); text-transform: var(--titulo-mayus); letter-spacing: var(--titulo-espaciado); }
   .arm-nivel { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s1); margin-top: var(--s2); }
-  .arm-insignia { justify-self: start; font: 700 var(--t-xs)/1 var(--pixel); letter-spacing: .06em; padding: var(--s1) var(--s2); border-radius: var(--r1);
+  .arm-insignia { justify-self: start; font: 700 var(--t-xs)/1 var(--rotulo-letra); letter-spacing: .06em; padding: var(--s1) var(--s2); border-radius: var(--r1);
     background: var(--acento); color: var(--acento-texto); }
   .arm-clases { display: grid; gap: var(--s2); grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
   .arm-colores { display: grid; gap: var(--s2) var(--s3); grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
@@ -574,6 +639,12 @@
   .arm-hotbar-lista { overflow-wrap: anywhere; }
   .opciones-lista { display: grid; gap: 2px; max-height: 50svh; overflow: auto; }
   .arm-skills { max-height: 18em; }
+  /* Color que el personaje del tema no usa: en gris, pero la explicación se lee con todo su contraste. */
+  .campo.apagado > span:first-child, .campo.apagado input { opacity: .5; }
+  .campo.apagado input { cursor: not-allowed; }
+  .arm-reparto { list-style: none; margin: var(--s4) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s3); }
+  .arm-reparto li { display: grid; justify-items: center; gap: var(--s1); width: 84px; text-align: center; font-size: var(--t-sm); }
+  .arm-reparto li > span:last-child { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
 
   /* Avisos de logro: panel oscuro con título amarillo, como los de Minecraft. Entran deslizando (sin movimiento: aparecen). */
   .logros { position: fixed; top: calc(var(--cabecera) + var(--s3)); right: var(--s4); z-index: var(--z-encima); display: grid; gap: var(--s2);

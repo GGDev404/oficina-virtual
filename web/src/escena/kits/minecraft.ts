@@ -290,18 +290,18 @@ const ALLAY_RIT: Partial<Record<Pose, Ritmo>> = {
   entrega: { cuadros: 2, dur: 2.4, pesos: [3, 1], vaiven: 'respira' }, cafe: { cuadros: 4, dur: 2.4, vaiven: 'flota' },
 }
 
-const steve: KitPixel = { pintar: pintarDe(humano(false)), ritmos: RIT(0.72) }
-const fondo: KitPixel = { pintar: pintarDe(aldeano((a) => FONDO[(mezcla(a.camisa.length + parseInt(a.camisa.slice(1, 7) || '0', 16), 3)) % FONDO.length], true)), ritmos: RIT(0.8) }
+const steve: KitPixel = { nombre: 'Steve', usa: ['camisa', 'pantalon', 'brillo', 'pelo', 'piel'], pintar: pintarDe(humano(false)), ritmos: RIT(0.72) }
+const fondo: KitPixel = { nombre: 'Aldeano', usa: ['camisa', 'brillo', 'piel'], pintar: pintarDe(aldeano((a) => FONDO[(mezcla(a.camisa.length + parseInt(a.camisa.slice(1, 7) || '0', 16), 3)) % FONDO.length], true)), ritmos: RIT(0.8) }
 
 export const reparto: Reparto = {
   kits: {
     steve, bloque: steve, aldeano: fondo,
-    alex: { pintar: pintarDe(humano(true)), ritmos: RIT(0.72) },
-    golem: { pintar: pintarDe(golem), ritmos: RIT(1) },
-    herrero: { pintar: pintarDe(aldeano(() => OFICIOS.herrero)), ritmos: RIT(0.8) },
-    cartografo: { pintar: pintarDe(aldeano(() => OFICIOS.cartografo)), ritmos: RIT(0.8) },
-    bibliotecario: { pintar: pintarDe(aldeano(() => OFICIOS.bibliotecario)), ritmos: RIT(0.8) },
-    allay: { pintar: (r, pz, f) => allay(r, pz, f), ritmos: ALLAY_RIT },
+    alex: { nombre: 'Alex', usa: ['camisa', 'pantalon', 'brillo', 'piel'], pintar: pintarDe(humano(true)), ritmos: RIT(0.72) },
+    golem: { nombre: 'Golem de hierro', usa: ['brillo'], pintar: pintarDe(golem), ritmos: RIT(1) },
+    herrero: { nombre: 'Aldeano herrero', usa: ['brillo', 'piel'], pintar: pintarDe(aldeano(() => OFICIOS.herrero)), ritmos: RIT(0.8) },
+    cartografo: { nombre: 'Aldeano cartógrafo', usa: ['brillo', 'piel'], pintar: pintarDe(aldeano(() => OFICIOS.cartografo)), ritmos: RIT(0.8) },
+    bibliotecario: { nombre: 'Aldeano bibliotecario', usa: ['brillo', 'piel'], pintar: pintarDe(aldeano(() => OFICIOS.bibliotecario)), ritmos: RIT(0.8) },
+    allay: { nombre: 'Allay', usa: ['brillo'], pintar: (r, pz, f) => allay(r, pz, f), ritmos: ALLAY_RIT },
   },
   quien: {
     yo: 'steve', fondo: 'aldeano', 'rol:analisis-plan': 'alex', 'rol:revision-qa': 'golem', 'rol:implementacion': 'herrero',

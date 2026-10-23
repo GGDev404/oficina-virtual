@@ -7,11 +7,11 @@ import { useOficina } from '@/components/contexto'
 import { Panel, Pestanas } from '@/components/pestanas'
 import { Retrato } from '@/components/retrato'
 import { Cerrar, Descripcion, Titulo, Ventana } from '@/components/ventana'
-import { actorDe } from '@/escena/personajes'
+import { actorDe, hayReparto, personajeDe } from '@/escena/personajes'
 import { aspecto, CLASES, RASGOS, YO_FABRICA } from '@/escena/sprites'
 import { leer, post } from '@/lib/api'
 import { nombreSesion, VIVOS } from '@/lib/oficina'
-import { aplicarTema, TEMAS, temaGuardado, type TemaId } from '@/lib/tema'
+import { aplicarTema, TEMAS, temaGuardado, useTema, type TemaId } from '@/lib/tema'
 import type { AspectoGuardado, Clase, Datos, RolId } from '@/lib/tipos'
 
 // Nivel: cada encargo entregado da 100 XP y cada fallo quita 25; el nivel n empieza en (n-1)² × 100 XP.
@@ -57,6 +57,7 @@ export function Armeria({ inicial }: { inicial?: string }) {
   const [borrador, setBorrador] = useState<AspectoGuardado>(guardado ?? {})
   const [error, setError] = useState('')
   const [tema, setTema] = useState<TemaId>(temaGuardado)
+  const temaEnUso = useTema()
 
   const elegir = (k: string) => { setClave(k); setBorrador(d.aspectos?.[k] ?? {}); setError(''); if (!k.startsWith('rol:')) setSub('apariencia') }
   // Si el elegido se cerró, el fallback de arriba toma su lugar: que el borrador sea el suyo, no el de la sesión cerrada.
@@ -79,7 +80,15 @@ export function Armeria({ inicial }: { inicial?: string }) {
   const orquestan = objetivos.filter((o) => o.grupo === 'orquestan')
   const lista = pestana === 'agentes' || pestana === 'orquestan' ? objetivos.filter((o) => o.grupo === pestana) : null
 
+  // En un tema de juego el reparto decide quién se ve: la clase guardada solo manda en Claro, Oscuro y Automático.
+  const actor = actorDe(clave, obj.rol)
+  const pj = hayReparto(temaEnUso, actor) ? personajeDe(temaEnUso, actor, vista.clase) : null
+
   const apariencia = <>
+    {pj && <p className="aviso-caja verde sin-margen">
+      {clave === 'yo' ? 'En este tema eres' : obj.rol ? 'En este tema este rol es' : 'En este tema esta sesión es'} <b>{pj.nombre}</b>.
+      {' '}Tu clase guardada se usa en Claro, Oscuro y Automático.
+    </p>}
     <fieldset className="pregunta">
       <legend>Clase</legend>
       <div className="arm-clases">
@@ -94,13 +103,15 @@ export function Armeria({ inicial }: { inicial?: string }) {
     </fieldset>
 
     <div className="arm-colores">
-      {COLORES.map(([campo, titulo]) => (
-        <label key={campo} className="campo">
+      {COLORES.map(([campo, titulo]) => {
+        const apagado = !!pj && !pj.usa.includes(campo) // se sigue guardando como esté: solo que este personaje no lo pinta
+        return <label key={campo} className={apagado ? 'campo apagado' : 'campo'}>
           <span>{titulo}</span>
           <input type="color" value={(borrador[campo] as string | undefined) ?? (vista[campo as keyof typeof vista] as string)}
-            onChange={(e) => cambiar(campo, e.target.value)} />
+            disabled={apagado} aria-describedby={apagado ? `arm-off-${campo}` : undefined} onChange={(e) => cambiar(campo, e.target.value)} />
+          {apagado && <span className="meta" id={`arm-off-${campo}`}>{pj.nombre} no usa este color; se guarda igual.</span>}
         </label>
-      ))}
+      })}
     </div>
     <label className="campo">
       <span>Apodo (se ve en la escena; el nombre real sigue en la ficha)</span>
@@ -115,10 +126,10 @@ export function Armeria({ inicial }: { inicial?: string }) {
 
   const editor = <section className="contexto" aria-labelledby="arm-equipo">
     <div className="arm-escaparate">
-      <Retrato aspecto={vista} actor={actorDe(clave, obj.rol)} tam={120} etiqueta={`Vista previa: ${CLASES[vista.clase].titulo}${vista.rol ? `, con ${RASGOS[vista.rol].titulo}` : ''}`} />
+      <Retrato aspecto={vista} actor={actor} tam={120} etiqueta={`Vista previa: ${pj?.nombre ?? CLASES[vista.clase].titulo}${vista.rol ? `, con ${RASGOS[vista.rol].titulo}` : ''}`} />
       <div className="arm-ficha">
         <h3 id="arm-equipo" className="arm-nombre">{borrador.apodo || obj.titulo}</h3>
-        <span className="meta">{CLASES[vista.clase].titulo} · {CLASES[vista.clase].juego}{vista.rol ? ` · lleva ${RASGOS[vista.rol].titulo}` : ''}</span>
+        <span className="meta">{pj ? `${pj.nombre} · ${TEMAS[temaEnUso].titulo}` : `${CLASES[vista.clase].titulo} · ${CLASES[vista.clase].juego}`}{vista.rol ? ` · lleva ${RASGOS[vista.rol].titulo}` : ''}</span>
         {n && <div className="arm-nivel">
           <span className="arm-insignia">NV {n.nivel}</span>
           <div className="medidor" role="meter" aria-label="Experiencia del nivel" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(n.pct * 100)}>
@@ -161,6 +172,15 @@ export function Armeria({ inicial }: { inicial?: string }) {
                     {(Object.entries(TEMAS) as [TemaId, (typeof TEMAS)[TemaId]][]).map(([id, t]) => <option key={id} value={id}>{t.titulo}</option>)}
                   </select>
                 </label>
+                {/* El reparto del tema elegido: Tú y los seis roles con su aspecto guardado. */}
+                <ul className="arm-reparto" aria-label="Personajes en este tema">
+                  {[{ clave: 'yo', titulo: 'Tú', rol: null as RolId | null }, ...d.roles.map((r) => ({ clave: `rol:${r.id}`, titulo: r.titulo, rol: r.id as RolId | null }))].map((o) => {
+                    const a = aspecto(o.clave, d.aspectos?.[o.clave], o.rol ? null : YO_FABRICA, o.rol), quien = actorDe(o.clave, o.rol)
+                    const nombre = personajeDe(temaEnUso, quien, a.clase).nombre
+                    return <li key={o.clave}><Retrato aspecto={a} actor={quien} tam={48} etiqueta={`${o.titulo}: ${nombre}`} />
+                      <span aria-hidden="true"><span className="meta">{o.titulo}</span><b>{nombre}</b></span></li>
+                  })}
+                </ul>
               </div>
             : <div className={lista ? 'dos-col' : undefined}>
                 {lista && <aside className="lateral contexto" aria-label={pestana === 'agentes' ? 'Agentes de apoyo' : 'Sesiones que orquestan'}>

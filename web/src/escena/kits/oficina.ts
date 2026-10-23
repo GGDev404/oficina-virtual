@@ -4,6 +4,7 @@ import { color, nodo, PROPS, type KitVector } from '../rig'
 import { aclarar, oscurecer } from '../sprites'
 
 export const oficina: KitVector = {
+  nombre: 'Oficinista', usa: ['camisa', 'pantalon', 'brillo', 'pelo', 'piel'],
   dibujar: ({ aspecto: a, vista }) => {
     const camisa = color(a.camisa, '#336fc6'), pelo = color(a.pelo, '#2b1d14'), piel = color(a.piel, '#f1c7a3')
     const pantalon = color(a.pantalon, '#30364a'), brillo = color(a.brillo, '#ffd84a')

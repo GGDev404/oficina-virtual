@@ -187,6 +187,7 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
   // Fondo del tema (estático) y su decorado animado en .figuras; se rehace solo si cambia el tema o su modo.
   const decorados: Figura[] = []
   let temaFondo = ''
+  let hojasMesa = -1, hacerMesa: () => SVGGElement = mesaYo // tu escritorio: el del tema, o el de madera (pintarMesa, más abajo)
   function ponerFondo() {
     if (temaFondo === claveTema()) return
     temaFondo = claveTema()
@@ -415,7 +416,6 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
   Object.assign(mesa.style, { left: `calc(var(--e) * ${MESA_YO.dx - 1}px)`, top: `calc(var(--e) * ${MESA_YO.dy - 10}px)`,
     width: 'calc(var(--e) * 42px)', height: 'calc(var(--e) * 27px)', zIndex: String(MESA_YO.dy + 16) })
   figuras.append(mesa)
-  let hojasMesa = -1, hacerMesa: () => SVGGElement = mesaYo
   function pintarMesa(hojas: number) { // la pila de la bandeja: una hoja por pendiente para ti, hasta 6
     if (hojas === hojasMesa) return
     hojasMesa = hojas

@@ -10,7 +10,7 @@
 // - Vista «espalda»: sentado en su escritorio, de espaldas, con silla (poses teclea y espera).
 // - Nodos con createElementNS (nunca innerHTML); colores guardados validados como #rrggbb con color().
 // - Arte original estilizado: nunca calcar ni incrustar arte, logos o tipografías oficiales de los juegos.
-import type { RolId } from '@/lib/tipos'
+import type { AspectoGuardado, RolId } from '@/lib/tipos'
 import type { PoseDef, Vaiven } from './animacion'
 import type { Pintar } from './hornear'
 import type { Aspecto, Pose } from './sprites'
@@ -20,11 +20,13 @@ export type Vista = 'frente' | 'espalda'
 /** Quién es el personaje: tú, un rol, o una sesión sin rol (las que orquestan). */
 export type Actor = 'yo' | 'fondo' | `rol:${RolId}`
 export interface Pieza { aspecto: Aspecto; vista: Vista; pose: Pose }
+/** `nombre`: cómo se llama el personaje; `usa`: los colores guardados que de verdad tiñen su dibujo (la Armería deshabilita el resto). */
+interface Ficha { nombre?: string; usa?: (keyof AspectoGuardado)[] }
 /** Kit vectorial: dibuja el rig completo (grupo .pj) y puede ajustar las poses base. */
-export interface KitVector { dibujar: (p: Pieza) => SVGGElement; poses?: Partial<Record<Pose, Partial<PoseDef>>> }
+export interface KitVector extends Ficha { dibujar: (p: Pieza) => SVGGElement; poses?: Partial<Record<Pose, Partial<PoseDef>>> }
 /** Kit de pixel art: pinta el cuadro f de la pose (pies en 0, 0), un rectángulo por llamada. */
 export interface Ritmo { cuadros: number; dur: number; pesos?: number[]; vaiven?: Vaiven }
-export interface KitPixel { pintar: (r: Pintar, p: Pieza, f: number) => void; ritmos?: Partial<Record<Pose, Ritmo>> }
+export interface KitPixel extends Ficha { pintar: (r: Pintar, p: Pieza, f: number) => void; ritmos?: Partial<Record<Pose, Ritmo>> }
 export type Kit = KitVector | KitPixel
 /** Lo que aporta cada tema: sus kits y a quién dibuja cada uno. */
 export interface Reparto { kits: Record<string, Kit>; quien: Partial<Record<Actor, string>> }

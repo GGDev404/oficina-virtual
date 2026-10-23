@@ -147,5 +147,21 @@ export function escenario(): Escenario {
       pose: s.anim === 'pulso' ? POSE_PULSO : POSE_PARPADEO,
     }
   })
-  return { g, animados }
+  return { g, animados, mesa }
+}
+
+/** Tu mesa holográfica (misma caja que mesaYo): tablero translúcido, monitor de neón, bandeja luminosa con `.pila` de 6 hojas. */
+function mesa(): SVGGElement {
+  const m = MESA_YO, g = nodo('g', { 'shape-rendering': 'crispEdges' })
+  nodo('rect', { x: m.dx - 1, y: m.dy + 15, width: 42, height: 3, fill: AMA, opacity: 0.1 }, g) // luz bajo la mesa
+  rects(g, [[m.dx, m.dy, 40, 10, '#0b1428'], [m.dx, m.dy + 10, 40, 6, '#0a0d1a']])
+  nodo('rect', { x: m.dx, y: m.dy, width: 40, height: 10, fill: AMA, opacity: 0.12 }, g)
+  rects(g, [[m.dx, m.dy, 40, 1, AMA], [m.dx, m.dy + 9, 40, 1, '#8a8420'], [m.dx + 3, m.dy + 12, 34, 1, MAG], [m.dx + 3, m.dy + 13, 1, 4, '#8a8420'], [m.dx + 36, m.dy + 13, 1, 4, '#8a8420']])
+  rects(g, [[m.dx + 25, m.dy - 9, 12, 10, '#080c18'], [m.dx + 26, m.dy - 8, 10, 7, v('monitor')], [m.dx + 30, m.dy + 1, 2, 2, '#1b2a44']])
+  marco(g, m.dx + 25, m.dy - 9, 12, 10, CIAN, 0.85)
+  rects(g, [[m.dx + 27, m.dy - 6, 6, 1, CIAN], [m.dx + 27, m.dy - 4, 4, 1, MAG]])
+  rects(g, [[m.dx + 2, m.dy + 2, 9, 6, '#150f2a']]); marco(g, m.dx + 2, m.dy + 2, 9, 6, CIAN, 0.7) // bandeja
+  const pila = nodo('g', {}, g, 'pila')
+  for (let k = 0; k < 6; k++) nodo('rect', { x: m.dx + 3, y: m.dy + 5 - k, width: 7, height: 1, fill: k % 2 ? '#bff6fb' : '#ffffff' }, pila)
+  return g
 }

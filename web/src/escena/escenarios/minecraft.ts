@@ -46,7 +46,7 @@ export function escenario(): Escenario {
     for (const [x, y, w, h] of [[0, 0, 7, 6], [7, 0, 9, 7], [0, 6, 5, 10], [5, 7, 11, 9]]) rects(p, [[x, y + h - 1, w, 1, NEGRO(0.16)], [x + w - 1, y, 1, h, NEGRO(0.16)], [x, y, w - 1, 1, BLANCO(0.06)]])
     granos(p, 15, 15, 13, 6, 0.06, 0.05)
   })
-  baldosa(defs, 'mc-arena', 16, 16, (p) => { rects(p, [[0, 0, 16, 16, v('descanso')], [0, 8, 16, 8, v('descanso-2')]]); granos(p, 15, 15, 17, 16, 0.08, 0.1) })
+  baldosa(defs, 'mc-arena', 16, 16, (p) => { rects(p, [[0, 0, 16, 16, v('descanso')]]); granos(p, 15, 15, 17, 12, 0.06, 0.07) }) // sin banda de medio tono: la arena es plana
   baldosa(defs, 'mc-muro', 16, 10, (p) => { // pared de madera oscura: vetas verticales
     rects(p, [[0, 0, 16, 10, v('muro')], [0, 0, 1, 10, NEGRO(0.14)], [8, 0, 1, 10, NEGRO(0.14)], [0, 0, 16, 1, BLANCO(0.07)], [4, 3, 1, 3, NEGRO(0.08)], [12, 5, 1, 3, NEGRO(0.08)]])
     granos(p, 15, 9, 19, 4, 0.08, 0.05)
@@ -137,7 +137,22 @@ export function escenario(): Escenario {
     animados.push({ clave: 'mc-antorcha', x, y: y + 7, z: 0, rig: antorcha, pose: LLAMA })
   }
   for (const [x, y] of [[238, 34], [d.x + 136, d.y + 29]] as const) animados.push({ clave: 'mc-fuego', x, y, z: 0, rig: fuego, pose: LLAMA })
-  return { g, animados }
+  return { g, animados, mesa }
+}
+
+/** Tu escritorio: mesa de crafteo doble con el monitor enmarcado y la pila de hojas (`.pila`) sobre la tapa. */
+function mesa(): SVGGElement {
+  const { dx: x, dy: y } = MESA_YO, m = nodo('g', { 'shape-rendering': 'crispEdges' })
+  rects(m, [
+    [x, y, 40, 10, '#b8844f'], [x, y, 40, 1, '#d6a56a'], [x + 19, y + 1, 2, 9, '#8a6038'], [x + 1, y + 5, 38, 1, '#8a6038'], [x + 9, y + 1, 1, 9, '#8a6038'], [x + 30, y + 1, 1, 9, '#8a6038'], [x, y + 9, 40, 1, '#96683c'],
+    [x, y + 10, 40, 6, '#8a5a33'], [x, y + 10, 40, 1, '#6e4626'], [x + 4, y + 12, 7, 1, '#cfd6dd'], [x + 4, y + 13, 2, 1, '#5a3e24'], [x + 17, y + 12, 5, 2, '#8f98a3'], [x + 19, y + 13, 1, 1, '#5a3e24'], [x + 28, y + 12, 6, 1, '#c94b30'], [x + 28, y + 13, 6, 1, '#7a4e22'],
+    [x + 1, y + 16, 3, 1, '#5a3a1c'], [x + 36, y + 16, 3, 1, '#5a3a1c'],
+    [x + 24, y - 10, 14, 11, '#5a3e24'], [x + 24, y - 10, 14, 1, '#8a6a40'], [x + 24, y - 10, 1, 11, '#7a5a36'], [x + 37, y - 10, 1, 11, '#4a321c'], [x + 25, y - 9, 12, 8, '#0f1612'], [x + 29, y + 1, 4, 2, '#4a321c'],
+    [x + 12, y + 3, 6, 3, '#9a9a9a'], [x + 12, y + 3, 6, 1, '#b8b8b8'], [x + 12, y + 5, 6, 1, '#6f6f6f'],
+  ])
+  const pila = nodo('g', {}, m, 'pila')
+  for (let k = 0; k < 6; k++) nodo('rect', { x: x + 2, y: y + 6 - k, width: 7, height: 1, fill: k % 2 ? '#e8e4da' : '#ffffff' }, pila)
+  return m
 }
 
 // ── Llamas: dos cuadros alternados (la llama «respira» unas 2 veces por segundo) ──

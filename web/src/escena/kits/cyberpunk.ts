@@ -121,6 +121,7 @@ function armar({ aspecto: a, vista }: Pieza, c: Cfg): SVGGElement {
 
 // ── V: chaqueta de cuello alto con paneles de color y filo de neón; implante cian en un ojo ──
 const V: KitVector = {
+  nombre: 'V', usa: ['camisa', 'pantalon', 'brillo', 'pelo', 'piel'],
   dibujar: (p) => {
     const a = p.aspecto, camisa = color(a.camisa, '#1f9e8f'), brillo = color(a.brillo, AMA), pelo = color(a.pelo, '#161616'), piel = color(a.piel, '#c99572')
     const solapa = oscurecer(camisa, 0.7), w = 5.5
@@ -153,6 +154,7 @@ const V: KitVector = {
 // ── Alt Cunningham: figura digital translúcida, pelo largo y restos de píxeles; un glitch breve cada 6 s ──
 const CIAN_ALT = '#7ee8ff', VIOLETA = '#b36bff'
 const ALT: KitVector = {
+  nombre: 'Alt Cunningham', usa: ['brillo'],
   dibujar: (p) => {
     const brillo = claro(color(p.aspecto.brillo, CIAN)), piel = '#cdeeff', pelo = '#2a2166'
     const raiz = armar(p, {
@@ -193,6 +195,7 @@ const ALT: KitVector = {
 
 // ── Delamain: chofer IA; cabeza-pantalla holográfica con rostro de neón y gorra de taxi, guantes blancos ──
 const DELAMAIN: KitVector = {
+  nombre: 'Delamain', usa: ['camisa', 'brillo'],
   dibujar: (p) => {
     const a = p.aspecto, brillo = claro(color(a.brillo, CIAN)), traje = oscurecer(color(a.camisa, '#2a3f6e'), 0.6)
     return armar(p, {
@@ -221,6 +224,7 @@ const DELAMAIN: KitVector = {
 // ── Jackie Welles: corpulento, chaqueta roja con ribetes dorados, barba y cadena ──
 const ROJO = '#c0102c', ORO = '#e8b83a'
 const JACKIE: KitVector = {
+  nombre: 'Jackie Welles', usa: ['camisa', 'pantalon', 'brillo'],
   dibujar: (p) => {
     const a = p.aspecto, brillo = color(a.brillo, AMA), piel = '#8a5a3c', pelo = '#14110f'
     return armar(p, {
@@ -249,6 +253,7 @@ const JACKIE: KitVector = {
 
 // ── Judy Alvarez: pelo corto turquesa con puntas magenta, visor de braindance en la frente, brazos con tatuajes de neón ──
 const JUDY: KitVector = {
+  nombre: 'Judy Alvarez', usa: ['camisa', 'pantalon', 'brillo'],
   dibujar: (p) => {
     const a = p.aspecto, brillo = color(a.brillo, CIAN), piel = '#cf9a76', pelo = '#13b5c2'
     return armar(p, {
@@ -275,6 +280,7 @@ const JUDY: KitVector = {
 
 // ── Misty: pelo negro larguísimo, flequillo recto, falda larga y ankh de neón ──
 const MISTY: KitVector = {
+  nombre: 'Misty', usa: ['camisa', 'brillo'],
   dibujar: (p) => {
     const a = p.aspecto, brillo = color(a.brillo, '#c77dff'), piel = '#efd9cf', pelo = '#12101a'
     return armar(p, {
@@ -304,6 +310,7 @@ const MISTY: KitVector = {
 
 // ── T-Bug: netrunner con traje negro de LEDs, visor de interfaz y cable neural ──
 const TBUG: KitVector = {
+  nombre: 'T-Bug', usa: ['camisa', 'brillo'],
   dibujar: (p) => {
     const a = p.aspecto, brillo = color(a.brillo, CIAN), piel = '#e6c6b6', pelo = '#ff2a6d', traje = '#171329'
     return armar(p, {
@@ -333,6 +340,7 @@ const TBUG: KitVector = {
 
 // ── Edgerunners de fondo: chaqueta teñida con neón, y una variante de pelo/implante según sus colores ──
 const EDGE: KitVector = {
+  nombre: 'Edgerunner', usa: ['camisa', 'pantalon', 'brillo', 'pelo', 'piel'],
   dibujar: (p) => {
     const a = p.aspecto, camisa = color(a.camisa, '#2a2340'), brillo = color(a.brillo, CIAN), pelo = color(a.pelo, '#161616'), piel = color(a.piel, '#c99572')
     const v = semilla(color(a.pelo, '#161616'), camisa, piel) % 4, solapa = aclarar(camisa, 0.25)
