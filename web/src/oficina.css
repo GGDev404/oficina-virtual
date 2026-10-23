@@ -293,7 +293,23 @@
   .vo-tarjeta .hora { color: var(--suave); font-weight: 500; }
   .vo-tarjeta { align-items: start; align-content: start; }
   .vo-tarjeta .vo-nombre { display: grid; gap: 2px; font-weight: 400; align-content: start; }
+  /* Pizarra: Falta · En progreso · Hecho; el borde izquierdo de cada nota dice su columna. */
+  .pz-columnas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s3); align-items: start; }
+  .pz-columna { border: 1px solid var(--borde); border-radius: var(--r4); padding: var(--s3); background: var(--hundido); min-width: 0; }
+  .pz-columna h3 { margin: 0 0 var(--s2); }
+  .pz-columna ul { list-style: none; margin: 0; padding: 0; }
+  .pz-nota { display: grid; gap: var(--s1); padding: var(--s2) var(--s3); background: var(--panel); border: 1px solid var(--borde);
+    border-left: 4px solid var(--borde-fuerte); border-radius: var(--r2); overflow-wrap: anywhere; min-width: 0; }
+  .pz-columna.progreso .pz-nota { border-left-color: var(--azul); }
+  .pz-columna.revisar .pz-nota { border-left-color: var(--verde); }
+  .pz-sigue { font-size: var(--t-sm); }
+  .pz-pasos { list-style: none; margin: var(--s1) 0 0; padding: 0; display: grid; gap: 2px; font-size: var(--t-sm); }
+  .pz-pasos li::before { content: '○ '; color: var(--suave); }
+  .pz-pasos li.progreso::before { content: '▶ '; color: var(--azul); }
+  .pz-pasos li.hecho { color: var(--suave); }
+  .pz-pasos li.hecho::before { content: '✓ '; color: var(--verde); }
   @media (max-width: 700px) {
+    .pz-columnas { grid-template-columns: minmax(0, 1fr); }
     .vo-fila { grid-template-columns: 64px minmax(0, 1fr); }
     .vo-accion { grid-column: 2; align-items: flex-start; }
     #v-oficina > header.vo-cabeza, .vo-tabs { padding-inline: var(--s4); }

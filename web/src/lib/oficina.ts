@@ -1,5 +1,5 @@
 // Datos y utilidades de la oficina, sin DOM: lo mismo que usaba public/index.html.
-import type { Contexto, Datos, RolId, Sesion, Tarea } from './tipos'
+import type { Contexto, Datos, RolId, Sesion, Tarea, Worktree } from './tipos'
 
 export const ESTADOS: Record<string, [string, string]> = {
   necesita_permiso: ['Necesita permiso', 'rojo'], bloqueado: ['Bloqueado', 'rojo'],
@@ -132,3 +132,27 @@ export function infoProceso(p: Proceso) {
 // Encargos donde la sesión es origen o destino (más nuevos primero) y nombre legible de un rol.
 export const encargosDe = (d: Datos, sid: string) => (d.encargos ?? []).filter((e) => e.de_sesion === sid || e.a_sesion === sid).reverse()
 export const tituloRol = (d: Datos, id: RolId | null) => (id ? d.roles?.find((r) => r.id === id)?.titulo ?? id : '')
+
+// Sesiones vivas dentro del worktree y sus subagentes trabajando.
+export function enWorktree(w: Worktree, d: Datos) {
+  const sesiones = d.sesiones.filter((s) => VIVOS.has(s.estado) && s.cwd && (s.cwd === w.ruta || s.cwd.startsWith(`${w.ruta}/`)))
+  const ids = new Set(sesiones.map((s) => s.id))
+  return { sesiones, subagentes: d.subagentes.filter((a) => ids.has(a.sesion_id) && a.estado === 'trabajando').length }
+}
+
+// Columna de la pizarra: aparcada o sin avance = falta; todo el plan hecho (o la noche la dejó lista) = para revisar.
+export type Columna = 'falta' | 'progreso' | 'revisar'
+export function columnaDe(w: Worktree, activos: Sesion[]): Columna {
+  const hechos = w.pasos.filter((p) => p.estado === 'hecho').length
+  const enCurso = activos.length > 0 || !!w.noche?.corriendo
+  if (!enCurso && /^aparcada/i.test(w.noche?.estado ?? '')) return 'falta'
+  if (!enCurso && ((w.pasos.length > 0 && hechos === w.pasos.length) || /lista para revisi/i.test(w.noche?.estado ?? ''))) return 'revisar'
+  if (enCurso || hechos > 0 || w.pasos.some((p) => p.estado === 'progreso') || w.commits > 0 || w.sin_commit > 0) return 'progreso'
+  return 'falta'
+}
+
+// Insignia de la escena y cuenta de la pestaña: tareas con alguien trabajando y tareas listas para tu revisión.
+export function resumenPizarra(d: Datos) {
+  const cols = (d.worktrees ?? []).map((w) => { const { sesiones } = enWorktree(w, d); return { activo: sesiones.length > 0 || !!w.noche?.corriendo, col: columnaDe(w, sesiones) } })
+  return { enCurso: cols.filter((c) => c.activo).length, revisar: cols.filter((c) => c.col === 'revisar').length }
+}
