@@ -1,9 +1,10 @@
 // Pizarra (ventana propia): una tarjeta por worktree que responde en este orden: en qué estado está, qué se hizo, qué falta y qué falta de ti.
-// Arriba van las que te tocan a ti; el resto avanza sin ti. El avance sale del plan de la tarea, de los commits y del turno nocturno.
+// Pestañas: «Te toca a ti» y una por estado, para no perderse en una sola lista. El avance sale del plan de la tarea, de los commits y del turno nocturno.
 import { useState } from 'react'
 import { Chip } from '@/components/comunes'
 import { useOficina } from '@/components/contexto'
 import { Icono, type NombreIcono } from '@/components/icono'
+import { Panel, Pestanas } from '@/components/pestanas'
 import { Cerrar, Descripcion, Titulo, Ventana } from '@/components/ventana'
 import { hace, nombreSesion, plano, resumenPizarra, tareasPizarra, type ClavePz, type PedidoPz, type TareaPz } from '@/lib/oficina'
 import type { Worktree } from '@/lib/tipos'
@@ -18,16 +19,23 @@ const ESTADO: Record<ClavePz, { icono: NombreIcono; tono: string; frase: string 
   pausada: { icono: 'pausa', tono: 'gris', frase: 'Pausada · nadie trabaja ahora' },
   nueva: { icono: 'nueva', tono: 'gris', frase: 'Sin empezar' },
 }
+// Pestañas: primero lo que te toca, luego una por estado (las vacías no se muestran).
+const PESTANAS: [string, string][] = [['tocan', 'Te toca a ti'], ['curso', 'En curso'], ['espera', 'Esperan respuesta'], ['terminada', 'Terminadas'],
+  ['aparcada', 'Aparcadas'], ['pausada', 'Pausadas'], ['nueva', 'Sin empezar']]
 const ICONO_PEDIDO: Record<PedidoPz['tipo'], NombreIcono> = { sesion: 'campana', listo: 'ojo', revisar: 'ojo', decidir: 'decidir', commit: 'archivo' }
 
 export function PizarraVentana() {
   const { datos: d, cerrarVentana } = useOficina()
   const [viejos, setViejos] = useState(false)
+  const [pestana, setPestana] = useState<string | null>(null)
   const todas = tareasPizarra(d)
   const nViejos = todas.filter((x) => x.quieto).length
   const visibles = viejos ? todas : todas.filter((x) => !x.quieto)
-  const tocan = visibles.filter((x) => x.pedidos.length)
-  const resto = visibles.filter((x) => !x.pedidos.length)
+  const grupos = PESTANAS.map(([id, titulo]) => ({ id, titulo, lista: visibles.filter((x) => id === 'tocan' ? x.pedidos.length : x.clave === id) }))
+    .filter((g) => g.id === 'tocan' || g.lista.length)
+  // Abre en «Te toca a ti» si hay algo; si no, en la primera con tareas. Si la elegida se vacía, vuelve a esa.
+  const inicial = grupos.find((g) => g.lista.length)?.id ?? 'tocan'
+  const actual = grupos.some((g) => g.id === pestana) ? pestana! : inicial
   const r = resumenPizarra(d)
   return (
     <Ventana alCerrar={cerrarVentana} id="v-pizarra">
@@ -38,21 +46,18 @@ export function PizarraVentana() {
           <Chip color={r.tocan ? 'naranja' : ''}>{r.tocan} te tocan</Chip>
         </div>
         <Cerrar /></header>
-      <div className="cuerpo pila-grande">
-        {!visibles.length ? <p className="vacio">No hay worktrees con trabajo en los repos donde trabajan tus sesiones.</p> : <>
-          <section aria-labelledby="pz-toca">
-            <h3 id="pz-toca" className="pz-titulo-seccion"><Icono n="campana" />Te toca a ti · {tocan.length}</h3>
-            {tocan.length ? <ul className="pz-rejilla">{tocan.map((x) => <Tarjeta key={x.w.ruta} x={x} />)}</ul>
-              : <p className="pz-nada"><Icono n="terminada" />Nada te espera: todo avanza sin ti.</p>}
-          </section>
-          {resto.length > 0 && <section aria-labelledby="pz-resto">
-            <h3 id="pz-resto" className="pz-titulo-seccion"><Icono n="curso" />Avanza sin ti · {resto.length}</h3>
-            <ul className="pz-rejilla">{resto.map((x) => <Tarjeta key={x.w.ruta} x={x} />)}</ul>
-          </section>}
-        </>}
-        {nViejos > 0 && <label className="fila meta"><input type="checkbox" checked={viejos} onChange={(e) => setViejos(e.target.checked)} />
-          Mostrar {nViejos} sin movimiento en 14 días</label>}
-      </div>
+      {!visibles.length ? <div className="cuerpo"><p className="vacio">No hay worktrees con trabajo en los repos donde trabajan tus sesiones.</p></div>
+        : <Pestanas valor={actual} alCambiar={setPestana} etiqueta="Tareas por estado" className="flex min-h-0 flex-1 flex-col"
+          items={grupos.map((g) => ({ id: g.id, titulo: g.titulo, cuenta: g.lista.length }))}>
+          <div className="cuerpo pila-grande">
+            {grupos.map((g) => <Panel key={g.id} valor={g.id}>
+              {g.lista.length ? <ul className="pz-rejilla">{g.lista.map((x) => <Tarjeta key={x.w.ruta} x={x} />)}</ul>
+                : <p className="pz-nada"><Icono n="terminada" />Nada te espera: todo avanza sin ti.</p>}
+            </Panel>)}
+            {nViejos > 0 && <label className="fila meta"><input type="checkbox" checked={viejos} onChange={(e) => setViejos(e.target.checked)} />
+              Mostrar {nViejos} sin movimiento en 14 días</label>}
+          </div>
+        </Pestanas>}
     </Ventana>
   )
 }
