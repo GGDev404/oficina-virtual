@@ -192,6 +192,7 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
     temaFondo = claveTema()
     const esc = escenario(temaActual())
     capaFondo.replaceChildren(esc.g)
+    hacerMesa = esc.mesa ?? mesaYo; hojasMesa = -1
     for (const f of decorados.splice(0)) f.el.remove()
     for (const a of esc.animados) {
       const f = fijar(figura('decorado'), a.x, a.y)
@@ -414,11 +415,11 @@ export function montarEscena(svg: SVGSVGElement, escena: HTMLElement, capa: HTML
   Object.assign(mesa.style, { left: `calc(var(--e) * ${MESA_YO.dx - 1}px)`, top: `calc(var(--e) * ${MESA_YO.dy - 10}px)`,
     width: 'calc(var(--e) * 42px)', height: 'calc(var(--e) * 27px)', zIndex: String(MESA_YO.dy + 16) })
   figuras.append(mesa)
-  let hojasMesa = -1
+  let hojasMesa = -1, hacerMesa: () => SVGGElement = mesaYo
   function pintarMesa(hojas: number) { // la pila de la bandeja: una hoja por pendiente para ti, hasta 6
     if (hojas === hojasMesa) return
     hojasMesa = hojas
-    const g = mesaYo()
+    const g = hacerMesa()
     ;[...g.querySelector('.pila')!.children].forEach((h, k) => { if (k >= hojas) h.remove() })
     mesa.src = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${MESA_YO.dx - 1} ${MESA_YO.dy - 10} 42 27">${new XMLSerializer().serializeToString(g)}</svg>`)}`
   }

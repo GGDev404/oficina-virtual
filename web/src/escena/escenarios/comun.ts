@@ -27,7 +27,9 @@ export const MESA_YO = { dx: SALAS.oficina.x + 104, dy: SALAS.oficina.y + 50 }
 
 /** Algo del escenario que se mueve: rig con los pies en (x, y) de la escena, su pose y su orden (z) entre las figuras. */
 export interface Animado { clave: string; x: number; y: number; z?: number; rig: () => SVGGElement; pose: PoseDef }
-export interface Escenario { g: SVGGElement; animados: Animado[] }
+// `mesa` (opcional): tu escritorio al estilo del tema. Coordenadas absolutas, dentro de MESA_YO.dx−1…dx+41 × dy−10…dy+17;
+// debe tener un grupo `.pila` con 6 hojas (escena.ts deja una por pendiente para ti). Sin ella, la de madera (mesaYo).
+export interface Escenario { g: SVGGElement; animados: Animado[]; mesa?: () => SVGGElement }
 
 export type Rect = [number, number, number, number, string]
 export const v = (n: string) => `var(--esc-${n})`
@@ -91,7 +93,7 @@ export function limpia(): Escenario {
   return { g, animados: [] }
 }
 
-/** Tu escritorio (escena.ts lo pone en la capa de figuras, delante de tu avatar). `.pila` guarda las 6 hojas de la bandeja. */
+/** Tu escritorio de madera (escena.ts lo pone en la capa de figuras, delante de tu avatar). `.pila` guarda las 6 hojas de la bandeja. */
 export function mesaYo(): SVGGElement {
   const m = MESA_YO
   const g = nodo('g', { 'shape-rendering': 'crispEdges' })
