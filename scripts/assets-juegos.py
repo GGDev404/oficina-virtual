@@ -5,9 +5,9 @@
 #   DOOM, origen en los pies), pisos y muros. Uso personal.
 # - cozy.json: "Cozy Space Station" de Bramble & Byte (CC-BY 4.0, ver CREDITS.md): muebles y tripulación para Claro/Oscuro.
 # Sin esos archivos, cada tema usa su arte dibujado en código. Requiere Pillow. Uso: python3 scripts/assets-juegos.py
-import base64, io, json, struct, sys, urllib.request, zipfile
+import base64, io, json, struct, sys, urllib.parse, urllib.request, zipfile
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageDraw
 
 RAIZ = Path(__file__).resolve().parent.parent
 DIR = RAIZ / 'web/src/escena/juegos'
@@ -159,3 +159,76 @@ for ruta in tri.namelist():
 cozy = DIR / 'cozy.json'
 cozy.write_text(json.dumps({'muebles': muebles, 'tripulacion': tripulacion}, separators=(',', ':')))
 print(f'{cozy.relative_to(RAIZ)}: {len(muebles)} muebles, {len(tripulacion)} tripulantes, {cozy.stat().st_size // 1024} kB')
+
+# ── Fichas (opción B): retratos redondos de 160 px en WebP ─────────────────────────────────────────────────────────
+# Halo: avatares oficiales de MCC (Halopedia). Edgerunners: retratos de la Fandom wiki y arte de Yoshiyuki Kaneko.
+# DOOM: la cara del HUD y la cabeza de cada sprite. Claro/Oscuro: "Cozy Space Portraits" (CC-BY 4.0) con sus gestos.
+LADO = 160
+UA = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/130 Safari/537.36'}
+
+def bajar(url):
+    return urllib.request.urlopen(urllib.request.Request(url, headers=UA)).read()
+
+def archivo_wiki(api, nombre):
+    cache = DIR / 'retratos' / nombre.replace(' ', '_')
+    if not cache.exists():
+        q = urllib.parse.urlencode({'action': 'query', 'titles': f'File:{nombre}', 'prop': 'imageinfo', 'iiprop': 'url', 'format': 'json'})
+        pag = next(iter(json.loads(bajar(f'{api}?{q}'))['query']['pages'].values()))
+        cache.parent.mkdir(exist_ok=True)
+        cache.write_bytes(bajar(pag['imageinfo'][0]['url']))
+    return Image.open(cache).convert('RGBA')
+
+def redondo(im, cx=.5, cy=.5, lado=1.0, fondo=(28, 30, 38, 255), nitido=False):
+    w, h = im.size; L = lado * w
+    c = im.crop((int(cx * w - L / 2), int(cy * h - L / 2), int(cx * w + L / 2), int(cy * h + L / 2)))
+    c = c.resize((LADO, LADO), Image.NEAREST if nitido else Image.LANCZOS)
+    base = Image.new('RGBA', (LADO, LADO), fondo); base.alpha_composite(c)
+    m = Image.new('L', (LADO * 4, LADO * 4), 0); ImageDraw.Draw(m).ellipse((0, 0, LADO * 4 - 1, LADO * 4 - 1), fill=255)
+    base.putalpha(m.resize((LADO, LADO), Image.LANCZOS))
+    b = io.BytesIO(); base.save(b, 'WEBP', quality=88)
+    return 'data:image/webp;base64,' + base64.b64encode(b.getvalue()).decode()
+
+HALOPEDIA, CPWIKI = 'https://www.halopedia.org/api.php', 'https://cyberpunk.fandom.com/api.php'
+HALO = {  # clave: (archivo, cx, cy, lado)
+    'chief': ('HTMCC_Avatar_MasterChief_1.png', .5, .24, .42), 'cortana': ('HTMCC_Avatar_Cortana_1.png', .5, .22, .40),
+    'spark': ('HTMCC_Avatar_343GuiltySpark_1.png', .5, .5, .95), 'johnson': ('HTMCC_Avatar_Johnson_1.png', .47, .24, .40),
+    'halsey': ('HTMCC_Avatar_Halsey.png', .5, .22, .40), 'keyes': ('HTMCC_Avatar_JacobKeyes_1.png', .5, .22, .40),
+    'arbiter': ('H3-ArbiterThelVadam-ScanRender.png', .77, .14, .38),
+    'f0': ('HTMCC_Avatar_OldSchoolSpartan.png', .5, .24, .45), 'f1': ('HTMCC_Avatar_Spartan_Strike.png', .5, .22, .42),
+    'f2': ('HTMCC_Avatar_ODST.png', .55, .22, .36), 'f3': ('HTMCC_Avatar_Marine_1.png', .5, .22, .42), 'f4': ('HTMCC_Avatar_Marine_2.png', .48, .24, .42),
+    'f5': ('HTMCC_Avatar_Buck.png', .5, .24, .45), 'f6': ('HTMCC_Avatar_Romeo.png', .5, .24, .45), 'f7': ('HTMCC_Avatar_Rookie.png', .48, .22, .42),
+}
+EDGE = {
+    'david': ('Edge David by Yoshiyuki Kaneko.png', .5, .33, .55), 'lucy': ('Lucy Infobox CPEDGE.png', .5, .32, .8),
+    'kiwi': ('Kiwi Infobox CPEDGE.jpg', .5, .3, .85), 'maine': ('Maine Infobox CPEDGE.png', .5, .3, .85),
+    'rebecca': ('Rebecca Infobox CPEDGE.png', .5, .3, .85), 'falco': ('Falco Infobox CPEDGE.jpg', .5, .32, .85),
+    'pilar': ('Pilar Infobox CPEDGE.png', .52, .3, .8),
+    'f0': ('Dorio Infobox CPEDGE.png', .5, .4, .85), 'f1': ('Gloria Infobox CPEDGE.png', .5, .4, .6), 'f2': ('Faraday Infobox CPEDGE.png', .5, .28, .85),
+    'f3': ('Jimmy Kurosaki Infobox CPEDGE.png', .5, .3, .85), 'f4': ('Tanaka Infobox CPEDGE.png', .5, .3, .85), 'f5': ('Katsuo Infobox CPEDGE.png', .5, .3, .85),
+    'f6': ('Sasha Infobox CPEDGE.png', .5, .3, .85), 'f7': ('Doc Infobox CPEDGE.png', .5, .3, .85),
+}
+retratos = {}
+for k, (f, cx, cy, l) in HALO.items():
+    try: retratos[f'halo-{k}'] = redondo(archivo_wiki(HALOPEDIA, f), cx, cy, l)
+    except Exception as e: print('sin', f, e)
+for k, (f, cx, cy, l) in EDGE.items():
+    try: retratos[f'edge-{k}'] = redondo(archivo_wiki(CPWIKI, f), cx, cy, l, fondo=(252, 238, 10, 255))
+    except Exception as e: print('sin', f, e)
+# DOOM: (lump, traducción, cx, cy, lado) sobre el parche original; nítido (pixel art).
+ROJO_DOOM = (58, 12, 8, 255)
+DOOM = {'doomguy': ('STFST01', None, .5, .5, 1.05), 'baron': ('BOSSA1', None, .5, .17, .55), 'pinky': ('SARGA1', None, .5, .4, .8),
+        'imp': ('TROOA1', None, .5, .2, .62), 'espectro': ('SARGA1', None, .5, .4, .8), 'sargento': ('SPOSA1', None, .5, .2, .7),
+        'rojo': ('PLAYA1', 0x20, .45, .2, .62), 'f0': ('POSSA1', None, .5, .2, .62), 'f1': ('PLAYA1', 0x60, .45, .2, .62), 'f2': ('PLAYA1', 0x40, .45, .2, .62)}
+for k, (lump, trad, cx, cy, l) in DOOM.items():
+    im, _, _ = parche(lump, trad)
+    if k == 'espectro': im.putalpha(im.getchannel('A').point(lambda v: v * 45 // 100))
+    retratos[f'doom-{k}'] = redondo(im, cx, cy, l, fondo=ROJO_DOOM, nitido=True)
+# Cozy Space Portraits: cada personaje con sus gestos.
+por = zip_oga('cozy-space-portraits-cc-by.zip')
+for ruta in por.namelist():
+    if '/portraits/4x/' in ruta and ruta.endswith('.png') and 'talk' not in ruta and 'angry' not in ruta:
+        im = Image.open(io.BytesIO(por.read(ruta))).convert('RGBA')
+        retratos['cozy-' + ruta.rsplit('/', 1)[1][:-4]] = redondo(im, .5, .5, 1.0, fondo=(222, 230, 236, 255))
+fichas = DIR / 'fichas.json'
+fichas.write_text(json.dumps({'retratos': retratos}, separators=(',', ':')))
+print(f'{fichas.relative_to(RAIZ)}: {len(retratos)} retratos, {fichas.stat().st_size // 1024} kB')

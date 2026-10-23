@@ -20,7 +20,7 @@ const NS = 'http://www.w3.org/2000/svg'
 export type Vista = 'frente' | 'espalda'
 /** Quién es el personaje: tú, un rol, o una sesión sin rol (las que orquestan). */
 export type Actor = 'yo' | 'fondo' | `rol:${RolId}`
-export interface Pieza { aspecto: Aspecto; vista: Vista; pose: Pose }
+export interface Pieza { aspecto: Aspecto; vista: Vista; pose: Pose; actor?: Actor }
 /** `nombre`: cómo se llama el personaje; `usa`: los colores guardados que de verdad tiñen su dibujo (la Armería deshabilita el resto). */
 interface Ficha { nombre?: string; usa?: (keyof AspectoGuardado)[] }
 /** Kit vectorial: dibuja el rig completo (grupo .pj) y puede ajustar las poses base. */

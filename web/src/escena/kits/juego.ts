@@ -35,3 +35,8 @@ export const cozy = cozyArchivo && {
   muebles: cozyArchivo.muebles,
   tripulacion: Object.fromEntries(await Promise.all(Object.entries(cozyArchivo.tripulacion).map(async ([k, t]) => [k, { ...t, img: await cargar(t.src) }] as const))) as Record<string, Tripulante>,
 }
+
+// ── Fichas (retratos redondos de 160 px; scripts/assets-juegos.py → fichas.json), ya decodificadas ──
+const fichasArchivo = datosJuego('fichas') as unknown as { retratos: Record<string, string> } | undefined
+export const retratos: Record<string, HTMLImageElement> | undefined = fichasArchivo &&
+  Object.fromEntries(await Promise.all(Object.entries(fichasArchivo.retratos).map(async ([k, src]) => [k, await cargar(src)] as const)))

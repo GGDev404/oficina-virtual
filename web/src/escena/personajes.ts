@@ -9,15 +9,18 @@ import { RITMOS, SENTADO, type Actor, type Kit, type Reparto } from './rig'
 import type { Aspecto, Pose } from './sprites'
 import { oficina } from './kits/oficina'
 import { tripulacion } from './kits/cozy'
-import { reparto as halo } from './kits/halo'
-import { reparto as cyberpunk } from './kits/cyberpunk'
-import { reparto as doom } from './kits/doom'
+import { conFichasDoom, conFichasEdge, conFichasHalo, fichaCozy } from './kits/repartos-fichas'
+import { reparto as haloCodigo } from './kits/halo'
+import { reparto as cyberpunkCodigo } from './kits/cyberpunk'
+import { reparto as doomCodigo } from './kits/doom'
 import { reparto as minecraft } from './kits/minecraft'
 
 export { actorDe, type Actor, type Vista } from './rig'
 
+// Halo, Edgerunners y DOOM con fichas (retratos) si están extraídas; Minecraft siempre en pixel art.
+const halo = conFichasHalo(haloCodigo), cyberpunk = conFichasEdge(cyberpunkCodigo), doom = conFichasDoom(doomCodigo)
 const TEMAS: Partial<Record<TemaId, Reparto>> = { halo, cyberpunk, doom, minecraft }
-export const KITS: Record<string, Kit> = { oficina: tripulacion ?? oficina, ...halo.kits, ...cyberpunk.kits, ...doom.kits, ...minecraft.kits }
+export const KITS: Record<string, Kit> = { oficina: fichaCozy ?? tripulacion ?? oficina, ...halo.kits, ...cyberpunk.kits, ...doom.kits, ...minecraft.kits }
 // La clase guardada decide el kit en Claro/Oscuro/Automático; los temas pueden registrar el suyo para cada clase.
 export const KIT_DE_CLASE: Partial<Record<Clase, string>> = { spartan: 'spartan', netrunner: 'netrunner', marine: 'wad-doomguy' in doom.kits ? 'wad-doomguy' : 'marine', bloque: 'bloque' }
 
@@ -40,7 +43,7 @@ const COLORES_TODOS: (keyof AspectoGuardado)[] = ['camisa', 'pantalon', 'brillo'
 export function tiraPersonaje(aspecto: Aspecto, tema: TemaId, actor: Actor, pose: Pose): Tira {
   const id = elegirKit(tema, actor, aspecto.clase)
   return enCache(`pj|${id}|${actor}|${pose}|${claveTema()}|${JSON.stringify(aspecto)}`, () => {
-    const kit = KITS[id], pieza = { aspecto, vista: SENTADO.has(pose) ? 'espalda' as const : 'frente' as const, pose }
+    const kit = KITS[id], pieza = { aspecto, vista: SENTADO.has(pose) ? 'espalda' as const : 'frente' as const, pose, actor }
     if ('pintar' in kit) return hornearPixel((r, f) => kit.pintar(r, pieza, f), kit.ritmos?.[pose] ?? RITMOS[pose])
     return hornearVector(kit.dibujar(pieza), poseDe(pose, kit.poses?.[pose]))
   })

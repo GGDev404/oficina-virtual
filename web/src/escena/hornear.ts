@@ -17,6 +17,8 @@ export interface Tira { src: string; n: number; dur: number; anim: string; vaive
 export type Pintar = ((x: number, y: number, w: number, h: number, c: string) => void) & {
   /** Solo al hornear pixel art: copia el recorte (sx, sy, sw, sh) de una imagen ya cargada a (x, y, w, h) en px lógicos. */
   imagen?: (img: CanvasImageSource, sx: number, sy: number, sw: number, sh: number, x: number, y: number, w: number, h: number) => void
+  /** Solo al hornear pixel art: elipse con centro (cx, cy) y radios (rx, ry); con `grosor`, solo el aro. */
+  circulo?: (cx: number, cy: number, rx: number, ry: number, c: string, grosor?: number) => void
 }
 
 // ── Caché: la misma tira (kit, colores, pose, tema) se hornea una vez y la comparten escena, Armería y ficha ──
@@ -141,6 +143,10 @@ export function hornearPixel(pintar: (r: Pintar, f: number) => void, ritmo: { cu
     const ox = f * CELDA.w - CELDA.x, oy = -CELDA.y
     const r: Pintar = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect((ox + x) * PIXEL, (oy + y) * PIXEL, w * PIXEL, h * PIXEL) }
     r.imagen = (img, sx, sy, sw, sh, x, y, w, h) => ctx.drawImage(img, sx, sy, sw, sh, (ox + x) * PIXEL, (oy + y) * PIXEL, w * PIXEL, h * PIXEL)
+    r.circulo = (cx, cy, rx, ry, c, grosor) => {
+      ctx.beginPath(); ctx.ellipse((ox + cx) * PIXEL, (oy + cy) * PIXEL, rx * PIXEL, ry * PIXEL, 0, 0, Math.PI * 2)
+      if (grosor) { ctx.strokeStyle = c; ctx.lineWidth = grosor * PIXEL; ctx.stroke() } else { ctx.fillStyle = c; ctx.fill() }
+    }
     pintar(r, f)
   }
   return { src: lienzo.toDataURL('image/png'), n, dur: ritmo.dur, anim: animacion(n, ritmo.pesos), vaiven: ritmo.vaiven ?? '' }

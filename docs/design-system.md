@@ -77,6 +77,11 @@ Letras: `--pixel` (Pixelify Sans) en títulos de Minecraft y en los letreros de 
   los diseños de cada juego. DOOM usa sus sprites, pisos y muros reales, y Claro/Oscuro los de "Cozy Space Station"
   (CC-BY 4.0): `python3 scripts/assets-juegos.py` los extrae a `escena/juegos/` (ignorado por git; el repo es público).
   Sin esos archivos, cada tema cae a su arte en código. Créditos en `CREDITS.md`.
+- **Fichas** (`kits/fichas.ts`, `kits/repartos-fichas.ts`): en Halo, Edgerunners, DOOM y Claro/Oscuro cada agente es
+  un retrato redondo con el arte del juego (avatares de MCC, retratos de Edgerunners, HUD y sprites de DOOM, Cozy Space
+  Portraits con gesto por estado). El anillo da el estado en todos los temas: cian trabaja, naranja pide permiso,
+  amarillo te espera, rojo bloqueado, verde listo, gris sin señal. Minecraft sigue en pixel art. Sin `fichas.json`,
+  cada tema usa su arte en código.
 - **Etiquetas**: chip compacto con nombre y barra de contexto; el rol aparece al señalar o enfocar al agente.
 - **Poses** (`escena/animacion.ts`), por estado de la sesión:
 

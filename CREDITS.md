@@ -9,6 +9,11 @@ No se suben al repositorio: el script los baja y los extrae a `web/src/escena/ju
   Fuente: [OpenGameArt](https://opengameart.org/content/cozy-space-station-top-down-sci-fi-office-sprites) ·
   [tripulación](https://opengameart.org/content/cozy-space-station-walking-crew-animated-top-down-characters) ·
   pack completo en [itch.io](https://aquumgifts.itch.io/cozy-space-complete).
+- **Fichas de Claro / Oscuro:** "Cozy Space Portraits" de Bramble & Byte, CC-BY 4.0
+  ([OpenGameArt](https://opengameart.org/content/cozy-space-portraits-dialog-portraits-and-dialog-box-ui)).
+- **Fichas de Halo y Edgerunners:** avatares de *Halo: The Master Chief Collection* y renders de
+  [Halopedia](https://www.halopedia.org); retratos de *Cyberpunk: Edgerunners* de la
+  [Cyberpunk Wiki](https://cyberpunk.fandom.com) (© Microsoft / 343 Industries, CD PROJEKT RED / Studio Trigger). Uso personal.
 - **DOOM:** sprites, pisos y texturas de `doom1.wad` (DOOM shareware, © id Software), para uso personal.
 
 ## Dibujados en código
