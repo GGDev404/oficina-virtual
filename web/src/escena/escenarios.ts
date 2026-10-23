@@ -2,7 +2,7 @@
 // Pisos, muros y puertas se pintan con los tokens --esc-* (var() en el relleno): al cambiar de tema el navegador los
 // recolorea solo, sin reconstruir nada. Los muebles llevan su color propio. Nodos con createElementNS, nunca innerHTML.
 // Esta fase dibuja la misma oficina para todos los temas; una fase de escenarios distintos ramificará aquí por tema.
-import { nodo } from './personajes'
+import { nodo } from './rig'
 
 export type Sala = 'taller' | 'puerta' | 'bloqueados' | 'descanso' | 'oficina'
 export const W = 480, H = 272
@@ -28,7 +28,7 @@ function damero(defs: Element, id: string, x: number, y: number, t: number, a: s
   rects(p, [[0, 0, t, t, a], [t, t, t, t, a], [t, 0, t, t, b], [0, t, t, t, b]])
 }
 
-/** Fondo estático (pisos, muros, puertas y muebles) y, encima, la pantalla de cada escritorio. */
+/** Fondo estático: pisos, muros, puertas y muebles (las pantallas encendidas van en la capa de figuras). */
 export function escenario(): SVGGElement {
   const g = nodo('g', { 'shape-rendering': 'crispEdges' })
   const defs = nodo('defs', {}, g)
@@ -77,22 +77,10 @@ export function escenario(): SVGGElement {
     [MESA_YO.dx - 10, MESA_YO.dy - 18, 60, 44, '#3e6b4b'], [MESA_YO.dx - 8, MESA_YO.dy - 16, 56, 40, '#457656']])
   usar(g, 'esc-planta', o.x + 6, o.y + o.h - 22)
 
-  // Pantalla de cada escritorio (el mismo orden que ESCRITORIOS). Apagada por defecto; la clase `teclea` muestra el código
-  // que corre y `espera` la barra de progreso (oficina.css las anima).
-  const pantallas = nodo('g', {}, g, 'pantallas')
-  for (const e of ESCRITORIOS) {
-    const s = nodo('g', { transform: `translate(${e.dx} ${e.dy})` }, pantallas, 'pantalla')
-    rects(s, [[8, -8, 14, 8, v('monitor')]])
-    const lineas = nodo('g', {}, s, 'lineas')
-    for (let k = 0; k < 4; k++) nodo('rect', { x: 9 + (k % 2) * 2, y: -7 + k * 2, width: 11, height: 1, fill: v(k % 2 ? 'codigo-2' : 'codigo'), style: `animation-duration:${1.1 + k * 0.35}s;animation-delay:${-(e.dx + k) % 7 * 0.2}s` }, lineas)
-    const progreso = nodo('g', {}, s, 'progreso')
-    rects(progreso, [[10, -5, 10, 2, '#1d3a5c']])
-    nodo('rect', { x: 10, y: -5, width: 10, height: 2, fill: v('resalte') }, progreso, 'barra')
-  }
   return g
 }
 
-/** Tu escritorio, dibujado sobre tu avatar (que queda detrás, de pie). `.pila` guarda las 6 hojas de la bandeja. */
+/** Tu escritorio (escena.ts lo pone en la capa de figuras, delante de tu avatar). `.pila` guarda las 6 hojas de la bandeja. */
 export function mesaYo(): SVGGElement {
   const m = MESA_YO
   const g = nodo('g', { 'shape-rendering': 'crispEdges' })

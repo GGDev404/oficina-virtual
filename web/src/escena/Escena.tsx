@@ -38,7 +38,7 @@ export function Escena({ datos, acciones }: { datos: Datos | null; acciones: Acc
   return (
     <div className="escenario">
       <div className="escena" ref={escena} role="region" aria-label="Oficina: cada agente está en el cuarto de su estado">
-        <svg ref={lienzo} viewBox="0 0 480 272" aria-hidden="true"><g id="fondo" /><g id="actores" /><g id="efectos" /></svg>
+        <svg ref={lienzo} viewBox="0 0 480 272" aria-hidden="true"><g id="fondo" /></svg>
         <div className="capa" ref={capa} />
       </div>
     </div>
