@@ -22,6 +22,7 @@ import { PERMISOS, MODELOS, carpetaValida, carpetasConocidas, nuevaSesion, nueva
 import { enviarTexto, enviarTecla, capturar, vive, cerrar as cerrarTmux, socketValido } from './tmux.js';
 import { memoria, leerMeminfo, nivelMemoria, pausar } from './memoria.js';
 import { claveValida, guardarAspecto, listaAspectos } from './aspectos.js';
+import { leerWorktrees } from './worktrees.js';
 import { crearToken, autorizar, crearLimite, fraseCorrecta, hashCookie, leerCookie, archivoWeb, COOKIE, DURACION_MS } from './guardia.js';
 
 const PUERTO = Number(process.env.OFICINA_PUERTO ?? 4777);
@@ -160,7 +161,16 @@ function transcriptCambio(sid, ruta) {
   if (c && JSON.stringify(c) !== JSON.stringify(contextos[sid])) { contextos = { ...contextos, [sid]: c }; avisar(); }
 }
 
-const estadoCompleto = () => ({ ...estado(db), sync, vivas: Object.fromEntries(vivas), mensajes: mensajero.mensajes(), contexto: contextos, gastos, permisos: permisos.lista(), preguntas: preguntas.lista(), roles: listaRoles(), aspectos: listaAspectos(db) });
+// Pizarra: worktrees de los repos donde trabajaron tus sesiones (últimos 30 días), con su plan, commits y noche.
+let worktrees = [];
+async function actualizarWorktrees() {
+  const cwds = db.prepare('SELECT DISTINCT cwd FROM sesiones WHERE cwd IS NOT NULL AND ultimo_evento_ts > ?').all(Date.now() - 30 * 86400_000)
+    .map((r) => r.cwd).filter(carpetaValida);
+  const nuevos = await leerWorktrees(cwds).catch((e) => { console.error('worktrees:', e.message); return worktrees; });
+  if (JSON.stringify(nuevos) !== JSON.stringify(worktrees)) { worktrees = nuevos; avisar(); }
+}
+
+const estadoCompleto = () => ({ ...estado(db), worktrees, sync, vivas: Object.fromEntries(vivas), mensajes: mensajero.mensajes(), contexto: contextos, gastos, permisos: permisos.lista(), preguntas: preguntas.lista(), roles: listaRoles(), aspectos: listaAspectos(db) });
 
 // Notificación de escritorio cuando una sesión pasa a pedirte algo o llega una corrección de ficha.
 const notificar = crearNotificador();
@@ -706,6 +716,8 @@ vigilarTranscripts();
 actualizarVivas();
 actualizarContextos();
 setInterval(actualizarContextos, 20_000);
+actualizarWorktrees();
+setInterval(actualizarWorktrees, 30_000);
 sincronizarClickup();
 setInterval(sincronizarClickup, 5 * 60_000);
 servidor.listen(PUERTO, '127.0.0.1', () => console.log(`oficina en http://127.0.0.1:${PUERTO}`));

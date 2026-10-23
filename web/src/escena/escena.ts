@@ -1,7 +1,7 @@
 // Escena pixel art: un <canvas> de 480×272 px lógicos que el CSS escala con image-rendering: pixelated, y encima una
 // capa HTML con los personajes (botones), letreros e insignias. Es dibujo imperativo con su propio bucle de animación:
 // React solo monta el contenedor (Escena.tsx) y le pasa los datos con actualizar().
-import { ESTADOS, MAX_ACTIVOS, base, esperaProcesos, nivelContexto, nombreSesion, pendientesParaMi, procesosDe, tareaPorId, textoSobre, veredicto } from '@/lib/oficina'
+import { ESTADOS, MAX_ACTIVOS, base, esperaProcesos, nivelContexto, nombreSesion, pendientesParaMi, procesosDe, resumenPizarra, tareaPorId, textoSobre, veredicto } from '@/lib/oficina'
 import type { Datos, EntreSesiones, RolId, Sesion } from '@/lib/tipos'
 import { aspecto, personaje as dibujarPersona, YO_FABRICA, type Aspecto, type Pose } from './sprites'
 
@@ -15,6 +15,7 @@ const TRAZOS: Record<string, string[]> = {
   puerta: ['M13 4h3a2 2 0 0 1 2 2v14', 'M2 20h3', 'M13 20h9', 'M10 12v.01', 'M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z'],
   correo: ['M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'm22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7'],
   calendario: ['M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M16 2v4', 'M8 2v4', 'M3 10h18'],
+  pizarra: ['M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z', 'M8 7v7', 'M12 7v4', 'M16 7v9'],
 }
 function icono(nombre: string) {
   const ns = 'http://www.w3.org/2000/svg'
@@ -235,7 +236,7 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
     return b
   }
 
-  // Elementos HTML fijos sobre la escena (letreros de cuartos, tu escritorio, bandeja, calendario).
+  // Elementos HTML fijos sobre la escena (letreros de cuartos, tu escritorio, bandeja, calendario, pizarra).
   const fijos: Record<string, { el: HTMLElement; x: number; y: number; centro: string }> = {}
   const fijo = (clave: string, x: number, y: number, nodo: HTMLElement, centro = '') => { nodo.classList.add('fijo'); capa.append(nodo); fijos[clave] = { el: nodo, x, y, centro } }
   for (const [k, s] of Object.entries(SALAS)) fijo(`sala-${k}`, s.x, s.y, el('span', { class: 'cuarto' }, s.titulo))
@@ -245,6 +246,8 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
     el('span', { class: 'insignia' }, icono('correo'), el('span'))), ' translate(-50%, -50%)')
   fijo('calendario', SALAS.oficina.x + 149, SALAS.oficina.y + 24, el('button', { class: 'objeto', type: 'button', 'aria-haspopup': 'dialog', onclick: () => acciones.abrirOficina('agenda') },
     el('span', { class: 'insignia' }, icono('calendario'), el('span'))), ' translate(-50%, -50%)')
+  fijo('pizarra', SALAS.oficina.x + 44, SALAS.oficina.y + 24, el('button', { class: 'objeto', type: 'button', 'aria-haspopup': 'dialog', onclick: () => acciones.abrirOficina('pizarra') },
+    el('span', { class: 'insignia neutra' }, icono('pizarra'), el('span'))), ' translate(-50%, -50%)')
   fijo('vacio', 136, 64, el('span', { class: 'aviso-vacio' }, 'Sin agentes de Claude Code activos'), ' translate(-50%, -50%)')
 
   function actualizarActores(d: Datos) {
@@ -351,6 +354,9 @@ export function montarEscena(lienzo: HTMLCanvasElement, escena: HTMLElement, cap
     insignia('bandeja', String(paraMi), paraMi === 0, `Bandeja: ${paraMi} comentarios para ti`)
     insignia('calendario', v.vencidas.length ? `${v.vencidas.length} vencidas` : v.hoy.length ? `${v.hoy.length} hoy` : 'al día',
       !v.vencidas.length && !v.hoy.length, `Calendario: ${v.texto}`)
+    const pz = resumenPizarra(d)
+    insignia('pizarra', [pz.enCurso && `${pz.enCurso} en curso`, pz.revisar && `${pz.revisar} por revisar`].filter(Boolean).join(' · ') || 'pizarra', false,
+      `Pizarra: ${pz.enCurso} tareas en curso y ${pz.revisar} por revisar`)
   }
 
   function escalar() {

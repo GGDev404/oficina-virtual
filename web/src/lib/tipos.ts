@@ -186,6 +186,24 @@ export interface Datos {
   experiencia?: { rol: RolId; hechos: number; fallos: number; ultimo_ts: number | null }[]
   encargos: Encargo[]
   entre_sesiones: EntreSesiones[]
+  worktrees?: Worktree[]
+}
+
+// Pizarra: un worktree de tarea con los pasos de su plan, sus commits frente a develop y el turno nocturno (server/worktrees.js).
+export interface Worktree {
+  id: string // ID de ClickUp si lo hay; si no, la carpeta
+  nombre: string
+  ruta: string
+  rama: string | null
+  repo: string
+  titulo: string | null
+  plan: string | null
+  pasos: { estado: 'hecho' | 'progreso' | 'falta'; texto: string }[]
+  commits: number
+  ultimos: { ts: number; texto: string }[]
+  ultimo_ts: number | null
+  sin_commit: number
+  noche: { fecha: string; estado: string | null; corriendo: boolean; reporte: string | null } | null
 }
 
 export interface Intercambio {
