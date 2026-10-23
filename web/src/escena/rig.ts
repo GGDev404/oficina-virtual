@@ -9,7 +9,8 @@
 //   mano (kits/oficina.ts los fija en hombros, codos, cuerpo y cabeza: es la referencia).
 // - Vista «espalda»: sentado en su escritorio, de espaldas, con silla (poses teclea y espera).
 // - Nodos con createElementNS (nunca innerHTML); colores guardados validados como #rrggbb con color().
-// - Arte original estilizado: nunca calcar ni incrustar arte, logos o tipografías oficiales de los juegos.
+// - Arte de los juegos: los personajes se dibujan copiando los diseños reales (proyecto personal, decisión del dueño); los
+//   sprites y texturas originales (DOOM) no se suben al repo: scripts/assets-juegos.py los extrae a escena/juegos/.
 import type { AspectoGuardado, RolId } from '@/lib/tipos'
 import type { PoseDef, Vaiven } from './animacion'
 import type { Pintar } from './hornear'

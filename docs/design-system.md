@@ -67,13 +67,17 @@ Letras: `--pixel` (Pixelify Sans) en títulos de Minecraft y en los letreros de 
 | Tema | Tú | Roles (plan, QA, impl, diseño, docs, integ) | Sesiones sin rol |
 |---|---|---|---|
 | Halo | Jefe Maestro | Cortana, 343 Guilty Spark, Sgt. Johnson, Dra. Halsey, Cap. Keyes, El Arbiter | Spartans |
-| Cyberpunk | V | Alt Cunningham, Delamain, Jackie Welles, Judy Alvarez, Misty, T-Bug | Edgerunners |
-| DOOM | Doom Slayer | Samuel Hayden, VEGA, Night Sentinel herrero, El Maykr, Guardián del códice, Ingeniero Argent | Marines UAC |
+| Cyberpunk: Edgerunners | David Martinez | Lucy, Kiwi, Maine, Rebecca, Falco, Pilar | Dorio y edgerunners |
+| DOOM (sprites del juego) | Doomguy | Barón del Infierno, Pinky, Imp, Espectro, Sargento de escopeta, Doomguy rojo | Zombis y marines de multijugador |
+| Claro / Oscuro (Cozy) | Tripulante | Tripulantes con el uniforme más parecido a su camisa | Tripulantes |
 | Minecraft | Steve | Alex, Golem de hierro, aldeanos herrero, cartógrafo y bibliotecario, Allay | Aldeanos |
 
-- **Dibujo**: cada personaje es un rig SVG (o pixel art en Minecraft) que se hornea una vez por pose en una tira de
-  cuadros (`escena/hornear.ts`) y se anima solo con `transform`/`opacity`. Homenajes originales: nada de arte, logos ni
-  letras oficiales de los juegos.
+- **Dibujo**: todo es pixel art horneado una vez por pose en una tira de cuadros (`escena/hornear.ts`) y animado solo
+  con `transform`/`opacity`. Halo, Edgerunners y Minecraft se dibujan en código sobre el motor `kits/pixel.ts`, copiando
+  los diseños de cada juego. DOOM usa sus sprites, pisos y muros reales, y Claro/Oscuro los de "Cozy Space Station"
+  (CC-BY 4.0): `python3 scripts/assets-juegos.py` los extrae a `escena/juegos/` (ignorado por git; el repo es público).
+  Sin esos archivos, cada tema cae a su arte en código. Créditos en `CREDITS.md`.
+- **Etiquetas**: chip compacto con nombre y barra de contexto; el rol aparece al señalar o enfocar al agente.
 - **Poses** (`escena/animacion.ts`), por estado de la sesión:
 
 | Estado | Pose | Con movimiento reducido |

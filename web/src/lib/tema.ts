@@ -7,7 +7,7 @@ export const TEMAS = {
   claro: { titulo: 'Claro', modo: 'claro' },
   oscuro: { titulo: 'Oscuro', modo: 'oscuro' },
   halo: { titulo: 'Halo · UNSC', modo: 'oscuro' },
-  cyberpunk: { titulo: 'Cyberpunk · Night City', modo: 'oscuro' },
+  cyberpunk: { titulo: 'Cyberpunk · Edgerunners', modo: 'oscuro' },
   doom: { titulo: 'DOOM · Infierno', modo: 'oscuro' },
   minecraft: { titulo: 'Minecraft · Bloques', modo: 'claro' },
 } as const

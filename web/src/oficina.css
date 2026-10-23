@@ -271,14 +271,16 @@
   .burbuja:empty { display: none; }
   .burbuja svg.icono { width: 1em; height: 1em; stroke-width: 2.5; vertical-align: 0; }
   .etiqueta { position: absolute; left: 0; top: calc(var(--e) * 1px); transform: translateX(-50%);
-    font: 500 var(--letra)/1.2 var(--rotulo-letra); color: var(--sobre-solido); background: var(--esc-velo); border: 2px solid var(--esc-tinta);
-    display: flex; flex-direction: column; padding: 1px 5px 2px; border-radius: var(--rotulo-radio); white-space: nowrap; max-width: 150px; box-shadow: 0 2px 0 var(--esc-sombra); }
+    font: 600 clamp(12px, calc(var(--e, 2) * 4.2px), 14px)/1.15 var(--rotulo-letra); color: var(--sobre-solido); background: var(--esc-velo); border: 1px solid var(--esc-tinta);
+    display: flex; flex-direction: column; padding: 0 4px 1px; border-radius: var(--rotulo-radio); white-space: nowrap; max-width: 150px; box-shadow: 0 1px 0 var(--esc-sombra); }
   .etiqueta .txt { display: block; overflow: hidden; text-overflow: ellipsis; }
   /* Barra de contexto bajo el nombre: verde, ámbar desde 80 %, roja desde 95 % */
   .etiqueta .rol { display: block; order: -1; width: max-content; margin: -1px 0 2px -3px; padding: 0 4px; border-radius: 3px;
     font-size: .8em; font-weight: 700; letter-spacing: .04em; background: var(--esc-resalte); color: var(--esc-tinta); }
   .etiqueta .rol:empty { display: none; }
-  .etiqueta .ctx { display: block; height: 3px; margin: 2px -2px 0; background: rgba(0, 0, 0, .4); border-radius: 2px; overflow: hidden; }
+  /* Chip compacto: nombre y barra de contexto; el rol (y el nombre completo) aparecen al señalar o enfocar al agente. */
+  .agente:not(:hover, :focus-visible) .etiqueta .rol { display: none; }
+  .etiqueta .ctx { display: block; height: 2px; margin: 1px -2px 0; background: rgba(0, 0, 0, .4); border-radius: 2px; overflow: hidden; }
   .etiqueta .ctx:empty { display: none; }
   .etiqueta .ctx i { display: block; height: 100%; background: var(--esc-ok); transition: width var(--dur-lenta) var(--curva-entrada); }
   .etiqueta .ctx i.medio { background: var(--esc-aviso); }

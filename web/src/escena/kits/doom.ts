@@ -4,7 +4,10 @@
 // de baja opacidad (nada de filter). Ver el contrato en rig.ts.
 import { onda } from '../animacion'
 import { color, nodo, PROPS, type KitVector, type Pieza, type Reparto } from '../rig'
-import { aclarar, oscurecer } from '../sprites'
+import { aclarar, oscurecer, type Pose } from '../sprites'
+import type { KitPixel, Ritmo } from '../rig'
+import { datosJuego, pintarSprite } from './juego'
+import { mapa, puntos, zeta, type P } from './pixel'
 
 const ASCUA = '#ff5a1f', LATON = '#c9a24a', OXIDO = '#8a4a2a', NEGRO = '#1d1512', HUESO = '#f2e6c0'
 type E = Element
@@ -456,7 +459,7 @@ const marine: KitVector = {
   },
 }
 
-export const reparto: Reparto = {
+const vector: Reparto = {
   kits: { 'doom-slayer': slayer, 'doom-hayden': hayden, 'doom-vega': vega, 'doom-centinela': centinela, 'doom-maykr': maykr, 'doom-escriba': escriba, 'doom-ingeniero': ingeniero, marine },
   quien: {
     yo: 'doom-slayer', fondo: 'marine',
@@ -464,3 +467,60 @@ export const reparto: Reparto = {
     'rol:diseno': 'doom-maykr', 'rol:docs-entrega': 'doom-escriba', 'rol:integracion': 'doom-ingeniero',
   },
 }
+
+// ── Con el doom1.wad extraído (scripts/assets-juegos.py): los sprites reales de DOOM (1993) ─────────────────────────
+// Cada pose usa cuadros del juego: caminar A-D, atacar E-F, dolor G, de espaldas A5/C5 y el último de la muerte (sin señal).
+const WAD = datosJuego('doom')
+interface Bicho { pre: string; muerte: string; suf?: string; espectro?: boolean }
+const CUADROS: Record<Pose, (b: Bicho) => string[]> = {
+  parado: (b) => (b.pre === 'PLAY' ? ['A1', 'A1', 'A1'] : ['A1', 'B1', 'A1']), camina: () => ['A1', 'B1', 'C1', 'D1'],
+  mano: () => ['E1', 'F1', 'E1', 'F1'], triste: () => ['A1', 'G1'], duerme: (b) => [b.muerte, b.muerte, b.muerte],
+  entrega: () => ['A1', 'A1'], cafe: () => ['A1', 'A1', 'A1', 'A1'], teclea: () => ['A5', 'C5', 'A5', 'C5'], espera: () => ['A5', 'A5', 'A5', 'A5'],
+}
+const RITMOS_WAD: Partial<Record<Pose, Ritmo>> = {
+  parado: { cuadros: 3, dur: 2.4, vaiven: 'respira' }, mano: { cuadros: 4, dur: 0.7, pesos: [3, 1, 3, 1] },
+  triste: { cuadros: 2, dur: 3.4, pesos: [6, 1], vaiven: 'suspiro' }, teclea: { cuadros: 4, dur: 0.9 },
+}
+function pintarBicho(r: P, b: Bicho, pose: Pose, f: number) {
+  const id = CUADROS[pose](b)[f] ?? 'A1', s = WAD!.sprites[`${b.pre}${id}${b.suf ? `_${b.suf}` : ''}`] ?? WAD!.sprites[`${b.pre}${id}`]
+  if (!s) return
+  const alfa = b.espectro ? 0.42 : undefined
+  if (pose === 'teclea' || pose === 'espera') { // sentado de espaldas: torso sobre el respaldo de acero
+    const filas = Math.round(s.h * 0.62)
+    pintarSprite(r, s, 0, Math.round(s.h * 0.34) - 4, { filas, alfa })
+    r(-8, -10, 16, 8, '#3d3430'); r(-8, -10, 16, 1, '#6a5a4a'); r(-7, -2, 2, 2, '#26201c'); r(5, -2, 2, 2, '#26201c')
+    if (pose === 'espera') puntos(r, 7, -s.oy + Math.round(s.h * 0.34) - 6, f)
+    return
+  }
+  pintarSprite(r, s, 0, 0, { alfa })
+  if (pose === 'entrega') mapa((x, y, w, h, c) => r(x - 6, y - Math.round(s.oy * 0.55), w, h, c), 12)
+  if (pose === 'duerme') zeta(r, 6, -s.oy + 2, f)
+}
+const bicho = (nombre: string, b: Bicho | ((h: number) => Bicho)): KitPixel => ({
+  nombre, usa: [], ritmos: RITMOS_WAD,
+  pintar: (r, pz, f) => {
+    const a = pz.aspecto, h = [...`${a.camisa}${a.pantalon}${a.brillo}`].reduce((s, c) => (s * 31 + c.charCodeAt(0)) >>> 0, 7)
+    pintarBicho(r, typeof b === 'function' ? b(h) : b, pz.pose, f)
+  },
+})
+// Sesiones sin rol: zombis y marines de multijugador (gris, café), según sus colores.
+const FONDO: Bicho[] = [{ pre: 'POSS', muerte: 'L0' }, { pre: 'PLAY', muerte: 'N0', suf: 'gris' }, { pre: 'PLAY', muerte: 'N0', suf: 'cafe' }, { pre: 'POSS', muerte: 'L0' }]
+const sprites: Reparto | null = WAD ? {
+  kits: {
+    'wad-doomguy': bicho('Doomguy', { pre: 'PLAY', muerte: 'N0' }),
+    'wad-baron': bicho('Barón del Infierno', { pre: 'BOSS', muerte: 'O0' }),
+    'wad-pinky': bicho('Pinky', { pre: 'SARG', muerte: 'N0' }),
+    'wad-imp': bicho('Imp', { pre: 'TROO', muerte: 'M0' }),
+    'wad-espectro': bicho('Espectro', { pre: 'SARG', muerte: 'N0', espectro: true }),
+    'wad-sargento': bicho('Sargento de escopeta', { pre: 'SPOS', muerte: 'L0' }),
+    'wad-rojo': bicho('Doomguy rojo', { pre: 'PLAY', muerte: 'N0', suf: 'rojo' }),
+    'wad-fondo': bicho('Zombi o marine', (h) => FONDO[h % FONDO.length]),
+  },
+  quien: {
+    yo: 'wad-doomguy', fondo: 'wad-fondo',
+    'rol:analisis-plan': 'wad-baron', 'rol:revision-qa': 'wad-pinky', 'rol:implementacion': 'wad-imp',
+    'rol:diseno': 'wad-espectro', 'rol:docs-entrega': 'wad-sargento', 'rol:integracion': 'wad-rojo',
+  },
+} : null
+
+export const reparto: Reparto = sprites ? { kits: { ...vector.kits, ...sprites.kits }, quien: sprites.quien } : vector

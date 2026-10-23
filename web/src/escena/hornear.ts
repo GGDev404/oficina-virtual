@@ -14,7 +14,10 @@ export const CELDA = { x: -20, y: -38, w: 40, h: 42 } // ancho de sobra para pro
 const PIXEL = 6
 
 export interface Tira { src: string; n: number; dur: number; anim: string; vaiven: Vaiven }
-export type Pintar = (x: number, y: number, w: number, h: number, c: string) => void
+export type Pintar = ((x: number, y: number, w: number, h: number, c: string) => void) & {
+  /** Solo al hornear pixel art: copia el recorte (sx, sy, sw, sh) de una imagen ya cargada a (x, y, w, h) en px lógicos. */
+  imagen?: (img: CanvasImageSource, sx: number, sy: number, sw: number, sh: number, x: number, y: number, w: number, h: number) => void
+}
 
 // ── Caché: la misma tira (kit, colores, pose, tema) se hornea una vez y la comparten escena, Armería y ficha ──
 // Tope por peso además de por cantidad: una tira vectorial de 16 cuadros pesa hasta ~170 kB de data URL (la escena usa
@@ -136,7 +139,9 @@ export function hornearPixel(pintar: (r: Pintar, f: number) => void, ritmo: { cu
   const ctx = lienzo.getContext('2d')!
   for (let f = 0; f < n; f++) {
     const ox = f * CELDA.w - CELDA.x, oy = -CELDA.y
-    pintar((x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect((ox + x) * PIXEL, (oy + y) * PIXEL, w * PIXEL, h * PIXEL) }, f)
+    const r: Pintar = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect((ox + x) * PIXEL, (oy + y) * PIXEL, w * PIXEL, h * PIXEL) }
+    r.imagen = (img, sx, sy, sw, sh, x, y, w, h) => ctx.drawImage(img, sx, sy, sw, sh, (ox + x) * PIXEL, (oy + y) * PIXEL, w * PIXEL, h * PIXEL)
+    pintar(r, f)
   }
   return { src: lienzo.toDataURL('image/png'), n, dur: ritmo.dur, anim: animacion(n, ritmo.pesos), vaiven: ritmo.vaiven ?? '' }
 }

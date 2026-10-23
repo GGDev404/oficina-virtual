@@ -3,3 +3,6 @@ node_modules/
 *.db
 PLAN-oficina-virtual.md
 TRASPASO.md
+
+# Sprites y texturas de juegos (uso personal; los genera scripts/assets-juegos.py)
+web/src/escena/juegos/

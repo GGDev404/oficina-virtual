@@ -4,6 +4,7 @@
 // duplicado de baja opacidad, sin filter. Solo la lava se anima (opacidad y transform, horneado como las figuras).
 import { pulso, type PoseDef } from '../animacion'
 import { nodo } from '../rig'
+import { datosJuego, pintarSprite } from '../kits/juego'
 import { ESCRITORIOS, MESA_YO, SALAS, W, H, damero, rects, usar, v, type Animado, type Escenario, type Rect } from './comun'
 
 const AMBAR = '#ffb000', ASCUA = '#ff5a1f', LATON = '#c9a24a', OXIDO = '#8a4a2a', NEGRO = '#1d1512', HUESO = '#f2e6c0'
@@ -97,22 +98,24 @@ export function escenario(): Escenario {
     else rects(g, [[px, s.y, 24, 14, v('pasillo')], [px - 2, s.y, 2, 14, v('marco')], [px + 24, s.y, 2, 14, v('marco')]])
   }
 
+  if (WAD) texturasWad(g, defs)
+
   // Taller: consola mural con líneas ámbar y letreros de aviso.
   rects(g, [[150, 3, 52, 9, NEGRO], [150, 3, 52, 1, '#6a4a38'], [150, 11, 52, 1, '#6a4a38'], [153, 5, 18, 1, AMBAR], [153, 7, 26, 1, ASCUA], [153, 9, 14, 1, LATON],
     [208, 4, 9, 7, LATON], [210, 5, 1, 3, NEGRO], [210, 9, 1, 1, NEGRO], [220, 5, 9, 6, OXIDO], [222, 6, 5, 1, HUESO], [222, 8, 3, 1, HUESO], [232, 4, 9, 7, '#a6281c'], [235, 5, 3, 3, HUESO]])
   r(g, 150, 3, 52, 9, AMBAR, 0.05)
   for (const e of ESCRITORIOS) usar(g, 'doom-terminal', e.dx, e.dy)
-  usar(g, 'doom-barril', 4, 104); usar(g, 'doom-barril-r', 224, 18); usar(g, 'doom-barril', 238, 20)
+  if (!WAD) {   usar(g, 'doom-barril', 4, 104); usar(g, 'doom-barril-r', 224, 18); usar(g, 'doom-barril', 238, 20) }
 
   // Tu puerta: mesa de acero y felpudo oscuro con borde de latón.
   const p = SALAS.puerta
   rects(g, [[p.x + 12, p.y + 16, 50, 6, '#6a4a38'], [p.x + 12, p.y + 22, 50, 2, '#3d2a22'], [p.x + 12, p.y + 16, 50, 1, '#8a6248'],
     [p.puerta - 16, p.y + p.h - 18, 32, 12, LATON], [p.puerta - 15, p.y + p.h - 17, 30, 10, '#4a1610'], [p.puerta - 13, p.y + p.h - 15, 26, 6, '#6e1a10']])
-  usar(g, 'doom-barril-r', p.x + p.w - 18, p.y + 16)
+  if (!WAD) {   usar(g, 'doom-barril-r', p.x + p.w - 18, p.y + 16) }
 
   // Bloqueados: grietas de lava (núcleo oscuro y brillo base; la celda animada las hace respirar), cajas UAC.
   const b = SALAS.bloqueados
-  for (const rama of [...GRIETA_A, ...GRIETA_B]) for (const [x, y, w, h] of tramo(rama, 2)) {
+  if (!WAD) for (const rama of [...GRIETA_A, ...GRIETA_B]) for (const [x, y, w, h] of tramo(rama, 2)) {
     r(g, x - 2, y - 2, w + 4, h + 4, '#000', 0.35) // borde chamuscado
     r(g, x - 1, y - 1, w + 2, h + 2, ASCUA, 0.12)
     r(g, x, y, w, h, '#2a0d06')
@@ -135,7 +138,7 @@ export function escenario(): Escenario {
   rects(g, [[d.x + 8, d.y + 16, 56, 14, '#7a3a28'], [d.x + 8, d.y + 16, 56, 4, '#9a4e36'], [d.x + 6, d.y + 18, 4, 12, '#4a2418'], [d.x + 62, d.y + 18, 4, 12, '#4a2418'],
     [d.x + 128, d.y + 15, 16, 20, '#3d3430'], [d.x + 131, d.y + 18, 10, 6, '#2a0d06'], [d.x + 132, d.y + 19, 8, 1, AMBAR], [d.x + 132, d.y + 21, 5, 1, ASCUA], [d.x + 133, d.y + 27, 6, 5, HUESO],
     [d.x + 104, d.y + 18, 14, 10, '#5a4636'], [d.x + 104, d.y + 18, 14, 2, '#7a604a'], [d.x + 107, d.y + 16, 4, 3, HUESO]])
-  usar(g, 'doom-barril', d.x + d.w - 18, d.y + d.h - 22)
+  if (!WAD) {   usar(g, 'doom-barril', d.x + d.w - 18, d.y + d.h - 22) }
 
   // Tu oficina: archivadores UAC y alfombra de lona oscura con borde ámbar (tu mesa va aparte).
   const o = SALAS.oficina
@@ -143,13 +146,56 @@ export function escenario(): Escenario {
     [o.x + 140, o.y + 2, 18, 11, '#5a4636'], [o.x + 140, o.y + 2, 18, 3, '#7a3f22'],
     ...Array.from({ length: 8 }, (_, k): Rect => [o.x + 142 + (k % 4) * 4, o.y + 6 + Math.floor(k / 4) * 3, 2, 2, LATON]),
     [MESA_YO.dx - 10, MESA_YO.dy - 18, 60, 44, '#6a4a2a'], [MESA_YO.dx - 9, MESA_YO.dy - 17, 58, 42, '#2e211a'], [MESA_YO.dx - 8, MESA_YO.dy - 16, 56, 40, '#3a2a20']])
-  usar(g, 'doom-barril', o.x + 6, o.y + o.h - 22)
+  if (!WAD) {   usar(g, 'doom-barril', o.x + 6, o.y + o.h - 22) }
 
-  const animados: Animado[] = [
+  if (WAD) decoradoWad(g)
+  const animados: Animado[] = WAD ? [] : [
     { clave: 'lava-a', x: CELDA_A[0], y: CELDA_A[1], z: 0, rig: lavaRig(CELDA_A, GRIETA_A, []), pose: LAVA(0) },
     { clave: 'lava-b', x: CELDA_B[0], y: CELDA_B[1], z: 0, rig: lavaRig(CELDA_B, GRIETA_B, BRASAS_B), pose: LAVA(BRASAS_B.length) },
   ]
   return { g, animados, mesa }
+}
+
+// ── Con el doom1.wad extraído: pisos, muros y decorado reales de DOOM (E1, base UAC) ────────────────────────────────
+const WAD = datosJuego('doom')
+const PISO: Record<string, string> = { pasillo: 'FLOOR4_8', taller: 'FLAT20', puerta: 'FLOOR5_2', bloqueados: 'NUKAGE1', descanso: 'FLOOR0_1', oficina: 'FLAT14' }
+// Muro de cada cuarto y la franja de la textura que se ve (y de arriba, en px ya reducidos): el muro mide 12 px.
+const MURO: Record<string, [string, number]> = { taller: ['STARTAN3', 20], puerta: ['SUPPORT2', 24], bloqueados: ['BROWNHUG', 10], descanso: ['BROWN1', 30], oficina: ['STARG3', 20] }
+function imagen(defs: Element, id: string, t: string | { src: string; w: number; h: number }, dy = 0) {
+  const { src, w, h } = typeof t === 'string' ? { src: t, w: 32, h: 32 } : t
+  const p = nodo('pattern', { id, width: w, height: dy ? 12 : h, patternUnits: 'userSpaceOnUse' }, defs)
+  nodo('image', { href: src, x: 0, y: -dy, width: w, height: h, style: 'image-rendering:pixelated' }, p)
+  return p
+}
+function texturasWad(g: SVGGElement, defs: Element) {
+  const w = WAD!
+  imagen(defs, 'wad-pasillo', w.pisos[PISO.pasillo])
+  r(g, 0, 0, W, H, 'url(#wad-pasillo)'); r(g, 0, 0, W, H, '#000', 0.45) // sectores con poca luz, como en el juego
+  for (const [k, s] of Object.entries(SALAS)) {
+    const pa = imagen(defs, `wad-p-${k}`, w.pisos[PISO[k]]); pa.setAttribute('x', String(s.x)); pa.setAttribute('y', String(s.y + 14))
+    r(g, s.x + 2, s.y + 14, s.w - 4, s.h - 16, `url(#wad-p-${k})`); r(g, s.x + 2, s.y + 14, s.w - 4, s.h - 16, '#000', k === 'bloqueados' ? 0.42 : 0.28)
+    const [muro, dy] = MURO[k], m = imagen(defs, `wad-m-${k}`, w.muros[muro], dy); m.setAttribute('x', String(s.x)); m.setAttribute('y', String(s.y + 1))
+    r(g, s.x + 2, s.y + 1, s.w - 4, 12, `url(#wad-m-${k})`); r(g, s.x + 2, s.y + 12, s.w - 4, 2, '#000', 0.45)
+    const px = s.puerta - 12
+    if (!s.abajo) r(g, px, s.y, 24, 14, 'url(#wad-pasillo)')
+  }
+  // Paneles de computadora en el muro del Taller y el letrero EXIT sobre Tu puerta.
+  const comp = imagen(defs, 'wad-comp', w.muros.COMPSTA1, 6); comp.setAttribute('x', '150'); comp.setAttribute('y', '1')
+  r(g, 150, 1, 70, 12, 'url(#wad-comp)')
+  const salida = imagen(defs, 'wad-exit', w.muros.EXITSIGN, 0); salida.setAttribute('x', String(SALAS.puerta.puerta - 18)); salida.setAttribute('y', String(SALAS.puerta.y + 1))
+  r(g, SALAS.puerta.puerta - 18, SALAS.puerta.y + 1, 36, 9, 'url(#wad-exit)')
+}
+/** Sprites del juego como rectángulos del fondo (pies en x, y). */
+function sprite(g: SVGGElement, nombre: string, x: number, y: number) {
+  const s = WAD!.sprites[nombre]
+  if (s) pintarSprite((px, py, w, h, c) => nodo('rect', { x: x + px, y: y + py, width: w, height: h, fill: c }, g), s)
+}
+function decoradoWad(g: SVGGElement) {
+  const b = SALAS.bloqueados, d = SALAS.descanso, o = SALAS.oficina, p = SALAS.puerta
+  for (const [n, x, y] of [['BAR1A0', 10, 122], ['BAR1A0', 230, 40], ['BAR1B0', 244, 42], ['BAR1A0', b.x + 96, b.y + 104], ['BAR1A0', o.x + 12, o.y + o.h - 6],
+    ['COLUA0', 140, 60], ['TREDA0', p.x + 10, p.y + 40], ['TREDA0', p.x + p.w - 10, p.y + 40], ['CANDA0', d.x + 20, d.y + 40],
+    ['POL5A0', b.x + 30, b.y + 70], ['MEDIA0', d.x + 120, d.y + 90], ['STIMA0', d.x + 134, d.y + 94], ['ARM1A0', p.x + 60, p.y + 100],
+    ['SOULA0', o.x + 24, o.y + 40], ['CBRAA0', o.x + o.w - 14, o.y + 40]] as const) sprite(g, n, x, y)
 }
 
 // Tu mesa: escritorio de acero oxidado con filo de latón, terminal ámbar, luz de aviso y bandeja con las 6 hojas (.pila).

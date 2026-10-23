@@ -8,6 +8,7 @@ import { claveTema, enCache, hornearPixel, hornearVector, type Tira } from './ho
 import { RITMOS, SENTADO, type Actor, type Kit, type Reparto } from './rig'
 import type { Aspecto, Pose } from './sprites'
 import { oficina } from './kits/oficina'
+import { tripulacion } from './kits/cozy'
 import { reparto as halo } from './kits/halo'
 import { reparto as cyberpunk } from './kits/cyberpunk'
 import { reparto as doom } from './kits/doom'
@@ -16,9 +17,9 @@ import { reparto as minecraft } from './kits/minecraft'
 export { actorDe, type Actor, type Vista } from './rig'
 
 const TEMAS: Partial<Record<TemaId, Reparto>> = { halo, cyberpunk, doom, minecraft }
-export const KITS: Record<string, Kit> = { oficina, ...halo.kits, ...cyberpunk.kits, ...doom.kits, ...minecraft.kits }
+export const KITS: Record<string, Kit> = { oficina: tripulacion ?? oficina, ...halo.kits, ...cyberpunk.kits, ...doom.kits, ...minecraft.kits }
 // La clase guardada decide el kit en Claro/Oscuro/Automático; los temas pueden registrar el suyo para cada clase.
-export const KIT_DE_CLASE: Partial<Record<Clase, string>> = { spartan: 'spartan', netrunner: 'netrunner', marine: 'marine', bloque: 'bloque' }
+export const KIT_DE_CLASE: Partial<Record<Clase, string>> = { spartan: 'spartan', netrunner: 'netrunner', marine: 'wad-doomguy' in doom.kits ? 'wad-doomguy' : 'marine', bloque: 'bloque' }
 
 export function elegirKit(tema: TemaId, actor: Actor, clase: Clase): string {
   const id = TEMAS[tema]?.quien[actor] ?? KIT_DE_CLASE[clase] ?? 'oficina'

@@ -16,8 +16,8 @@ const PANTALON = '#30364a', ZAPATO = '#1b1a22', OSCURO = '#1e1b26'
 export const CLASES: Record<Clase, { titulo: string; juego: string; camisa?: string; brillo: string; pantalon?: string; descripcion: string }> = {
   ninguna: { titulo: 'Civil', juego: 'Oficina', brillo: '#ffd84a', descripcion: 'Ropa de oficina, sin casco.' },
   spartan: { titulo: 'Spartan', juego: 'Halo', camisa: '#4b5d3a', brillo: '#f2b33d', pantalon: '#3a4730', descripcion: 'Casco MJOLNIR con visor dorado y hombreras.' },
-  netrunner: { titulo: 'Netrunner', juego: 'Cyberpunk 2077', camisa: '#2a2340', brillo: '#4fe3f0', descripcion: 'Visor neón y chaqueta con línea luminosa.' },
-  marine: { titulo: 'Doom Slayer', juego: 'DOOM', camisa: '#3f6b2a', brillo: '#9aa3ad', pantalon: '#4a3a2a', descripcion: 'Casco verde de praetor y visor oscuro.' },
+  netrunner: { titulo: 'Edgerunner', juego: 'Cyberpunk: Edgerunners', camisa: '#2a2340', brillo: '#4fe3f0', descripcion: 'Visor neón y chaqueta con línea luminosa.' },
+  marine: { titulo: 'Doomguy', juego: 'DOOM', camisa: '#3f6b2a', brillo: '#9aa3ad', pantalon: '#4a3a2a', descripcion: 'Casco verde de praetor y visor oscuro.' },
   bloque: { titulo: 'Bloque', juego: 'Minecraft', camisa: '#00a8a8', brillo: '#3b5bdb', pantalon: '#3b3bb5', descripcion: 'Cabeza cuadrada, ojos de dos píxeles.' },
 }
 
