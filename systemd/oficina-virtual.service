@@ -4,6 +4,8 @@ Description=Oficina virtual: sesiones de Claude Code y tareas de ClickUp (127.0.
 [Service]
 WorkingDirectory=%h/Proyectos/Oficina-virtual
 # Node de mise por ruta directa ("22" sigue a la última 22.x); evita que el shim instale versiones al arrancar.
+# PATH explícito: al arrancar con el equipo, systemd no trae el PATH de la sesión y `claude` (npm global de mise) no aparece.
+Environment=PATH=%h/.local/share/mise/installs/node/22/bin:%h/.local/bin:/usr/local/bin:/usr/bin
 ExecStart=%h/.local/share/mise/installs/node/22/bin/node --disable-warning=ExperimentalWarning server/index.js
 Restart=on-failure
 RestartSec=5
