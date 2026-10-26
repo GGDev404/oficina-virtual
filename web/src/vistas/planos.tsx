@@ -11,7 +11,7 @@ interface Cierre { semana: string; sprint: string }
 interface Resumen {
   id: string; nombre: string; aviso?: string; nota: { ruta: string; titulo: string; fecha: string } | null; pct: number | null
   conteos?: { construido: number; parcial: number; noConstruido: number }
-  brechas: number; sinTarea: number; bloquean: number; dudas?: number; sinSubir: number; alertas?: number; cierre?: Cierre | null
+  brechas: number; sinTarea: number; bloquean: number; dudas?: number; sinSubir: number; alertas?: number; cierre?: Cierre | null; prioridad?: string | null
 }
 interface Tablero { corte: string | null; entrega: string | null; diasParaEntrega: number | null; modulos: Resumen[]; sinLigar: { ruta: string; rama: string; sin_commit: number; sin_subir: number }[] }
 interface Duda { id: string; estado: string; para: string; bloquea: string; tarea: string; pregunta: string }
@@ -121,7 +121,7 @@ function Tarjeta({ m, abrir }: { m: Resumen; abrir: () => void }) {
         <span className={m.bloquean ? 'pl-rojo' : ''}><b>{m.bloquean}</b> dudas que bloquean</span>
         <span className={m.sinSubir > 0 ? 'pl-rojo' : ''}><b>{m.sinSubir}</b> sin subir</span>
       </span>
-      <span className="meta">{cierre ?? 'Sin semana de cierre'}</span>
+      {m.prioridad ? <span className="pl-fuerte">Prioridad: {m.prioridad}</span> : <span className="meta">{cierre ?? 'Sin semana de cierre'}</span>}
     </button>
   )
 }
@@ -175,6 +175,7 @@ function DetalleModulo({ id, volver }: { id: string; volver: () => void }) {
       <span className="pl-pct">{m.pct == null ? '—' : `${m.pct}%`}</span>
       <Semaforo tono={tono} aviso={m.aviso} />
       {m.nota && <span className="meta">nota del {corta(m.nota.fecha)}</span>}
+      {m.prioridad && <Chip color="naranja">Prioridad: {m.prioridad}</Chip>}
       {m.nota && <a className="pl-obsidian" href={obsidian(m.nota.ruta)}><Icono n="externo" />Abrir en Obsidian</a>}
     </div>
     <p className="meta sin-margen" title={m.basePct}>
@@ -201,7 +202,7 @@ function DetalleModulo({ id, volver }: { id: string; volver: () => void }) {
       <Columna titulo="Necesita">
         <h5>Decisiones</h5>
         {nec?.decisiones.length ? <Recorte items={nec.decisiones} max={4} pintar={(x) => <>{x.decision}{x.aQuien && <span className="meta"> · pedir a {x.aQuien}</span>}</>} /> : <Nada>Ninguna.</Nada>}
-        <h5>Insumos <span className="meta">(ligados por palabra clave)</span></h5>
+        <h5>Insumos</h5>
         {nec?.insumos.length ? <Recorte items={nec.insumos} max={4} pintar={(x) => x} /> : <Nada>Ninguno.</Nada>}
         <h5>Dependencias</h5>
         {nec?.dependencias.length ? <Recorte items={nec.dependencias} max={4} pintar={(x) => <>{x.origen} → {x.destino}: {x.evento}{x.resultado && <span className="meta"> · {x.resultado}</span>}</>} /> : <Nada>Ninguna.</Nada>}

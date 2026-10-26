@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { tablero, detalle, normalizarEstado, parsearNota } from '../server/planos.js';
+import { tablero, detalle, normalizarEstado, parsearNota, porcentaje } from '../server/planos.js';
 
 const COMPRAS = `---
 tipo: estado-modulo
@@ -126,4 +126,14 @@ test('nota sin formato o módulo sin nota: aviso y sin excepción; id desconocid
   assert.equal(detalle('MOD-XYZ', { raiz, preguntas }), null);
   const roto = tablero({ raiz: path.join(raiz, 'no-existe'), preguntas: path.join(raiz, 'no-existe.md') });
   assert.ok(roto.modulos.every((m) => m.aviso === 'nota sin formato esperado'));
+});
+
+test('porcentaje pondera por tamaño de brecha cuando §3 trae columna Ficha', () => {
+  const fichas = [{ ficha: 'F1-X-01 · 7.1 A', estado: 'construido' }, { ficha: 'F1-X-02 · 7.2 B', estado: 'parcial' }, { ficha: 'F1-X-03', estado: 'no construido' }];
+  // hecho 2 + 1 + 0 = 3; pendiente: X-02 con una L (3), X-03 sin brechas (2), transversal S (1) → 3 / (3 + 6) = 33 %
+  const falta = [{ fichas: ['F1-X-02'], tamano: 'L' }, { fichas: [], tamano: 'S' }];
+  assert.deepEqual(porcentaje(fichas, falta).pct, 33);
+  assert.match(porcentaje(fichas, falta).base, /^ponderado/);
+  // sin columna Ficha: respaldo (2 + 1 + 0) / 6 = 50 %
+  assert.deepEqual(porcentaje(fichas, [{ tamano: 'L' }]), { pct: 50, base: porcentaje(fichas, []).base });
 });

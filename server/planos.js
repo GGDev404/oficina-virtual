@@ -17,7 +17,8 @@ export const MODULOS = {
   'MOD-MAE': { nombre: 'Maestros, A+W y arranque', en: /maestros|\bMAE\b|A\+W|\bSAP\b/i },
 };
 const AVISO = 'nota sin formato esperado';
-const PESO_FICHA = 2; // todas las fichas valen M: §2 no trae tamaño y la liga con las brechas de §3 no es fiable (ver pct)
+const TAMANO = { S: 1, M: 2, L: 3 };
+const PESO_FICHA = 2; // una ficha vale M; lo pendiente lo pesan sus brechas de §3 (S/M/L) cuando la tabla trae columna Ficha
 const DIR_ESTADO = '14 Estado por módulo';
 const DIR_EXPEDIENTES = '12 Implementación de tareas';
 const ID_TAREA = /\b86e3[0-9a-z]{5}\b/g;
@@ -76,13 +77,15 @@ export function parsearNota(texto) {
   }));
   const t3 = tablas(seccion(texto, 3)).find((t) => col(t.cab, /brecha/i) >= 0);
   const falta = !t3 ? [] : t3.filas.filter((f) => f.length > 1).map((f) => {
-    const cTarea = col(t3.cab, /tarea/i), cTam = col(t3.cab, /tama/i, f.length - 1);
+    const cTarea = col(t3.cab, /tarea/i), cTam = col(t3.cab, /tama/i, f.length - 1), cFicha = col(t3.cab, /^ficha/i);
     const tarea = f[cTarea] ?? f.join(' ');
     return {
       n: quitar(f[0]), brecha: quitar(f[col(t3.cab, /brecha/i)]), fuente: quitar(f[col(t3.cab, /fuente/i)] ?? ''),
       // «SIN TAREA (86e3x no la incluye)»: el ID citado es justo el que no la cubre
       tareas: /SIN TAREA/i.test(tarea) ? [] : [...new Set(tarea.match(ID_TAREA) ?? [])], sinTarea: /SIN TAREA/i.test(tarea),
       tamano: quitar(f[cTam]).match(/\b([SML])\b/)?.[1] ?? null,
+      // Columna Ficha (opcional): códigos de §2 que completa la brecha; «—» = transversal
+      ...(cFicha >= 0 && { fichas: quitar(f[cFicha]).split(/\s*,\s*/).filter((x) => x && x !== '—' && x !== '-') }),
     };
   });
   const s4 = seccion(texto, 4);
@@ -93,15 +96,31 @@ export function parsearNota(texto) {
 
 // % por ficha: Construido pesa todo, Parcial la mitad. Las brechas de §3 no traen ficha en columna propia (solo a veces
 // la citan en Fuente), así que no se restan por ficha: se usa el respaldo del plan. Tamaño S/M/L se informa aparte.
-export function porcentaje(fichas) {
+// Con columna Ficha en §3: % = hecho / (hecho + pendiente). Hecho por ficha: construido 2, parcial 1, no construido 0.
+// Pendiente: suma S=1/M=2/L=3 de sus brechas; una ficha incompleta sin brechas ligadas pone lo que le falta (2 − hecho);
+// las brechas transversales («—») también pesan. Sin columna Ficha: respaldo construido = 2, parcial = 1.
+const BASE_PONDERADA = 'ponderado: construido 2, parcial 1; lo pendiente pesa por tamaño de brecha (S 1, M 2, L 3)';
+const BASE_RESPALDO = 'respaldo: construido = peso, parcial = mitad (la tabla de brechas no trae columna Ficha)';
+const hechoDe = (f) => (f.estado === 'construido' ? PESO_FICHA : f.estado === 'parcial' ? PESO_FICHA / 2 : 0);
+export function porcentaje(fichas, falta = []) {
   const v = fichas.filter((f) => f.estado !== 'sin clasificar');
-  if (!v.length) return null;
-  const hecho = v.reduce((s, f) => s + (f.estado === 'construido' ? PESO_FICHA : f.estado === 'parcial' ? PESO_FICHA / 2 : 0), 0);
-  return Math.round((100 * hecho) / (v.length * PESO_FICHA));
+  if (!v.length) return { pct: null, base: BASE_RESPALDO };
+  const hecho = v.reduce((s, f) => s + hechoDe(f), 0);
+  if (!falta.some((b) => b.fichas)) return { pct: Math.round((100 * hecho) / (v.length * PESO_FICHA)), base: BASE_RESPALDO };
+  const peso = (b) => TAMANO[b.tamano] ?? TAMANO.M;
+  const codigo = (f) => f.ficha.split(/\s+·\s+/)[0];
+  const ligadas = new Set();
+  let pendiente = 0;
+  for (const f of v) {
+    const suyas = falta.filter((b) => b.fichas?.some((x) => x === codigo(f) || f.ficha.startsWith(x)));
+    suyas.forEach((b) => ligadas.add(b));
+    pendiente += suyas.length ? suyas.reduce((s, b) => s + peso(b), 0) : PESO_FICHA - hechoDe(f);
+  }
+  pendiente += falta.filter((b) => !ligadas.has(b)).reduce((s, b) => s + peso(b), 0);
+  return { pct: Math.round((100 * hecho) / (hecho + pendiente || 1)), base: BASE_PONDERADA };
 }
 
 // ---- Contexto de la bóveda ----
-const TAMANO = { S: 1, M: 2, L: 3 };
 function cargar(raiz) {
   const notas = indice(raiz);
   const estado = {};
@@ -176,7 +195,9 @@ function necesita(mod, c, raiz, completo) {
   const re = MODULOS[mod].en;
   const td = tablas(bajo(pan ?? '', 'Decisiones que tengo que pedir'))[0];
   const decisiones = (td?.filas ?? []).filter((f) => re.test(f[td.cab.length - 1] ?? '')).map((f) => ({ n: quitar(f[0]), decision: quitar(f[1]), aQuien: quitar(f[2]), afecta: quitar(f[3]) }));
-  const insumos = bajo(pan ?? '', 'Insumos que faltan').split('\n').filter((l) => /^\s*[-*]\s/.test(l)).map((l) => quitar(l.replace(/^\s*[-*]\s/, ''))).filter((l) => re.test(l));
+  const insumos = bajo(pan ?? '', 'Insumos que faltan').split('\n').filter((l) => /^\s*[-*]\s/.test(l)).map((l) => quitar(l.replace(/^\s*[-*]\s/, '')))
+    .filter((l) => (/\bMOD-[A-Z]+/.test(l) ? delModulo(l.match(/\bMOD-[A-Z]+/g).join(','), mod) : re.test(l)))
+    .map((l) => l.replace(/\s*\((?:MOD-[A-Z]+(?:,\s*)?)+\)\s*$/, ''));
   let dependencias = [];
   if (completo) {
     const planos = c.notas.filter((n) => n.frontmatter.tipo === 'plano-funcional' && (moduloDe(n.frontmatter.modulo) === mod || (mod === 'MOD-MAE' && /Planos 1\.7\.1[\\/]13 /.test(n.ruta))));
@@ -210,7 +231,9 @@ function armar(mod, c, ctx, completo) {
     const aviso = !nota || !d.fichas.length || !d.falta.length ? AVISO : undefined;
     return {
       ...base, ...(aviso && { aviso }), nota: nota && { ruta: nota.ruta, titulo: nota.titulo, fecha: fecha(nota) },
-      pct: porcentaje(d.fichas), basePct: 'respaldo: construido = peso, parcial = mitad (sin liga brecha-ficha)',
+      ...(({ pct, base }) => ({ pct, basePct: base }))(porcentaje(d.fichas, d.falta)),
+      // prioridad (frontmatter de la nota de estado): módulo que va antes que los demás aunque no tenga semana de cierre
+      prioridad: nota?.frontmatter.prioridad ? String(nota.frontmatter.prioridad) : null,
       conteos: { construido: d.fichas.filter((f) => f.estado === 'construido').length, parcial: d.fichas.filter((f) => f.estado === 'parcial').length,
         noConstruido: d.fichas.filter((f) => f.estado === 'no construido').length },
       fichas: d.fichas, falta: d.falta, sinTarea: d.falta.filter((f) => f.sinTarea).length,
@@ -228,9 +251,10 @@ function armar(mod, c, ctx, completo) {
 export function tablero(ctx) {
   const c = cargar(ctx.raiz);
   const modulos = Object.keys(MODULOS).map((id) => {
-    const { id: _i, nombre, aviso, nota, pct, conteos, falta, sinTarea, bloquean, dudas, sinSubir, auditoria: a, calendario: cal } = armar(id, c, ctx, false);
-    return { id, nombre, ...(aviso && { aviso }), nota, pct, conteos, brechas: falta?.length ?? 0, sinTarea, bloquean, dudas: dudas?.abiertas.length, sinSubir, alertas: a?.alertas.length, cierre: cal?.cierre };
+    const { id: _i, nombre, aviso, nota, pct, prioridad, conteos, falta, sinTarea, bloquean, dudas, sinSubir, auditoria: a, calendario: cal } = armar(id, c, ctx, false);
+    return { id, nombre, ...(aviso && { aviso }), nota, pct, prioridad, conteos, brechas: falta?.length ?? 0, sinTarea, bloquean, dudas: dudas?.abiertas.length, sinSubir, alertas: a?.alertas.length, cierre: cal?.cierre };
   });
+  modulos.sort((a, b) => !!b.prioridad - !!a.prioridad); // estable: los prioritarios primero, el resto en su orden
   const cal = calendario('MOD-COM', c, ctx.raiz, ctx.hoy ?? new Date());
   const ligadas = new Set(c.expedientes.flatMap((e) => [e.rama, e.id]).filter(Boolean));
   const sinLigar = (ctx.worktrees ?? []).filter((w) => (w.sin_commit > 0 || w.sin_subir > 0) && !ligadas.has(w.rama) && !ligadas.has(w.id) && !ligadas.has(w.nombre))
