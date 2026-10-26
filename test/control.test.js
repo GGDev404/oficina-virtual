@@ -63,6 +63,33 @@ test('modelo elegido: --model va a claude --bg y a la terminal', async () => {
   assert.deepEqual(lanzado, ['claude', '--permission-mode', 'auto', '--model', 'claude-haiku-5-5', 'hola']);
 });
 
+test('motor agy: ejecuta agy con --mode y --model en nuevaSesion, nuevaEnTmux y nuevaEnTerminal', async () => {
+  let vistoBg, binarioBg;
+  const ejecutarBg = async (bin, args, opts) => { binarioBg = bin; vistoBg = { args, opts }; return { texto: 'ENTREGA: revisado ok' }; };
+  const rBg = await nuevaSesion({ cwd: '/home/x', prompt: 'revisa UI', permiso: 'auto', modelo: 'gemini-3.8-flash-high', motor: 'agy', encargo: 12 }, { ejecutar: ejecutarBg });
+  assert.equal(rBg.ok, true);
+  assert.equal(binarioBg, 'agy');
+  assert.deepEqual(vistoBg.args, ['--mode', 'accept-edits', '--dangerously-skip-permissions', '--model', 'gemini-3.8-flash-high', '--print', 'revisa UI']);
+  assert.equal(vistoBg.opts.env.OFICINA_ENCARGO, '12');
+
+  let vistoTmux;
+  const ejecutarTmux = async (cmd, args, opts) => { vistoTmux = { cmd, args, opts }; return { texto: '' }; };
+  const rTmux = await nuevaEnTmux({ cwd: '/home/x', prompt: 'test agy', permiso: 'acceptEdits', modelo: 'gemini-3.8-flash-high', motor: 'agy', nombre: 'rol-qa' },
+    { ejecutar: ejecutarTmux, socket: 'ov-rol-qa-1234', pantalla: async () => 'terminal ok', esperar: 1 });
+  assert.equal(rTmux.ok, true);
+  assert.equal(rTmux.motor, 'agy');
+  assert.equal(vistoTmux.cmd, 'tmux');
+  assert.ok(vistoTmux.args.includes('agy'));
+  assert.ok(vistoTmux.args.includes('--mode'));
+  assert.ok(vistoTmux.args.includes('accept-edits'));
+
+  let lanzadoTerm;
+  nuevaEnTerminal({ cwd: '/home/x', prompt: 'interactivo', permiso: 'auto', modelo: 'gemini-3.8-flash-high', motor: 'agy' },
+    { lanzar: (cmd, args) => { lanzadoTerm = { cmd, args }; return { on() {}, unref() {} }; } });
+  assert.equal(lanzadoTerm.cmd, 'xdg-terminal-exec');
+  assert.deepEqual(lanzadoTerm.args, ['agy', '--mode', 'accept-edits', '--model', 'gemini-3.8-flash-high', '-i', 'interactivo']);
+});
+
 test('worktree de la tarea: nuevo desde origin/develop, con su rama si existe, y reutiliza el que ya hay', async () => {
   const raiz = fs.mkdtempSync(path.join(os.homedir(), '.cache', 'oficina-wt-'));
   const g = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });

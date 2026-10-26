@@ -11,8 +11,10 @@ import path from 'node:path';
 import { socketDe, argsNueva, argsAdjuntar, capturar } from './tmux.js';
 
 export const PERMISOS = ['auto', 'acceptEdits', 'manual']; // nunca bypassPermissions desde una página
+export const MOTORES = ['claude', 'agy'];
 // Modelos que puedes elegir al abrir una sesión ('' = el predeterminado de Claude Code).
 export const MODELOS = ['', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-fable-5-1'];
+export const MODELOS_AGY = ['', 'gemini-3.8-flash-high', 'gemini-3.8-flash-medium', 'gemini-3.8-flash-low', 'claude-sonnet-4-6', 'claude-opus-4-6-thinking'];
 export const APARTE = path.join(os.homedir(), 'Agentes'); // trabajos sin tarea: fuera de cualquier repo
 const HOME = os.homedir() + path.sep;
 
@@ -21,7 +23,7 @@ const HOME = os.homedir() + path.sep;
 export const enScope = (lanzar) => (cmd, args, opciones) =>
   lanzar('systemd-run', ['--user', '--scope', '--collect', '--quiet', cmd, ...args], opciones);
 
-const correr = (claude, args, opciones) => new Promise((ok) => {
+export const correr = (claude, args, opciones) => new Promise((ok) => {
   execFile(claude, args, { timeout: 60_000, maxBuffer: 1024 * 1024, ...opciones }, (e, salida = '', errores = '') => {
     ok({ e, texto: `${salida}\n${errores}`.trim() });
   }).stdin?.end();
@@ -114,7 +116,22 @@ export function carpetaAparte(nombre, { raiz = APARTE, hoy = new Date() } = {}) 
 // `reanudar`: id de una sesión que murió; la retoma con toda su conversación (Claude Code le da un id nuevo).
 // `permitidos` va antes de --permission-mode: --allowedTools toma varios valores y se tragaría la indicación.
 const argsPermitidos = (permitidos, prohibidos) => [...(permitidos?.length ? ['--allowedTools', ...permitidos] : []), ...(prohibidos?.length ? ['--disallowedTools', ...prohibidos] : [])];
-export async function nuevaSesion({ cwd, prompt, nombre, permiso, tarea, modelo, reanudar, sistema, rol, permitidos, prohibidos, encargo }, { claude = 'claude', ejecutar = enScope(correr) } = {}) {
+export async function nuevaSesion({ cwd, prompt, nombre, permiso, tarea, modelo, reanudar, sistema, rol, permitidos, prohibidos, encargo, motor = 'claude' }, { claude = 'claude', agy = 'agy', ejecutar = enScope(correr) } = {}) {
+  if (motor === 'agy') {
+    const agyPermiso = permiso === 'acceptEdits' || permiso === 'auto' ? 'accept-edits' : 'plan';
+    const agyArgs = ['--mode', agyPermiso];
+    if (permiso === 'auto') agyArgs.push('--dangerously-skip-permissions');
+    if (modelo) agyArgs.push('--model', modelo);
+    const promptCompleto = sistema ? `${sistema}\n\n${prompt}` : prompt;
+    agyArgs.push('--print', promptCompleto);
+    const env = { ...process.env };
+    if (tarea) env.CLICKUP_TASK = tarea;
+    if (rol) env.OFICINA_ROL = rol;
+    if (encargo) env.OFICINA_ENCARGO = String(encargo);
+    const { e, texto } = await ejecutar(agy, agyArgs, { cwd, env });
+    if (e && !texto) return { ok: false, motivo: (texto?.split('\n').find(Boolean) ?? e.message).slice(0, 300) };
+    return { ok: true, id: `agy-${encargo || Date.now()}`, salida: texto, motor: 'agy' };
+  }
   const args = ['--bg', ...argsPermitidos(permitidos, prohibidos), '--permission-mode', permiso];
   if (reanudar) args.push('--resume', reanudar);
   if (modelo) args.push('--model', modelo);
@@ -137,8 +154,24 @@ export async function nuevaSesion({ cwd, prompt, nombre, permiso, tarea, modelo,
 // Sesión interactiva dentro de su propio tmux (sin ventana): la ves en la oficina, le escribes como si tecleras en su
 // terminal y la abres con «Abrir en terminal». Si la carpeta no es de confianza, el aviso sale en el panel: se abre
 // una terminal adjunta para que lo aceptes.
-export async function nuevaEnTmux({ cwd, prompt, nombre, permiso, tarea, modelo, reanudar, sistema, rol, permitidos, prohibidos, encargo },
-  { ejecutar = enScope(correr), socket = socketDe(nombre), pantalla = capturar, esperar = 2500, adjuntar = abrirTmux } = {}) {
+export async function nuevaEnTmux({ cwd, prompt, nombre, permiso, tarea, modelo, reanudar, sistema, rol, permitidos, prohibidos, encargo, motor = 'claude' },
+  { ejecutar = enScope(correr), socket = socketDe(nombre), pantalla = capturar, esperar = 2500, adjuntar = abrirTmux, agy = 'agy' } = {}) {
+  if (motor === 'agy') {
+    const agyPermiso = permiso === 'acceptEdits' || permiso === 'auto' ? 'accept-edits' : 'plan';
+    const agyArgs = ['--mode', agyPermiso];
+    if (permiso === 'auto') agyArgs.push('--dangerously-skip-permissions');
+    if (modelo) agyArgs.push('--model', modelo);
+    const promptCompleto = sistema ? `${sistema}\n\n${prompt}` : prompt;
+    if (promptCompleto) agyArgs.push('-i', promptCompleto);
+    const propias = { CLICKUP_TASK: tarea, OFICINA_ROL: rol, OFICINA_ENCARGO: encargo ? String(encargo) : undefined };
+    const env = { ...process.env, ...Object.fromEntries(Object.entries(propias).filter(([, v]) => v)) };
+    const { e, texto } = await ejecutar('tmux', argsNueva({ socket, cwd, env: propias, claudeArgs: agyArgs, binario: agy }), { cwd, env });
+    if (e) return { ok: false, motivo: (texto.split('\n').find(Boolean) ?? e.message).slice(0, 300) };
+    await new Promise((listo) => setTimeout(listo, esperar));
+    const vista = await pantalla(socket).catch(() => '');
+    if (/trust this folder|do you trust/i.test(vista)) { adjuntar(socket); return { ok: true, socket, confianza: true }; }
+    return { ok: true, socket, motor: 'agy' };
+  }
   const claudeArgs = [...argsPermitidos(permitidos, prohibidos), '--permission-mode', permiso];
   if (modelo) claudeArgs.push('--model', modelo);
   if (nombre) claudeArgs.push('--name', nombre);
@@ -163,11 +196,11 @@ export function abrirTmux(socket, { lanzar = enScope(spawn) } = {}) {
 
 // Sesión interactiva en una terminal nueva: sirve para trabajos sin tarea y para carpetas que aún no son de
 // confianza (ahí mismo aparece el aviso de Claude Code para aceptarla).
-export function nuevaEnTerminal({ cwd, prompt, nombre, permiso, tarea, modelo }, { lanzar = enScope(spawn) } = {}) {
-  const args = ['claude', '--permission-mode', permiso];
-  if (modelo) args.push('--model', modelo);
-  if (nombre) args.push('--name', nombre);
-  args.push(prompt);
+export function nuevaEnTerminal({ cwd, prompt, nombre, permiso, tarea, modelo, motor = 'claude' }, { lanzar = enScope(spawn) } = {}) {
+  const agyPermiso = permiso === 'acceptEdits' || permiso === 'auto' ? 'accept-edits' : 'plan';
+  const args = motor === 'agy'
+    ? ['agy', '--mode', agyPermiso, ...(modelo ? ['--model', modelo] : []), ...(prompt ? ['-i', prompt] : [])]
+    : ['claude', '--permission-mode', permiso, ...(modelo ? ['--model', modelo] : []), ...(nombre ? ['--name', nombre] : []), prompt];
   const env = { ...process.env };
   if (tarea) env.CLICKUP_TASK = tarea;
   const hijo = lanzar('xdg-terminal-exec', args, { cwd, env, detached: true, stdio: 'ignore' });
@@ -176,9 +209,12 @@ export function nuevaEnTerminal({ cwd, prompt, nombre, permiso, tarea, modelo },
   return { ok: true };
 }
 
-// El pid debe seguir siendo de Claude Code (evita matar otro proceso si el número se reutilizó).
+// El pid debe seguir siendo del proceso de la sesión (evita matar otro proceso si el número se reutilizó).
 export function esClaude(pid) {
-  try { return fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').includes('claude'); } catch { return false; }
+  try {
+    const cmd = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8');
+    return cmd.includes('claude') || cmd.includes('agy') || cmd.includes('antigravity');
+  } catch { return false; }
 }
 
 export async function cerrarSesion(viva, { claude = 'claude', ejecutar = correr, matar = process.kill, verificar = esClaude } = {}) {
