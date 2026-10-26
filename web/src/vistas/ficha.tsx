@@ -323,7 +323,7 @@ function Avisos({ s, d, viva, nombre, espera, nivel, confirmandoCierre, cancelar
   const pregunta = preguntaPendiente(d, s.id)
   let permiso: { herramienta?: string; detalle?: string } | null = null
   try { permiso = JSON.parse(s.permiso_json ?? 'null') } catch { /* sin detalle */ }
-  return <>
+  return <div className="va-avisos">
     {confirmandoCierre && viva && <div className="aviso-caja rojo" role="alertdialog" aria-label="Confirmar cierre">
       <p className="abajo-s2"><b>¿Cerrar «{nombre}»? </b>{viva.ocupada ? 'Está trabajando ahora: se corta lo que esté haciendo. ' : ''}
         La conversación queda guardada; la retomas con claude --resume {s.id.slice(0, 8)}… o con «Retomar» en Pendientes.</p>
@@ -351,7 +351,7 @@ function Avisos({ s, d, viva, nombre, espera, nivel, confirmandoCierre, cancelar
           : 'Conviene compactar pronto: escribe /compact en su terminal (un mensaje desde aquí no ejecuta comandos).'}</p>
       <button type="button" className="boton-chico" onClick={pedirTraspaso}>Pedir resumen de traspaso</button>
     </div>}
-  </>
+  </div>
 }
 
 function BloqueTarea({ s, d, t, asignando, asignar, terminar }: { s: Sesion; d: Datos; t: Tarea | undefined; asignando: boolean; asignar: () => void; terminar: () => void }) {

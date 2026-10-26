@@ -461,6 +461,9 @@
   .va-cuerpo { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 440px; }
   .va-cuerpo.sin-lado { grid-template-columns: minmax(0, 1fr) 52px; }
   .va-chat { display: flex; flex-direction: column; min-height: 0; min-width: 0; padding: var(--s2) var(--s5) var(--s4); }
+  /* Avisos largos (preguntas con varias opciones) se desplazan aquí sin tapar la conversación ni el redactor. */
+  .va-avisos { flex: 0 1 auto; min-height: 0; max-height: 65%; overflow-y: auto; overscroll-behavior: contain; }
+  .va-avisos:empty { display: none; }
   .va-lado { border-left: 1px solid var(--borde); display: flex; flex-direction: column; min-height: 0; min-width: 0;
     background: color-mix(in srgb, var(--hundido) 55%, var(--panel)); }
   .va-tabs { flex: none; display: flex; gap: 2px; align-items: center; padding: var(--s3) var(--s3) var(--s2); }
