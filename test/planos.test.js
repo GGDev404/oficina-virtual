@@ -131,7 +131,7 @@ test('nota sin formato o módulo sin nota: aviso y sin excepción; id desconocid
 test('porcentaje pondera por tamaño de brecha cuando §3 trae columna Ficha', () => {
   const fichas = [{ ficha: 'F1-X-01 · 7.1 A', estado: 'construido' }, { ficha: 'F1-X-02 · 7.2 B', estado: 'parcial' }, { ficha: 'F1-X-03', estado: 'no construido' }];
   // hecho 2 + 1 + 0 = 3; pendiente: X-02 con una L (3), X-03 sin brechas (2), transversal S (1) → 3 / (3 + 6) = 33 %
-  const falta = [{ fichas: ['F1-X-02'], tamano: 'L' }, { fichas: [], tamano: 'S' }];
+  const falta = [{ fichas: ['F1-X-02'], fichaTexto: 'F1-X-02', tamano: 'L' }, { fichas: [], fichaTexto: '—', tamano: 'S' }];
   assert.deepEqual(porcentaje(fichas, falta).pct, 33);
   assert.match(porcentaje(fichas, falta).base, /^ponderado/);
   // sin columna Ficha: respaldo (2 + 1 + 0) / 6 = 50 %

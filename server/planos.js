@@ -85,7 +85,7 @@ export function parsearNota(texto) {
       tareas: /SIN TAREA/i.test(tarea) ? [] : [...new Set(tarea.match(ID_TAREA) ?? [])], sinTarea: /SIN TAREA/i.test(tarea),
       tamano: quitar(f[cTam]).match(/\b([SML])\b/)?.[1] ?? null,
       // Columna Ficha (opcional): códigos de §2 que completa la brecha; «—» = transversal
-      ...(cFicha >= 0 && { fichas: quitar(f[cFicha]).split(/\s*,\s*/).filter((x) => x && x !== '—' && x !== '-') }),
+      ...(cFicha >= 0 && { fichas: quitar(f[cFicha]).split(/\s*,\s*/).filter((x) => x && x !== '—' && x !== '-'), fichaTexto: quitar(f[cFicha]) }),
     };
   });
   const s4 = seccion(texto, 4);
@@ -109,14 +109,10 @@ export function porcentaje(fichas, falta = []) {
   if (!falta.some((b) => b.fichas)) return { pct: Math.round((100 * hecho) / (v.length * PESO_FICHA)), base: BASE_RESPALDO };
   const peso = (b) => TAMANO[b.tamano] ?? TAMANO.M;
   const codigo = (f) => f.ficha.split(/\s+·\s+/)[0];
-  const ligadas = new Set();
-  let pendiente = 0;
-  for (const f of v) {
-    const suyas = falta.filter((b) => b.fichas?.some((x) => x === codigo(f) || f.ficha.startsWith(x)));
-    suyas.forEach((b) => ligadas.add(b));
-    pendiente += suyas.length ? suyas.reduce((s, b) => s + peso(b), 0) : PESO_FICHA - hechoDe(f);
-  }
-  pendiente += falta.filter((b) => !ligadas.has(b)).reduce((s, b) => s + peso(b), 0);
+  // cada brecha pesa una sola vez aunque complete varias fichas
+  let pendiente = falta.reduce((s, b) => s + peso(b), 0);
+  // por texto de la celda: los nombres de proceso (Maestros) traen comas, «Retorno al origen (folio, UUID, resultado)»
+  for (const f of v) if (!falta.some((b) => b.fichaTexto?.includes(codigo(f)))) pendiente += PESO_FICHA - hechoDe(f);
   return { pct: Math.round((100 * hecho) / (hecho + pendiente || 1)), base: BASE_PONDERADA };
 }
 
