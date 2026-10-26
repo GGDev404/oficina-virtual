@@ -6,7 +6,7 @@ import { leer, post } from '@/lib/api'
 
 export interface Pregunta {
   id: string; estado: string; para: string; bloquea: string; tarea: string; pregunta: string
-  contexto: string; enviada: string; respuesta: string; respondida: string; fuente: string
+  contexto: string; enviada: string; respuesta: string; respondida: string; fuente: string; modulo: string
 }
 type Filtro = 'tuyas' | 'enviar' | 'esperando' | 'supuestos' | 'cerradas'
 const FILTROS: [Filtro, string, (p: Pregunta) => boolean][] = [

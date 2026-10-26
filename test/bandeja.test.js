@@ -7,9 +7,9 @@ import { leerBandeja, actualizarPregunta, resumenBandeja } from '../server/bande
 
 const ARCHIVO = `# Preguntas pendientes
 
-| ID | Estado | Para | Bloquea | Tarea | Pregunta | Contexto | Enviada | Respuesta | Respondida | Fuente |
-|---|---|---|---|---|---|---|---|---|---|---|
-| P-001 | por enviar | Eliam | sí | 86e3aaa | ¿Firma doble siempre? | Plano vs código |  |  |  | [[02 · Compras]] |
+| ID | Estado | Para | Bloquea | Tarea | Pregunta | Contexto | Enviada | Respuesta | Respondida | Fuente | Módulo |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| P-001 | por enviar | Eliam | sí | 86e3aaa | ¿Firma doble siempre? | Plano vs código |  |  |  | [[02 · Compras]] | MOD-COM, MOD-MP |
 | P-002 | por responder | Geovany | sí | 86e3bbb | ¿Lo no clasificado en todos los tipos? | Recomiendo: no |  |  |  | [[plan]] |
 | P-004 | supuesto | Laura | sí | — | ¿Formato? | — |  | Supuesto: el de SAP |  | [[y]] |
 | P-003 | respondida | Jorge | no | — | ¿Scripts? | — | 2026-10-20 | Sí | 2026-10-21 | [[x]] |
@@ -64,4 +64,13 @@ test('el resumen lista lo que bloquea, primero lo que decides tú', () => {
   assert.match(r, /Preguntas abiertas: 2 \(1 las decides tú, 1 por enviar\) · bloquean: 2/);
   assert.ok(r.indexOf('P-002') < r.indexOf('P-001'));
   assert.equal(resumenBandeja(''), '');
+});
+
+test('la columna Módulo se lee, es opcional en filas viejas y sobrevive al actualizar', () => {
+  const ruta = copia();
+  const { filas } = leerBandeja(ruta);
+  assert.equal(filas[0].modulo, 'MOD-COM, MOD-MP');
+  assert.equal(filas[1].modulo, '');
+  actualizarPregunta(ruta, 'P-001', { estado: 'enviada' });
+  assert.equal(leerBandeja(ruta).filas[0].modulo, 'MOD-COM, MOD-MP');
 });

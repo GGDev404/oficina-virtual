@@ -2,7 +2,7 @@
 // El archivo es la fuente: Obsidian lo edita igual que la oficina; aquí solo se reescribe la fila tocada.
 import fs from 'node:fs';
 
-const COLUMNAS = ['id', 'estado', 'para', 'bloquea', 'tarea', 'pregunta', 'contexto', 'enviada', 'respuesta', 'respondida', 'fuente'];
+const COLUMNAS = ['id', 'estado', 'para', 'bloquea', 'tarea', 'pregunta', 'contexto', 'enviada', 'respuesta', 'respondida', 'fuente', 'modulo'];
 export const ESTADOS_PREGUNTA = ['por enviar', 'enviada', 'por responder', 'supuesto', 'respondida', 'descartada'];
 // Cerradas: ya no piden nada. «supuesto» se construye con lo anotado y se confirma después (no cuenta como abierta).
 const CERRADAS = ['respondida', 'descartada', 'supuesto'];
