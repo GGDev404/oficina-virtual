@@ -63,9 +63,10 @@ async function leerWorktree(main, { ruta, rama }) {
   const id = ids.find((i) => planRuta?.endsWith(`plan-${i}.md`)) ?? ids[1] ?? nombre;
   const plan = planRuta ? leer(planRuta) : null;
   const b = await base(ruta);
-  const [log, sucio] = await Promise.all([
+  const [log, sucio, sinSubir] = await Promise.all([
     b ? git(ruta, ['log', '--no-merges', '--format=%ct%x09%s', `${b}..HEAD`]).catch(() => '') : '',
     git(ruta, ['status', '--porcelain']).catch(() => ''),
+    git(ruta, ['rev-list', '--count', 'HEAD', '--not', '--remotes']).catch(() => '0'), // commits que ningún remoto tiene
   ]);
   const commits = log ? log.split('\n').map((l) => { const [ts, ...s] = l.split('\t'); return { ts: Number(ts) * 1000, texto: s.join('\t').slice(0, 160) }; }) : [];
   return {
@@ -73,14 +74,14 @@ async function leerWorktree(main, { ruta, rama }) {
     titulo: plan?.match(/^#\s+(.+)$/m)?.[1].replace(/^Plan\s+\S+\s*[·:—-]\s*/, '').slice(0, 160) ?? null,
     plan: planRuta, pasos: plan ? leerPlan(plan) : [],
     commits: commits.length, ultimos: commits.slice(0, 3), ultimo_ts: commits[0]?.ts ?? null,
-    sin_commit: sucio ? sucio.split('\n').length : 0,
+    sin_commit: sucio ? sucio.split('\n').length : 0, sin_subir: Number(sinSubir) || 0,
     noche: noche(main, id) ?? (id === nombre ? null : noche(main, nombre)),
   };
 }
 
-// Repos de las carpetas donde trabajaron tus sesiones; de cada uno, sus worktrees de tarea (sin el principal).
+// Repos de las carpetas donde trabajaron tus sesiones; de cada uno, sus worktrees de tarea (sin el principal salvo conPrincipal).
 const repoDe = new Map(); // cwd → repo principal (o null), para no preguntarle a git cada vez
-export async function leerWorktrees(cwds) {
+export async function leerWorktrees(cwds, { conPrincipal = false } = {}) {
   const repos = new Set();
   for (const cwd of cwds) {
     if (!repoDe.has(cwd)) repoDe.set(cwd, await git(cwd, ['rev-parse', '--path-format=absolute', '--git-common-dir']).then((d) => path.dirname(d), () => null));
@@ -91,7 +92,7 @@ export async function leerWorktrees(cwds) {
     const bloques = await git(main, ['worktree', 'list', '--porcelain']).then((t) => t.split('\n\n'), () => []);
     for (const bl of bloques) {
       const ruta = bl.match(/^worktree (.+)$/m)?.[1];
-      if (!ruta || ruta === main || /^prunable/m.test(bl) || DE_REVISION.test(path.basename(ruta)) || !fs.existsSync(ruta)) continue;
+      if (!ruta || (ruta === main && !conPrincipal) || /^prunable/m.test(bl) || DE_REVISION.test(path.basename(ruta)) || !fs.existsSync(ruta)) continue;
       lista.push(leerWorktree(main, { ruta, rama: bl.match(/^branch refs\/heads\/(.+)$/m)?.[1] ?? null }).catch(() => null));
     }
   }
