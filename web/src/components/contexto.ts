@@ -21,6 +21,7 @@ export interface Oficina {
   abrirOficina: (seccion?: Seccion) => void // sin sección: Tu día con todas sus pestañas; con una: solo esa sección
   abrirPizarra: () => void
   abrirNecesitan: () => void
+  abrirPlanos: () => void
   abrirNueva: (opciones?: OpcionesNueva) => void
   abrirArmeria: (clave?: string) => void
   cerrarVentana: () => void

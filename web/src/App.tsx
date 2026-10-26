@@ -12,12 +12,13 @@ import { Entrar } from '@/vistas/entrar'
 import { Ficha } from '@/vistas/ficha'
 import { NuevaSesion } from '@/vistas/nueva-sesion'
 import { PizarraVentana } from '@/vistas/pizarra'
+import { PlanosVentana } from '@/vistas/planos'
 import { Tarjetas } from '@/vistas/tarjetas'
 import { TeNecesitan } from '@/vistas/te-necesitan'
 import { TuDia } from '@/vistas/tu-dia'
 
 // Una ventana a la vez (abrir otra la reemplaza); «Entra a tu oficina» puede ir encima de cualquiera.
-type Abierta = { tipo: 'agente'; id: string; escribir: boolean } | { tipo: 'oficina'; seccion?: Seccion } | { tipo: 'pizarra' } | { tipo: 'necesitan' }
+type Abierta = { tipo: 'agente'; id: string; escribir: boolean } | { tipo: 'oficina'; seccion?: Seccion } | { tipo: 'pizarra' } | { tipo: 'necesitan' } | { tipo: 'planos' }
   | { tipo: 'nueva'; opciones: OpcionesNueva; carpetas: string[] } | { tipo: 'armeria'; clave?: string } | null
 
 export default function App() {
@@ -54,6 +55,7 @@ export default function App() {
   const abrirOficina = useCallback((seccion?: Seccion) => setVentana({ tipo: 'oficina', seccion }), [])
   const abrirPizarra = useCallback(() => setVentana({ tipo: 'pizarra' }), [])
   const abrirNecesitan = useCallback(() => setVentana({ tipo: 'necesitan' }), [])
+  const abrirPlanos = useCallback(() => setVentana({ tipo: 'planos' }), [])
   const abrirNueva = useCallback(async (opciones: OpcionesNueva = {}) => {
     const carpetas = await leer<string[]>('/api/carpetas').catch(() => [])
     setVentana({ tipo: 'nueva', opciones, carpetas })
@@ -61,8 +63,8 @@ export default function App() {
   const abrirArmeria = useCallback((clave?: string) => setVentana({ tipo: 'armeria', clave }), [])
   const tareas = useMemo(() => (datos ? tareaPorId(datos) : {}), [datos])
   // Memorizado: un estado nuevo del SSE no vuelve a pintar las vistas si lo que leen no cambió de referencia.
-  const oficina: Oficina | null = useMemo(() => datos && { datos, tareas, yo, mem, cargarMemoria, abrirAgente, abrirOficina, abrirPizarra, abrirNecesitan, abrirNueva, abrirArmeria, cerrarVentana },
-    [datos, tareas, yo, mem, cargarMemoria, abrirAgente, abrirOficina, abrirPizarra, abrirNecesitan, abrirNueva, abrirArmeria, cerrarVentana])
+  const oficina: Oficina | null = useMemo(() => datos && { datos, tareas, yo, mem, cargarMemoria, abrirAgente, abrirOficina, abrirPizarra, abrirNecesitan, abrirPlanos, abrirNueva, abrirArmeria, cerrarVentana },
+    [datos, tareas, yo, mem, cargarMemoria, abrirAgente, abrirOficina, abrirPizarra, abrirNecesitan, abrirPlanos, abrirNueva, abrirArmeria, cerrarVentana])
   const acciones = useMemo(() => ({ abrirAgente: (id: string) => abrirAgente(id), abrirOficina: (s?: string) => abrirOficina(s as Seccion | undefined), abrirPizarra }), [abrirAgente, abrirOficina, abrirPizarra])
 
   const sync = datos?.sync
@@ -73,6 +75,7 @@ export default function App() {
       <h1>Oficina virtual</h1>
       <button className="primario" type="button" aria-haspopup="dialog" onClick={() => abrirNueva()} disabled={!datos}>Nueva sesión</button>
       <button type="button" aria-haspopup="dialog" onClick={() => abrirArmeria()} disabled={!datos}><Icono n="escudo" />Armería</button>
+      <button type="button" aria-haspopup="dialog" onClick={abrirPlanos} disabled={!datos}><Icono n="calendario" />Planos</button>
       <div className="sync"><span title={textoSync}>{textoSync}</span>
         <button type="button" disabled={!!sync?.corriendo} onClick={() => postSeguro('/api/sincronizar')}>Sincronizar ahora</button>
         <span className={`chip ${conectado ? 'verde' : conectado === false ? 'rojo' : ''}`}>{conectado ? 'en vivo' : conectado === false ? 'desconectado' : 'conectando…'}</span></div>
@@ -86,6 +89,7 @@ export default function App() {
       {ventana?.tipo === 'oficina' && <TuDia seccion={ventana.seccion} />}
       {ventana?.tipo === 'pizarra' && <PizarraVentana />}
       {ventana?.tipo === 'necesitan' && <TeNecesitan />}
+      {ventana?.tipo === 'planos' && <PlanosVentana />}
       {ventana?.tipo === 'armeria' && <Armeria inicial={ventana.clave} />}
       {ventana?.tipo === 'nueva' && <NuevaSesion opciones={ventana.opciones} carpetas={ventana.carpetas} />}
     </ContextoOficina.Provider>}
