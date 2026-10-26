@@ -19,7 +19,7 @@ import { crearDifusor } from './difusion.js';
 import { ROLES, esRol, listaRoles, crearEncargos, ErrorEncargo, leerRol, guardarRol, listaSkills } from './encargos.js';
 import { crearMensajero, guardarImagenes, conImagenes, MAX_TEXTO } from './mensajero.js';
 import { PERMISOS, MODELOS, carpetaValida, carpetasConocidas, nuevaSesion, nuevaEnTmux, nuevaEnTerminal, cerrarSesion, abrirTerminal,
-  abrirTmux, worktreeDeTarea, carpetaAparte, esClaude } from './control.js';
+  abrirTmux, worktreeDeTarea, carpetaAparte, esClaude, correr, enScope } from './control.js';
 import { enviarTexto, enviarTecla, capturar, vive, cerrar as cerrarTmux, socketValido } from './tmux.js';
 import { memoria, leerMeminfo, nivelMemoria, pausar } from './memoria.js';
 import { claveValida, guardarAspecto, listaAspectos } from './aspectos.js';
@@ -248,6 +248,10 @@ const avisar = () => difusor.avisar();
 const dialogoAbierto = (sid, s, viva) => s.estado === 'necesita_permiso' ? 'pide un permiso' : viva?.esperando ? 'su terminal muestra un diálogo'
   : preguntas.lista().some((p) => p.sid === sid) ? 'te hizo una pregunta con opciones' : null;
 const sesionViva = async (sid) => {
+  if (sid?.startsWith('agy-')) {
+    const s = db.prepare('SELECT estado FROM sesiones WHERE id = ?').get(sid);
+    return !!s && s.estado !== 'cerrada' && s.estado !== 'error';
+  }
   const s = db.prepare('SELECT tmux FROM sesiones WHERE id = ?').get(sid);
   return vivas.has(sid) || (!!s?.tmux && await vive(s.tmux));
 };
@@ -275,6 +279,11 @@ async function entregar(sid, texto, { de = null, alFallar = () => {} } = {}) {
 }
 // Cerrar una sesión: su tmux si lo tiene (Claude Code recibe SIGHUP y guarda la conversación); si no, su proceso.
 async function cerrarPorId(sid) {
+  if (sid?.startsWith('agy-')) {
+    db.prepare(`UPDATE sesiones SET estado = 'cerrada', terminada_ts = ? WHERE id = ?`).run(Date.now(), sid);
+    avisar();
+    return { ok: true };
+  }
   const s = db.prepare('SELECT tmux FROM sesiones WHERE id = ?').get(sid);
   if (s?.tmux && await vive(s.tmux)) {
     await cerrarTmux(s.tmux).catch(() => {});
@@ -288,12 +297,51 @@ async function cerrarPorId(sid) {
   setTimeout(actualizarVivas, 1500);
   return { ok: true };
 }
+
+async function lanzarAgyWorker(datos) {
+  const sid = `agy-${datos.rol}-${datos.encargo || Date.now()}`;
+  const ahora = Date.now();
+  db.prepare(`INSERT OR REPLACE INTO sesiones (id, cwd, nombre, rol, estado, estado_desde_ts, ultimo_evento_ts, iniciada_ts)
+              VALUES (?, ?, ?, ?, 'trabajando', ?, ?, ?)`).run(sid, datos.cwd, `rol-${datos.rol}-agy`, datos.rol, ahora, ahora, ahora);
+  encargos.alRegistrarRol(sid, datos.rol, datos.encargo);
+  avisar();
+
+  (async () => {
+    try {
+      const agyPermiso = datos.permiso === 'acceptEdits' || datos.permiso === 'auto' ? 'accept-edits' : 'plan';
+      const promptCompleto = datos.sistema ? `${datos.sistema}\n\n${datos.prompt}` : datos.prompt;
+      const agyArgs = ['--mode', agyPermiso, '--dangerously-skip-permissions', '--print', promptCompleto];
+      if (datos.modelo) agyArgs.unshift('--model', datos.modelo);
+      const env = { ...process.env, OFICINA_ROL: datos.rol, OFICINA_ENCARGO: String(datos.encargo || '') };
+
+      const { e, texto } = await enScope(correr)('agy', agyArgs, { cwd: datos.cwd, env, timeout: 300_000 });
+      const salida = texto || (e ? `Error ejecutando agy: ${e.message}` : '');
+      await encargos.alTerminarTurno(sid, salida);
+      db.prepare(`UPDATE sesiones SET estado = 'cerrada', terminada_ts = ? WHERE id = ?`).run(Date.now(), sid);
+      avisar();
+    } catch (err) {
+      console.error('Error en worker agy:', err);
+      db.prepare(`UPDATE sesiones SET estado = 'error', terminada_ts = ? WHERE id = ?`).run(Date.now(), sid);
+      avisar();
+    }
+  })();
+
+  return { ok: true, id: sid };
+}
+
 const encargos = crearEncargos({ db, entregar, vivo: sesionViva, etiqueta: etiquetaSesion, alCambiar: () => avisar(),
   // Tras su ENTREGA: deja que el reenvío salga antes de cerrar su terminal.
   apagar: (sid) => new Promise((listo) => setTimeout(() => cerrarPorId(sid).then(listo, listo), 3000)),
-  lanzar: async (datos) => nivelMemoria(leerMeminfo()) === 'critico'
-    ? { ok: false, motivo: 'Memoria casi agotada: no abro otra sesión.' }
-    : lanzarSesion({ ...datos, nombre: `rol-${datos.rol}${datos.encargo ? `-${datos.encargo}` : ''}`, tarea: null, modelo: datos.modelo ?? '' }).then((r) => { if (r.ok) actualizarVivas(); return r; }) });
+  lanzar: async (datos) => {
+    if (nivelMemoria(leerMeminfo()) === 'critico') {
+      return { ok: false, motivo: 'Memoria casi agotada: no abro otra sesión.' };
+    }
+    if (datos.motor === 'agy') {
+      return lanzarAgyWorker(datos);
+    }
+    return lanzarSesion({ ...datos, nombre: `rol-${datos.rol}${datos.encargo ? `-${datos.encargo}` : ''}`, tarea: null, modelo: datos.modelo ?? '' }).then((r) => { if (r.ok) actualizarVivas(); return r; });
+  }
+});
 
 function json(res, codigo, cuerpo) {
   res.writeHead(codigo, { 'Content-Type': 'application/json; charset=utf-8' });

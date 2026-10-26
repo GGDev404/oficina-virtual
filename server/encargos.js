@@ -15,19 +15,32 @@ export const ROLES = {
   integracion: { titulo: 'Integración', permiso: 'acceptEdits' },
 };
 export const esRol = (rol) => typeof rol === 'string' && Object.hasOwn(ROLES, rol);
-// Del frontmatter del .md: `model` (alias opus/sonnet/haiku → id completo) y `equipo` (skills que el rol usa).
-// Cada rol corre con su modelo: plan con Opus, docs con Haiku; así no todo gasta tokens del modelo más caro.
-const MODELO_ALIAS = { opus: 'claude-opus-5-5', sonnet: 'claude-sonnet-5-5', haiku: 'claude-haiku-5-5', fable: 'claude-fable-5-1' };
+export const MOTORES = ['claude', 'agy'];
+// Del frontmatter del .md: `model` (alias opus/sonnet/haiku/flash → id completo) y `equipo` (skills que el rol usa).
+// Cada rol corre con su modelo: plan con Opus, docs con Haiku, QA visual con Flash; así no todo gasta tokens del modelo más caro.
+export const MODELO_ALIAS = {
+  opus: 'claude-opus-5-5',
+  sonnet: 'claude-sonnet-5-5',
+  haiku: 'claude-haiku-5-5',
+  fable: 'claude-fable-5-1',
+  flash: 'gemini-3.8-flash-high',
+  'flash-high': 'gemini-3.8-flash-high',
+  'flash-medium': 'gemini-3.8-flash-medium',
+  'flash-low': 'gemini-3.8-flash-low',
+};
 // `permiso` (manual, acceptEdits, auto) es el modo con que arranca la sesión fija del rol; si falta, el de ROLES.
 const PERMISOS_ROL = ['manual', 'acceptEdits', 'auto']; // nunca bypassPermissions
 export function fichaRol(rol, dir = AGENTES) {
   let cabeza = '';
   try { cabeza = /^---\n([\s\S]*?)\n---\n/.exec(fs.readFileSync(path.join(dir, `${rol}.md`), 'utf8'))?.[1] ?? ''; } catch { /* sin .md: valores vacíos */ }
   const campo = (k) => new RegExp(`^${k}:[ \\t]*(.*)$`, 'm').exec(cabeza)?.[1].trim() ?? '';
+  const motor = campo('motor') === 'agy' ? 'agy' : 'claude';
   const permiso = PERMISOS_ROL.includes(campo('permiso')) ? campo('permiso') : ROLES[rol]?.permiso ?? 'manual';
   let permitidos = [];
   try { permitidos = JSON.parse(campo('permitidos') || '[]').filter(reglaValida); } catch { /* mal escrito: ninguno */ }
-  return { modelo: MODELO_ALIAS[campo('model')] ?? '', permiso, equipo: campo('equipo').split(',').map((x) => x.trim()).filter(Boolean), permitidos };
+  const rawModel = campo('model') || (motor === 'agy' ? 'flash' : '');
+  const modelo = MODELO_ALIAS[rawModel] ?? rawModel;
+  return { motor, modelo, permiso, equipo: campo('equipo').split(',').map((x) => x.trim()).filter(Boolean), permitidos };
 }
 // Comandos que la sesión del rol corre sin preguntar (`--allowedTools`), p. ej. `Bash(npm run *)`. Nunca `Bash` o
 // `Bash(*)` a secas: eso es dejarle toda la terminal.
@@ -48,15 +61,17 @@ export function sistemaRol(rol, dir = AGENTES) {
 const SKILL = /^[a-z0-9][a-z0-9:._-]{0,79}$/i;
 export const MAX_INSTRUCCIONES = 20_000, MAX_EQUIPO = 9;
 export const leerRol = (rol, dir = AGENTES) => {
-  const alias = Object.entries(MODELO_ALIAS).find(([, id]) => id === fichaRol(rol, dir).modelo)?.[0] ?? '';
-  return { id: rol, ...fichaRol(rol, dir), modelo: alias, instrucciones: cuerpoRol(rol, dir) };
+  const f = fichaRol(rol, dir);
+  const alias = Object.entries(MODELO_ALIAS).find(([, id]) => id === f.modelo)?.[0] ?? f.modelo;
+  return { id: rol, ...f, modelo: alias, instrucciones: cuerpoRol(rol, dir) };
 };
 export function guardarRol(rol, entrada, { dir = AGENTES, agentes = path.join(os.homedir(), '.claude', 'agents'), ahora = Date.now } = {}) {
-  const { modelo, permiso, equipo, instrucciones, permitidos = [] } = entrada ?? {};
+  const { modelo, permiso, equipo, instrucciones, permitidos = [], motor } = entrada ?? {};
+  if (motor && !MOTORES.includes(motor)) throw new ErrorEncargo(400, `motor: ${MOTORES.join(', ')}`);
   if (!Array.isArray(permitidos) || permitidos.length > MAX_PERMITIDOS || !permitidos.every(reglaValida)) {
     throw new ErrorEncargo(400, `permitidos: hasta ${MAX_PERMITIDOS} reglas como Bash(npm run *); nunca Bash a secas`);
   }
-  if (!Object.hasOwn(MODELO_ALIAS, modelo)) throw new ErrorEncargo(400, `modelo: ${Object.keys(MODELO_ALIAS).join(', ')}`);
+  if (!Object.hasOwn(MODELO_ALIAS, modelo) && !(motor === 'agy' && modelo)) throw new ErrorEncargo(400, `modelo: ${Object.keys(MODELO_ALIAS).join(', ')}`);
   if (!PERMISOS_ROL.includes(permiso)) throw new ErrorEncargo(400, `permiso: ${PERMISOS_ROL.join(', ')}`);
   if (!Array.isArray(equipo) || equipo.length > MAX_EQUIPO || !equipo.every((x) => typeof x === 'string' && SKILL.test(x))) {
     throw new ErrorEncargo(400, `equipo: hasta ${MAX_EQUIPO} skills con nombre válido`);
@@ -68,6 +83,7 @@ export function guardarRol(rol, entrada, { dir = AGENTES, agentes = path.join(os
   const archivo = path.join(dir, `${rol}.md`);
   let cabeza = /^---\n([\s\S]*?)\n---\n/.exec(fs.readFileSync(archivo, 'utf8'))?.[1] ?? `name: ${rol}`;
   const poner = (k, v) => { const re = new RegExp(`^${k}:.*$`, 'm'); cabeza = re.test(cabeza) ? cabeza.replace(re, `${k}: ${v}`) : `${cabeza}\n${k}: ${v}`; };
+  if (motor) poner('motor', motor);
   poner('model', modelo); poner('permiso', permiso); poner('equipo', [...new Set(equipo)].join(', ')); poner('permitidos', JSON.stringify([...new Set(permitidos)]));
   const texto = `---\n${cabeza}\n---\n${cuerpo}\n`;
   fs.writeFileSync(archivo, texto);
@@ -142,7 +158,7 @@ export function crearEncargos({ db, entregar, vivo, lanzar, etiqueta, apagar = a
     alCambiar();
   };
   // `encargo`: la sesión nueva lo recibe como OFICINA_ENCARGO y así se liga a ese encargo exacto, aunque arranquen varias del mismo rol.
-  const arrancar = (rol, cwd, prompt, encargo = null) => { const f = fichaRol(rol); return lanzar({ rol, cwd, prompt, sistema: cuerpo(rol), permiso: f.permiso, modelo: f.modelo, permitidos: f.permitidos, prohibidos: ['AskUserQuestion'], encargo }); };
+  const arrancar = (rol, cwd, prompt, encargo = null) => { const f = fichaRol(rol); return lanzar({ rol, cwd, prompt, sistema: cuerpo(rol), permiso: f.permiso, modelo: f.modelo, motor: f.motor, permitidos: f.permitidos, prohibidos: ['AskUserQuestion'], encargo }); };
   // La sesión de un rol que ya entregó y no tiene otro encargo abierto se cierra: no se queda gastando memoria.
   const liberar = async (sid) => {
     if (db.prepare(`SELECT 1 FROM encargos WHERE a_sesion = ? AND estado IN ('entregando', 'entregado')`).get(sid)) return;

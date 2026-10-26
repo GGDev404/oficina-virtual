@@ -16,11 +16,11 @@ export function socketDe(nombre, sufijo = crypto.randomBytes(2).toString('hex'))
 }
 export const socketValido = (s) => typeof s === 'string' && /^ov-[a-z0-9-]{1,40}-[0-9a-f]{4}$/.test(s);
 
-// argv de tmux para abrir `claude <args>` en una sesión nueva sin ventana. OFICINA_TMUX liga la sesión de Claude
+// argv de tmux para abrir `<binario> <args>` en una sesión nueva sin ventana. OFICINA_TMUX liga la sesión
 // con su socket (hook.sh lo manda como tmux_env en SessionStart).
-export function argsNueva({ socket, cwd, env = {}, claudeArgs }) {
+export function argsNueva({ socket, cwd, env = {}, claudeArgs, binario = 'claude' }) {
   const vars = Object.entries({ ...env, OFICINA_TMUX: socket }).filter(([, v]) => v).flatMap(([k, v]) => ['-e', `${k}=${v}`]);
-  return ['-L', socket, 'new-session', '-d', '-s', PANEL, '-x', '200', '-y', '50', '-c', cwd, ...vars, 'claude', ...claudeArgs];
+  return ['-L', socket, 'new-session', '-d', '-s', PANEL, '-x', '200', '-y', '50', '-c', cwd, ...vars, binario, ...claudeArgs];
 }
 export const argsAdjuntar = (socket) => ['-L', socket, 'attach', '-t', PANEL];
 

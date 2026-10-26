@@ -28,7 +28,7 @@ test('un .md por rol, con frontmatter de subagente y tools mínimas; revision-qa
     const fm = texto.match(/^---\n([\s\S]*?)\n---\n/)[1];
     assert.match(fm, new RegExp(`^name: ${rol}$`, 'm'));
     assert.match(fm, /^description: ".{40,}"$/m);
-    assert.match(fm, /^model: (opus|sonnet|haiku)$/m);
+    assert.match(fm, /^model: (opus|sonnet|haiku|flash)$/m);
     assert.ok(cuerpoRol(rol).includes('ENTREGA:'));
   }
   assert.doesNotMatch(fs.readFileSync(path.join(RAIZ, 'agentes', 'revision-qa.md'), 'utf8').match(/^tools: (.*)$/m)[1], /Edit|Write/);
@@ -207,7 +207,11 @@ test('modo de trabajo del rol: se guarda en agentes/ y en ~/.claude/agents (con 
   assert.equal(fs.readFileSync(path.join(agentes, 'revision-qa.md.7.bak'), 'utf8'), 'viejo');
   assert.equal(leerRol('revision-qa', dir).instrucciones, 'Revisa a fondo. ENTREGA:');
   assert.match(sistemaRol('revision-qa', dir), /Skills de tu equipo: millet-qa, code-review\./);
-  for (const malo of [{ permiso: 'bypassPermissions' }, { modelo: 'gpt' }, { equipo: Array(10).fill('a') }, { equipo: ['a; rm -rf'] }, { instrucciones: 'sin la marca' }]) {
+  const okAgy = { modelo: 'flash', motor: 'agy', permiso: 'auto', equipo: ['millet-qa'], instrucciones: 'Revisa con Antigravity. ENTREGA:' };
+  const rAgy = guardarRol('revision-qa', okAgy, { dir, agentes, ahora: () => 8 });
+  assert.equal(rAgy.motor, 'agy');
+  assert.equal(rAgy.modelo, 'flash');
+  for (const malo of [{ permiso: 'bypassPermissions' }, { modelo: 'gpt' }, { motor: 'invalido' }, { equipo: Array(10).fill('a') }, { equipo: ['a; rm -rf'] }, { instrucciones: 'sin la marca' }]) {
     assert.throws(() => guardarRol('revision-qa', { ...ok, ...malo }, { dir, agentes }), (e) => e instanceof ErrorEncargo && e.status === 400);
   }
   fs.rmSync(tmp, { recursive: true });
