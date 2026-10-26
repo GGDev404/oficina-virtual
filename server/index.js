@@ -24,6 +24,7 @@ import { enviarTexto, enviarTecla, capturar, vive, cerrar as cerrarTmux, socketV
 import { memoria, leerMeminfo, nivelMemoria, pausar } from './memoria.js';
 import { claveValida, guardarAspecto, listaAspectos } from './aspectos.js';
 import { leerWorktrees } from './worktrees.js';
+import { tablero, detalle } from './planos.js';
 import { crearToken, autorizar, crearLimite, fraseCorrecta, hashCookie, leerCookie, archivoWeb, COOKIE, DURACION_MS } from './guardia.js';
 
 const PUERTO = Number(process.env.OFICINA_PUERTO ?? 4777);
@@ -164,9 +165,12 @@ function transcriptCambio(sid, ruta) {
 
 // Pizarra: worktrees de los repos donde trabajaron tus sesiones (últimos 30 días), con su plan, commits y noche.
 let worktrees = [];
+const cwdsRecientes = () => db.prepare('SELECT DISTINCT cwd FROM sesiones WHERE cwd IS NOT NULL AND ultimo_evento_ts > ?').all(Date.now() - 30 * 86400_000)
+  .map((r) => r.cwd).filter(carpetaValida);
+// Bóveda de Obsidian (solo lectura) para Planos: OFICINA_BOVEDA, o la carpeta de OFICINA_PREGUNTAS.
+const BOVEDA = process.env.OFICINA_BOVEDA || (process.env.OFICINA_PREGUNTAS ? path.dirname(process.env.OFICINA_PREGUNTAS) : null);
 async function actualizarWorktrees() {
-  const cwds = db.prepare('SELECT DISTINCT cwd FROM sesiones WHERE cwd IS NOT NULL AND ultimo_evento_ts > ?').all(Date.now() - 30 * 86400_000)
-    .map((r) => r.cwd).filter(carpetaValida);
+  const cwds = cwdsRecientes();
   const nuevos = await leerWorktrees(cwds).catch((e) => { console.error('worktrees:', e.message); return worktrees; });
   if (JSON.stringify(nuevos) !== JSON.stringify(worktrees)) { worktrees = nuevos; avisar(); }
 }
@@ -500,6 +504,28 @@ const servidor = http.createServer(async (req, res) => {
       let fila;
       try { fila = actualizarPregunta(process.env.OFICINA_PREGUNTAS, m[1], await leerJson(req)); } catch (e) { return json(res, 400, { error: e.message }); }
       return fila ? json(res, 200, fila) : json(res, 404, { error: 'esa pregunta no existe' });
+    }
+    // Planos: se arma al pedirlo (no viaja en estadoCompleto). La auditoría lee los checkouts principales además de los worktrees.
+    if (req.method === 'GET' && (m = url.pathname.match(/^\/api\/planos(?:\/([\w-]+))?$/))) {
+      if (!BOVEDA) return json(res, 409, { error: 'falta OFICINA_BOVEDA en el .env' });
+      const ctx = { raiz: BOVEDA, preguntas: process.env.OFICINA_PREGUNTAS, worktrees: await leerWorktrees(cwdsRecientes(), { conPrincipal: true }).catch(() => []) };
+      if (!m[1]) return json(res, 200, tablero(ctx));
+      const d = detalle(m[1], ctx);
+      return d ? json(res, 200, d) : json(res, 404, { error: 'ese módulo no existe' });
+    }
+    // Texto de una nota de la bóveda: frontera de confianza, solo .md y con el realpath dentro de la raíz.
+    if (req.method === 'GET' && url.pathname === '/api/boveda/nota') {
+      if (!BOVEDA) return json(res, 409, { error: 'falta OFICINA_BOVEDA en el .env' });
+      const ruta = url.searchParams.get('ruta');
+      if (!ruta || ruta.includes('\0') || !ruta.endsWith('.md')) return json(res, 400, { error: 'ruta de nota no válida (termina en .md)' });
+      let real;
+      try {
+        const raiz = fs.realpathSync(BOVEDA);
+        real = fs.realpathSync(path.resolve(raiz, ruta));
+        if (!real.startsWith(raiz + path.sep) || !real.endsWith('.md')) real = null;
+      } catch { real = null; }
+      if (!real) return json(res, 404, { error: 'esa nota no existe' });
+      return json(res, 200, { ruta, texto: fs.readFileSync(real, 'utf8') });
     }
     if (req.method === 'POST' && url.pathname === '/api/sincronizar') {
       sincronizarClickup();
