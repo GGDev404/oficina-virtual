@@ -527,7 +527,7 @@
     .pl-tabla .num::before { content: attr(data-label); font: 600 var(--t-xs) var(--mono); text-transform: uppercase; letter-spacing: .04em; color: var(--suave); font-weight: 600; }
   }
   /* Pie: worktrees sin ligar (pegado abajo mientras se recorre la tabla) */
-  .pl-pie { position: sticky; bottom: 0; z-index: 2; align-items: flex-start; flex-wrap: wrap; box-shadow: var(--sombra); }
+  .pl-pie { align-items: flex-start; flex-wrap: wrap; } /* en el flujo, debajo de la tabla: no tapa filas */
   .pl-pie > svg.icono { margin-top: 3px; }
   .pl-pie-texto { flex: 1 1 320px; display: grid; gap: var(--s2); min-width: 0; }
   .pl-ramas { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); }
@@ -536,7 +536,6 @@
   .pl-ligas { display: grid; gap: var(--s2); }
   .pl-ligas li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--s2); align-items: center; }
   .pl-rama { overflow-wrap: anywhere; }
-  @container (max-width: 820px) { .pl-pie { position: static; box-shadow: none; } } /* angosto: el pie no tapa las tarjetas */
 
   /* Detalle: migas en la cabecera; tarjetas de avance y tiempo, cuatro datos y, abajo, pestañas con la columna de bloqueos */
   .pl-migas { display: flex; align-items: center; gap: var(--s2); min-width: 0; flex: 0 1 auto; color: var(--suave); }
