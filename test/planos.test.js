@@ -156,7 +156,11 @@ test('ligar una rama a un módulo: valida, la saca de sinLigar y cuenta en sinSu
   assert.equal(t.modulos.find((m) => m.id === 'MOD-ALM').sinSubir, 1);
   assert.equal(detalle('MOD-ALM', { raiz, preguntas, worktrees, ligas }).auditoria.sinSubir[0].rama, 'feature/suelta');
   ligarRama(db, 'feature/suelta', 'MOD-TES'); // volver a ligar cambia el módulo
-  assert.deepEqual(leerLigas(db), { 'feature/suelta': 'MOD-TES' });
+  assert.deepEqual([...leerLigas(db)], [['feature/suelta', 'MOD-TES']]);
+  for (const falso of ['constructor', '__proto__', 'toString', ['MOD-ALM']]) assert.throws(() => ligarRama(db, 'x', falso), /módulo/);
+  assert.equal(tablero({ raiz, preguntas, worktrees: [{ ...worktrees[0], rama: 'constructor' }], ligas: leerLigas(db) }).sinLigar.length, 1);
+  ligarRama(db, 'feature/suelta', null); // desligar
+  assert.equal(leerLigas(db).size, 0);
 
   assert.throws(() => ligarRama(db, 'x', 'MOD-XYZ'), /módulo/);
   for (const mala of ['', '  ', 'a'.repeat(201), 'a\nb', 7, null]) assert.throws(() => ligarRama(db, mala, 'MOD-ALM'), /rama/);

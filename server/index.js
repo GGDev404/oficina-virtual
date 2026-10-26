@@ -563,7 +563,7 @@ const servidor = http.createServer(async (req, res) => {
     }
     // Ligar una rama sin expediente a un módulo (la guardia ya pidió tu cookie: no es ruta de hooks).
     if (req.method === 'POST' && url.pathname === '/api/planos/ligar') {
-      try { const { rama, modulo } = await leerJson(req); return json(res, 200, ligarRama(db, rama, modulo)); } catch (e) { return json(res, 400, { error: e.message }); }
+      try { const { rama, modulo } = await leerJson(req); return json(res, 200, ligarRama(db, rama, modulo, BOVEDA)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
     // Texto de una nota de la bóveda: frontera de confianza, solo .md y con el realpath dentro de la raíz.
     if (req.method === 'GET' && url.pathname === '/api/boveda/nota') {

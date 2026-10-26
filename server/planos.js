@@ -157,18 +157,22 @@ function ultimoHistorial(ruta, raiz) {
 }
 
 // Ligas manuales rama → módulo (tabla planos_ligas). Solo valen para ramas que ningún expediente liga.
-export const leerLigas = (db) => Object.fromEntries(db.prepare('SELECT rama, modulo FROM planos_ligas').all().map((r) => [r.rama, r.modulo]));
-export function ligarRama(db, rama, modulo) {
-  if (!MODULOS[modulo]) throw new Error('módulo no válido');
+// Map y no objeto: una rama llamada «constructor» o «toString» no debe leerse como ligada
+export const leerLigas = (db) => new Map(db.prepare('SELECT rama, modulo FROM planos_ligas').all().map((r) => [r.rama, r.modulo]));
+// modulo null = desligar. raiz (opcional): rechaza las ramas que ya liga un expediente, que es el que manda.
+export function ligarRama(db, rama, modulo, raiz) {
   if (typeof rama !== 'string' || !rama.trim() || rama.length > 200 || /[\0\n\r]/.test(rama)) throw new Error('rama no válida');
+  if (modulo === null) { db.prepare('DELETE FROM planos_ligas WHERE rama = ?').run(rama); return { rama, modulo: null }; }
+  if (typeof modulo !== 'string' || !Object.hasOwn(MODULOS, modulo)) throw new Error('módulo no válido');
+  if (raiz && cargar(raiz).expedientes.some((e) => e.rama === rama)) throw new Error('esa rama ya la liga su expediente');
   db.prepare('INSERT INTO planos_ligas (rama, modulo, ts) VALUES (?, ?, ?) ON CONFLICT(rama) DO UPDATE SET modulo = excluded.modulo, ts = excluded.ts').run(rama, modulo, Date.now());
   return { rama, modulo };
 }
 
-function auditoria(mod, c, raiz, worktrees, ligas = {}) {
+function auditoria(mod, c, raiz, worktrees, ligas = new Map()) {
   const exps = c.expedientes.filter((e) => e.modulo === mod);
   const deExp = (w) => c.expedientes.find((e) => (e.rama && e.rama === w.rama) || (e.id && (w.id === e.id || w.nombre === e.id)));
-  const moduloDeW = (w) => deExp(w)?.modulo ?? ligas[w.rama];
+  const moduloDeW = (w) => deExp(w)?.modulo ?? ligas.get(w.rama);
   const sinSubir = worktrees.filter((w) => (w.sin_commit > 0 || w.sin_subir > 0) && moduloDeW(w) === mod)
     .map((w) => ({ ruta: w.ruta, rama: w.rama, repo: w.repo, sin_commit: w.sin_commit, sin_subir: w.sin_subir, expediente: deExp(w)?.id ?? null }));
   const hechoPorAgentes = exps.map((e) => ({ id: e.id, tarea: e.tarea, estado: e.estado, rama: e.rama, pr: e.pr, ultimo: ultimoHistorial(e.ruta, raiz) }));
@@ -263,9 +267,10 @@ export function tablero(ctx) {
   modulos.sort((a, b) => !!b.prioridad - !!a.prioridad); // estable: los prioritarios primero, el resto en su orden
   const cal = calendario('MOD-COM', c, ctx.raiz, ctx.hoy ?? new Date());
   const ligadas = new Set(c.expedientes.flatMap((e) => [e.rama, e.id]).filter(Boolean));
-  const sinLigar = (ctx.worktrees ?? []).filter((w) => (w.sin_commit > 0 || w.sin_subir > 0) && !ctx.ligas?.[w.rama] && !ligadas.has(w.rama) && !ligadas.has(w.id) && !ligadas.has(w.nombre))
+  const sinLigar = (ctx.worktrees ?? []).filter((w) => (w.sin_commit > 0 || w.sin_subir > 0) && !ctx.ligas?.has(w.rama) && !ligadas.has(w.rama) && !ligadas.has(w.id) && !ligadas.has(w.nombre))
     .map((w) => ({ ruta: w.ruta, rama: w.rama, sin_commit: w.sin_commit, sin_subir: w.sin_subir }));
-  return { corte: cal.corte, entrega: cal.entrega, diasParaEntrega: cal.diasParaEntrega, modulos, sinLigar };
+  return { corte: cal.corte, entrega: cal.entrega, diasParaEntrega: cal.diasParaEntrega, modulos, sinLigar,
+    ligas: [...(ctx.ligas ?? new Map())].map(([rama, modulo]) => ({ rama, modulo })) };
 }
 
 export function detalle(id, ctx) {

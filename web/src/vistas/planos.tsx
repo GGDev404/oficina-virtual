@@ -17,7 +17,7 @@ interface Resumen {
   conteos?: Conteos
   brechas: number; sinTarea: number; bloquean: number; dudas?: number; sinSubir: number; alertas?: number; cierre?: Cierre | null; prioridad?: string | null
 }
-interface Tablero { corte: string | null; entrega: string | null; diasParaEntrega: number | null; modulos: Resumen[]; sinLigar: { ruta: string; rama: string; sin_commit: number; sin_subir: number }[] }
+interface Tablero { corte: string | null; entrega: string | null; diasParaEntrega: number | null; modulos: Resumen[]; sinLigar: { ruta: string; rama: string; sin_commit: number; sin_subir: number }[]; ligas?: { rama: string; modulo: string }[] }
 interface Duda { id: string; estado: string; para: string; bloquea: string; tarea: string; pregunta: string; enviada?: string }
 interface Brecha { n: string; brecha: string; fuente: string; tareas: string[]; sinTarea: boolean; tamano: string | null }
 interface Detalle extends Omit<Resumen, 'brechas' | 'dudas' | 'alertas'> {
@@ -245,7 +245,8 @@ function TableroVista({ t, mods, abrir, refrescar }: { t: Tablero; mods: Resumen
         <tbody>{mods.map((m) => <FilaModulo key={m.id} m={m} anio={anio} corte={t.corte} abrir={() => abrir(m.id)} />)}</tbody>
       </table>
     </div>
-    {t.sinLigar.length > 0 && <SinLigar sinLigar={t.sinLigar} mods={mods} hecho={refrescar} />}
+    {t.sinLigar.length > 0 ? <SinLigar sinLigar={t.sinLigar} ligas={t.ligas ?? []} mods={mods} hecho={refrescar} />
+      : (t.ligas?.length ?? 0) > 0 && <div className="pl-ligas-solo"><Ligar ramas={[]} ligas={t.ligas ?? []} mods={mods} hecho={refrescar} /></div>}
   </div>
 }
 
@@ -302,7 +303,7 @@ function FilaModulo({ m, anio, corte, abrir }: { m: Resumen; anio: number; corte
 }
 
 // Worktrees con cambios sin subir que ningún expediente liga a un módulo: se ligan a mano (POST /api/planos/ligar).
-function SinLigar({ sinLigar, mods, hecho }: { sinLigar: Tablero['sinLigar']; mods: Resumen[]; hecho: () => void }) {
+function SinLigar({ sinLigar, ligas, mods, hecho }: { sinLigar: Tablero['sinLigar']; ligas: Liga[]; mods: Resumen[]; hecho: () => void }) {
   const ramas = [...new Set(sinLigar.map((w) => w.rama || 'sin rama'))]
   return <section className="pl-alerta pl-pie" aria-label="Worktrees sin ligar">
     <Icono n="alto" />
@@ -310,21 +311,23 @@ function SinLigar({ sinLigar, mods, hecho }: { sinLigar: Tablero['sinLigar']; mo
       <b>{plural(sinLigar.length, 'worktree con cambios sin subir no está ligado', 'worktrees con cambios sin subir no están ligados')} a ningún módulo</b>
       <ul className="pl-ramas" aria-label="Ramas sin ligar">{ramas.map((r) => <li key={r} className="mono">{r}</li>)}</ul>
     </div>
-    <Ligar ramas={ramas.filter((r) => r !== 'sin rama')} mods={mods} hecho={hecho} />
+    <Ligar ramas={ramas.filter((r) => r !== 'sin rama')} ligas={ligas} mods={mods} hecho={hecho} />
   </section>
 }
 
 const MENU = 'va-pop w-[min(560px,94vw)] max-h-[60svh] overflow-auto gap-2 rounded-[12px] p-3 ring-0 border border-border shadow-(--sombra)'
-function Ligar({ ramas, mods, hecho }: { ramas: string[]; mods: Resumen[]; hecho: () => void }) {
+type Liga = { rama: string; modulo: string }
+function Ligar({ ramas, ligas, mods, hecho }: { ramas: string[]; ligas: Liga[]; mods: Resumen[]; hecho: () => void }) {
   const [elegido, setElegido] = useState<Record<string, string>>({})
   const [ocupada, setOcupada] = useState('')
   const [error, setError] = useState('')
-  const ligar = async (rama: string) => {
+  // modulo null = desligar
+  const ligar = async (rama: string, modulo: string | null = elegido[rama]) => {
     setOcupada(rama); setError('')
-    try { await post('/api/planos/ligar', { rama, modulo: elegido[rama] }); hecho() } catch (e) { setError((e as Error).message) } finally { setOcupada('') }
+    try { await post('/api/planos/ligar', { rama, modulo }); hecho() } catch (e) { setError((e as Error).message) } finally { setOcupada('') }
   }
   return <Popover>
-    <PopoverTrigger asChild><button type="button" className="pl-ligar-btn">Ligar a un módulo</button></PopoverTrigger>
+    <PopoverTrigger asChild><button type="button" className="pl-ligar-btn">{ramas.length ? 'Ligar a un módulo' : `Ramas ligadas a mano · ${ligas.length}`}</button></PopoverTrigger>
     <PopoverContent align="end" side="top" className={MENU} aria-label="Ligar ramas a módulos">
       <p className="meta sin-margen">Elige el módulo de cada rama. Desde ahí su trabajo sin subir cuenta en ese módulo.</p>
       <ul className="pl-ligas">{ramas.map((r) => <li key={r}>
@@ -332,6 +335,10 @@ function Ligar({ ramas, mods, hecho }: { ramas: string[]; mods: Resumen[]; hecho
         <select value={elegido[r] ?? ''} aria-label={`Módulo de la rama ${r}`} onChange={(e) => setElegido({ ...elegido, [r]: e.target.value })}>
           <option value="">Elegir módulo</option>{mods.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}</select>
         <button type="button" className="boton-chico primario" disabled={!elegido[r] || !!ocupada} onClick={() => ligar(r)}>Ligar</button></li>)}</ul>
+      {ligas.length > 0 && <><p className="meta sin-margen">Ya ligadas a mano</p>
+        <ul className="pl-ligas">{ligas.map((l) => <li key={l.rama}>
+          <span className="mono pl-rama">{l.rama}</span><span>{mods.find((m) => m.id === l.modulo)?.nombre ?? l.modulo}</span>
+          <button type="button" className="boton-chico" disabled={!!ocupada} onClick={() => ligar(l.rama, null)} aria-label={`Desligar la rama ${l.rama}`}>Desligar</button></li>)}</ul></>}
       {error && <p className="pl-error" role="alert">{error}</p>}
     </PopoverContent>
   </Popover>
