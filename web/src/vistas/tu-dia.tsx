@@ -10,9 +10,10 @@ import { leer, post, postSeguro, rutaSesion } from '@/lib/api'
 import { DIA, ESTADOS, VIVOS, carpeta, esperaProcesos, fecha, gb, hace, horaDe, inicioDia, nombreSesion, pendientesParaMi, plano, proximoCorte, veredicto } from '@/lib/oficina'
 import type { Datos, Tarea } from '@/lib/tipos'
 import { RolesVista } from './encargos'
+import { PreguntasVista, abiertasQueBloquean, useRegistroPreguntas } from './preguntas'
 import { NIVEL_MEM } from './tarjetas'
 
-const PESTANAS: [Seccion, string][] = [['agenda', 'Agenda'], ['pendientes', 'Pendientes'], ['parati', 'Para ti'], ['memoria', 'Memoria'], ['roles', 'Roles']]
+const PESTANAS: [Seccion, string][] = [['agenda', 'Agenda'], ['pendientes', 'Pendientes'], ['parati', 'Para ti'], ['preguntas', 'Preguntas'], ['memoria', 'Memoria'], ['roles', 'Roles']]
 
 export function TuDia({ seccion: inicial }: { seccion?: Seccion }) {
   const { datos: d, mem, cerrarVentana } = useOficina()
@@ -24,10 +25,13 @@ export function TuDia({ seccion: inicial }: { seccion?: Seccion }) {
   const corte = proximoCorte()
   const hoy = [...v.vencidas, ...v.hoy]
   const p = d.pendientes
+  const registro = useRegistroPreguntas()
+  const bloquean = abiertasQueBloquean(registro.datos?.filas ?? [])
   const cuentas: Record<Seccion, [number | null, string]> = {
     agenda: [hoy.length, v.vencidas.length ? 'rojo' : hoy.length ? 'aviso' : ''],
     pendientes: [p.sesiones.length + p.notas.length + p.solicitudes.length, p.solicitudes.length || p.sesiones.length ? 'aviso' : ''],
     parati: [pendientesParaMi(d).length, ''],
+    preguntas: [bloquean || null, bloquean ? 'aviso' : ''],
     memoria: [null, mem?.nivel === 'critico' ? 'rojo' : mem?.nivel === 'alto' ? 'aviso' : ''],
     roles: [d.encargos?.filter((e) => e.estado === 'arrancando' || e.estado === 'entregando').length || null, ''],
   }
@@ -52,6 +56,7 @@ export function TuDia({ seccion: inicial }: { seccion?: Seccion }) {
           <Tabs.Content value="agenda"><Agenda d={d} hoy={hoy} /></Tabs.Content>
           <Tabs.Content value="pendientes"><Pendientes /></Tabs.Content>
           <Tabs.Content value="parati"><ParaTi /></Tabs.Content>
+          <Tabs.Content value="preguntas"><PreguntasVista {...registro} /></Tabs.Content>
           <Tabs.Content value="memoria"><MemoriaVista /></Tabs.Content>
           <Tabs.Content value="roles"><RolesVista /></Tabs.Content>
         </div>

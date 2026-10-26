@@ -12,6 +12,7 @@ import { crearCliente, sincronizar } from './clickup.js';
 import { ligar, religarTodas, FORMATO_ID } from './tarea-link.js';
 import { crearNotificador, ESTADOS_AVISO } from './notificar.js';
 import { siguiente } from './siguiente.js';
+import { leerBandeja, actualizarPregunta, resumenBandeja } from './bandeja.js';
 import { leerVivas, aplicarVivas } from './vivas.js';
 import { leerConversacion, leerContexto, leerGasto, resumenGasto, rutaValida } from './conversacion.js';
 import { crearDifusor } from './difusion.js';
@@ -490,7 +491,15 @@ const servidor = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/siguiente') {
       const n = Math.min(Math.max(Number.parseInt(url.searchParams.get('n') ?? '15', 10) || 15, 1), 50);
       res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-      return res.end(siguiente(db, { n, sync }));
+      return res.end(siguiente(db, { n, sync }) + resumenBandeja(process.env.OFICINA_PREGUNTAS));
+    }
+    // Bandeja de preguntas (preguntas.md del vault, OFICINA_PREGUNTAS).
+    if (req.method === 'GET' && url.pathname === '/api/registro-preguntas') return json(res, 200, leerBandeja(process.env.OFICINA_PREGUNTAS));
+    if (req.method === 'POST' && (m = url.pathname.match(/^\/api\/registro-preguntas\/(P-\d+)$/))) {
+      if (!process.env.OFICINA_PREGUNTAS) return json(res, 409, { error: 'falta OFICINA_PREGUNTAS en el .env' });
+      let fila;
+      try { fila = actualizarPregunta(process.env.OFICINA_PREGUNTAS, m[1], await leerJson(req)); } catch (e) { return json(res, 400, { error: e.message }); }
+      return fila ? json(res, 200, fila) : json(res, 404, { error: 'esa pregunta no existe' });
     }
     if (req.method === 'POST' && url.pathname === '/api/sincronizar') {
       sincronizarClickup();
