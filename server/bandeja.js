@@ -5,7 +5,7 @@ import fs from 'node:fs';
 const COLUMNAS = ['id', 'estado', 'para', 'bloquea', 'tarea', 'pregunta', 'contexto', 'enviada', 'respuesta', 'respondida', 'fuente', 'modulo'];
 export const ESTADOS_PREGUNTA = ['por enviar', 'enviada', 'por responder', 'supuesto', 'respondida', 'descartada'];
 // Cerradas: ya no piden nada. «supuesto» se construye con lo anotado y se confirma después (no cuenta como abierta).
-const CERRADAS = ['respondida', 'descartada', 'supuesto'];
+export const CERRADAS = ['respondida', 'descartada', 'supuesto'];
 const FILA = /^\|\s*P-\d+\s*\|/;
 
 const celdas = (linea) => linea.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());

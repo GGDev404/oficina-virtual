@@ -525,7 +525,7 @@ const servidor = http.createServer(async (req, res) => {
         if (!real.startsWith(raiz + path.sep) || !real.endsWith('.md')) real = null;
       } catch { real = null; }
       if (!real) return json(res, 404, { error: 'esa nota no existe' });
-      return json(res, 200, { ruta, texto: fs.readFileSync(real, 'utf8') });
+      return json(res, 200, { ruta: path.relative(fs.realpathSync(BOVEDA), real), texto: fs.readFileSync(real, 'utf8') });
     }
     if (req.method === 'POST' && url.pathname === '/api/sincronizar') {
       sincronizarClickup();

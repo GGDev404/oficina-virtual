@@ -1,6 +1,6 @@
 // Planos (ventana propia): tablero de los 7 módulos y detalle por módulo, desde la bóveda de Obsidian (GET /api/planos).
 // El texto de la bóveda siempre entra como texto de React, nunca como HTML.
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { BotonAccion, Chip } from '@/components/comunes'
 import { useOficina } from '@/components/contexto'
 import { Icono, type NombreIcono } from '@/components/icono'
@@ -55,12 +55,14 @@ const obsidian = (ruta: string) => `obsidian://open?vault=Millet-ERP&file=${enco
 
 function useCarga<T>(url: string) {
   const [d, setD] = useState<{ datos?: T; error?: string }>({})
+  const vigente = useRef(url) // una respuesta tardía de otro módulo no pisa la actual
   const cargar = useCallback(async () => {
+    vigente.current = url
     setD({})
     try {
       const r = await leer<T & { error?: string }>(url)
-      setD(r?.error ? { error: r.error } : { datos: r })
-    } catch { setD({ error: 'No se pudo leer la bóveda.' }) }
+      if (vigente.current === url) setD(r?.error ? { error: r.error } : { datos: r })
+    } catch { if (vigente.current === url) setD({ error: 'No se pudo leer la bóveda.' }) }
   }, [url])
   useEffect(() => { cargar() }, [cargar])
   return { ...d, cargar }

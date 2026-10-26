@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { indice, moduloDe } from './boveda.js';
-import { leerBandeja } from './bandeja.js';
+import { leerBandeja, CERRADAS } from './bandeja.js';
 
 export const MODULOS = {
   'MOD-COM': { nombre: 'Compras', en: /compras/i },
@@ -156,7 +156,7 @@ function auditoria(mod, c, raiz, worktrees) {
 const delModulo = (valor, mod) => String(valor ?? '').split(/[,\s]+/).some((v) => moduloDe(v) === mod);
 const dudasDe = (mod, rutaPreguntas) => {
   const { filas, error } = leerBandeja(rutaPreguntas);
-  const abiertas = filas.filter((f) => delModulo(f.modulo, mod) && !['respondida', 'descartada'].includes(f.estado))
+  const abiertas = filas.filter((f) => delModulo(f.modulo, mod) && !CERRADAS.includes(f.estado)) // igual que la pestaña Preguntas: un supuesto no pide nada
     .map(({ id, estado, para, bloquea, tarea, pregunta, enviada }) => ({ id, estado, para, bloquea, tarea, pregunta, enviada }));
   return { abiertas, bloquean: abiertas.filter((f) => f.bloquea === 'sí'), ...(error && { error }) };
 };
