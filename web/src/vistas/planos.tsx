@@ -97,7 +97,7 @@ function Mapa({ c }: { c?: Conteos }) {
   const celdas = [...Array(c.construido).fill('hecha'), ...Array(c.parcial).fill('parcial'), ...Array(c.noConstruido).fill('falta')]
   return <div className="pl-mapa" aria-hidden="true">{celdas.map((k, i) => <i key={i} className={k} />)}</div>
 }
-const Leyenda = ({ c }: { c?: Conteos }) => c ? <span className="pl-leyenda"><b>{c.construido}</b> hechas · <b>{c.parcial}</b> parciales · <b>{c.noConstruido}</b> por hacer</span> : null
+const Leyenda = ({ c }: { c?: Conteos }) => c ? <span className="pl-leyenda"><b>{c.construido}</b> {c.construido === 1 ? 'hecha' : 'hechas'} · <b>{c.parcial}</b> {c.parcial === 1 ? 'parcial' : 'parciales'} · <b>{c.noConstruido}</b> por hacer</span> : null
 
 function Pildora({ tono, icono, children }: { tono: Tono; icono?: NombreIcono; children: ReactNode }) {
   return <span className={`pl-pildora ${tono}`}>{icono && <Icono n={icono} />}{children}</span>
@@ -155,7 +155,7 @@ export function PlanosVentana() {
       {t.error ? <div className="cuerpo"><p className="pl-error" role="alert">{t.error} <BotonAccion accion={t.cargar}>Reintentar</BotonAccion></p></div>
         : !t.datos ? <div className="cuerpo"><p className="vacio" role="status">Leyendo la bóveda…</p></div>
         : id ? <div className="pl-doble">
-          <Riel mods={mods} actual={id} ir={setId} volver={() => setId(null)} />
+          <Riel mods={mods} actual={id} ir={setId} volver={() => { setId(null); t.cargar() }} />
           <div className="pl-principal"><DetalleModulo key={id} id={id} /></div></div>
         : <div className="cuerpo"><TableroVista t={t.datos} mods={mods} orden={orden} setOrden={setOrden} abrir={setId} /></div>}
     </Ventana>
@@ -225,7 +225,13 @@ function Fila({ m, lugar, anio, abrir }: { m: Resumen; lugar: number; anio: numb
 
 // ---- Riel de módulos (detalle) ----
 function Riel({ mods, actual, ir, volver }: { mods: Resumen[]; actual: string; ir: (id: string) => void; volver: () => void }) {
-  return <nav className="pl-riel" aria-label="Módulos de Planos">
+  // Al abrir o cambiar de módulo: el foco y el scroll (riel horizontal en angosto) van al módulo actual
+  const rail = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const el = rail.current?.querySelector<HTMLElement>('[aria-current="page"]')
+    el?.focus({ preventScroll: true }); el?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
+  }, [actual])
+  return <nav ref={rail} className="pl-riel" aria-label="Módulos de Planos">
     <button type="button" className="pl-riel-item pl-riel-volver" onClick={volver}><Icono n="izquierda" />Tablero</button>
     {mods.map((m) => <button key={m.id} type="button" className="pl-riel-item" data-tono={semaforo(m)} aria-current={m.id === actual ? 'page' : undefined} onClick={() => ir(m.id)}
       aria-label={`${m.nombre}, ${m.pct ?? 'sin'} %${m.bloquean ? `, ${plural(m.bloquean, 'duda bloquea', 'dudas bloquean')}` : ''}`}>
@@ -334,8 +340,8 @@ function DetalleModulo({ id }: { id: string }) {
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar en esta sección" aria-label="Buscar en esta sección" />
         {activa === 'dudas' && dudas.length > 0 && <PersonasFiltro dudas={dudas} actual={persona} elegir={setPersona} />}
         {activa === 'falta' && sinTarea > 0 && <div role="group" aria-label="Filtrar brechas">
-          <button type="button" className="boton-chico" aria-pressed={!soloSinTarea} onClick={() => setSoloSinTarea(false)}>Todas ({m.falta.length})</button>
-          <button type="button" className="boton-chico" aria-pressed={soloSinTarea} onClick={() => setSoloSinTarea(true)}>Sin tarea ({sinTarea})</button></div>}
+          <button type="button" className="boton-chico" aria-pressed={!soloSinTarea} onClick={() => setSoloSinTarea(false)}>Todas · {m.falta.length}</button>
+          <button type="button" className="boton-chico" aria-pressed={soloSinTarea} onClick={() => setSoloSinTarea(true)}>Sin tarea · {sinTarea}</button></div>}
       </div>}
 
       <Tabs.Content value="hecho" className="pl-panel">
@@ -390,7 +396,7 @@ function DetalleModulo({ id }: { id: string }) {
       </Tabs.Content>
     </Tabs.Root>
 
-    {m.paraSaberMas && m.paraSaberMas.length > 0 && <details className="pl-saber"><summary>Para saber más ({m.paraSaberMas.length})</summary>
+    {m.paraSaberMas && m.paraSaberMas.length > 0 && <details className="pl-saber"><summary>Para saber más · {m.paraSaberMas.length}</summary>
       <ul className="pl-notas">{m.paraSaberMas.map((n) => <li key={n.ruta}><a className="pl-obsidian" href={obsidian(n.ruta)} aria-label={`Abrir ${n.titulo} en Obsidian`}><Icono n="externo" />{n.titulo}</a></li>)}</ul></details>}
   </div>
 }
@@ -419,7 +425,7 @@ function ItemDuda({ d }: { d: Duda }) {
 
 function PersonasFiltro({ dudas, actual, elegir }: { dudas: Duda[]; actual: string | null; elegir: (p: string | null) => void }) {
   return <div role="group" aria-label="Filtrar dudas por persona">
-    <button type="button" className="boton-chico" aria-pressed={actual === null} onClick={() => elegir(null)}>Todas ({dudas.length})</button>
-    {cuentaPersonas(dudas).map(([p, n]) => <button key={p} type="button" className="boton-chico" aria-pressed={actual === p} onClick={() => elegir(actual === p ? null : p)}>{p} ({n})</button>)}
+    <button type="button" className="boton-chico" aria-pressed={actual === null} onClick={() => elegir(null)}>Todas · {dudas.length}</button>
+    {cuentaPersonas(dudas).map(([p, n]) => <button key={p} type="button" className="boton-chico" aria-pressed={actual === p} onClick={() => elegir(actual === p ? null : p)}>{p} · {n}</button>)}
   </div>
 }
