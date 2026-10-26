@@ -24,7 +24,7 @@ import { enviarTexto, enviarTecla, capturar, vive, cerrar as cerrarTmux, socketV
 import { memoria, leerMeminfo, nivelMemoria, pausar } from './memoria.js';
 import { claveValida, guardarAspecto, listaAspectos } from './aspectos.js';
 import { leerWorktrees } from './worktrees.js';
-import { tablero, detalle } from './planos.js';
+import { tablero, detalle, leerLigas, ligarRama } from './planos.js';
 import { crearToken, autorizar, crearLimite, fraseCorrecta, hashCookie, leerCookie, archivoWeb, COOKIE, DURACION_MS } from './guardia.js';
 
 const PUERTO = Number(process.env.OFICINA_PUERTO ?? 4777);
@@ -508,10 +508,14 @@ const servidor = http.createServer(async (req, res) => {
     // Planos: se arma al pedirlo (no viaja en estadoCompleto). La auditoría lee los checkouts principales además de los worktrees.
     if (req.method === 'GET' && (m = url.pathname.match(/^\/api\/planos(?:\/([\w-]+))?$/))) {
       if (!BOVEDA) return json(res, 409, { error: 'falta OFICINA_BOVEDA en el .env' });
-      const ctx = { raiz: BOVEDA, preguntas: process.env.OFICINA_PREGUNTAS, worktrees: await leerWorktrees(cwdsRecientes(), { conPrincipal: true }).catch(() => []) };
+      const ctx = { raiz: BOVEDA, preguntas: process.env.OFICINA_PREGUNTAS, ligas: leerLigas(db), worktrees: await leerWorktrees(cwdsRecientes(), { conPrincipal: true }).catch(() => []) };
       if (!m[1]) return json(res, 200, tablero(ctx));
       const d = detalle(m[1], ctx);
       return d ? json(res, 200, d) : json(res, 404, { error: 'ese módulo no existe' });
+    }
+    // Ligar una rama sin expediente a un módulo (la guardia ya pidió tu cookie: no es ruta de hooks).
+    if (req.method === 'POST' && url.pathname === '/api/planos/ligar') {
+      try { const { rama, modulo } = await leerJson(req); return json(res, 200, ligarRama(db, rama, modulo)); } catch (e) { return json(res, 400, { error: e.message }); }
     }
     // Texto de una nota de la bóveda: frontera de confianza, solo .md y con el realpath dentro de la raíz.
     if (req.method === 'GET' && url.pathname === '/api/boveda/nota') {

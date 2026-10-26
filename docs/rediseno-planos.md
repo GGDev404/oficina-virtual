@@ -77,3 +77,10 @@ A 600 px el riel pasa arriba como tira con scroll horizontal y las pestañas-res
 - `dudas.abiertas[].enviada` ya llega pero no se muestra; si se quisiera «hace cuántos días espera» sirve ese campo.
 - Para ordenar «lo siguiente» por brecha dentro de un módulo haría falta `falta[].fecha` o el vencimiento de la tarea (`falta[].vence`).
 - Para el resumen de bloqueos por persona en el tablero (sin abrir cada módulo) haría falta `modulos[].bloqueanPara: { [persona]: n }`.
+
+## v3 (26-oct, propuestas del dueño)
+
+- Tablero: cinco datos, línea «Cierres hasta la entrega» (Maestros va al corte), tabla real de módulos (tarjetas a menos de 820 px) y alerta de worktrees sin ligar. Orden «Por cierre» / «Por avance».
+- Detalle: sin riel; migas con selector de módulo, tarjetas de avance y tiempo, cuatro datos, pestañas (Falta ordenada de L a S) y columna de bloqueos.
+- «Recordar» y «Crear tareas» solo copian texto (el segundo es un borrador; no crea nada en ClickUp).
+- «Ligar a un módulo»: `POST /api/planos/ligar {rama, modulo}` guarda en la tabla `planos_ligas`; la liga es por nombre de rama y solo aplica a ramas que ningún expediente liga.

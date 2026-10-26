@@ -50,9 +50,14 @@ export function PreguntasVista({ datos, cargar }: ReturnType<typeof useRegistroP
 }
 
 // Por persona: copiar el mensaje con sus preguntas y marcarlas enviadas cuando ya las mandaste.
+// Mensaje listo para copiar, en tu voz. `seguimiento`: ya se las mandaste y solo las recuerdas (lo usa Planos).
+export function mensajeParaPersona(para: string, grupo: { pregunta: string; tarea: string }[], seguimiento = false) {
+  const cabeza = seguimiento ? `Hola ${para}, ¿cómo vas? Sigo esperando tu respuesta a estas preguntas, que me detienen para avanzar:` : `Hola ${para}, tengo estas preguntas para avanzar:`
+  return `${cabeza}\n\n` + grupo.map((p, i) => `${i + 1}. ${p.pregunta}${p.tarea && p.tarea !== '—' ? ` (${p.tarea})` : ''}`).join('\n') + (seguimiento ? '\n\nGracias, avísame cuando las tengas.' : '')
+}
+
 function PorPersona({ para, grupo, cambiar }: { para: string; grupo: Pregunta[]; cambiar: (id: string, c: object) => Promise<unknown> }) {
-  const texto = `Hola ${para}, tengo estas preguntas para avanzar:\n\n` +
-    grupo.map((p, i) => `${i + 1}. ${p.pregunta}${p.tarea && p.tarea !== '—' ? ` (${p.tarea})` : ''}`).join('\n')
+  const texto = mensajeParaPersona(para, grupo)
   return <div className="comentario">
     <div className="fila"><b>{para}</b><span className="meta">{grupo.length} por enviar</span></div>
     {grupo.map((p) => <Fila key={p.id} p={p} cambiar={cambiar} />)}

@@ -137,3 +137,31 @@ test('porcentaje pondera por tamaño de brecha cuando §3 trae columna Ficha', (
   // sin columna Ficha: respaldo (2 + 1 + 0) / 6 = 50 %
   assert.deepEqual(porcentaje(fichas, [{ tamano: 'L' }]), { pct: 50, base: porcentaje(fichas, []).base });
 });
+
+test('ligar una rama a un módulo: valida, la saca de sinLigar y cuenta en sinSubir del módulo', async () => {
+  const { abrir } = await import('../server/db.js');
+  const { leerLigas, ligarRama } = await import('../server/planos.js');
+  const { autorizar } = await import('../server/guardia.js');
+  const db = abrir(':memory:');
+  const { raiz, preguntas } = bóveda();
+  const worktrees = [{ id: 'z', nombre: 'z', ruta: '/r/z', rama: 'feature/suelta', repo: 'erp', sin_commit: 1, sin_subir: 0 }];
+  const antes = tablero({ raiz, preguntas, worktrees, ligas: leerLigas(db) });
+  assert.deepEqual(antes.sinLigar.map((w) => w.rama), ['feature/suelta']);
+  assert.equal(antes.modulos.find((m) => m.id === 'MOD-ALM').sinSubir, 0);
+
+  assert.deepEqual(ligarRama(db, 'feature/suelta', 'MOD-ALM'), { rama: 'feature/suelta', modulo: 'MOD-ALM' });
+  const ligas = leerLigas(db);
+  const t = tablero({ raiz, preguntas, worktrees, ligas });
+  assert.deepEqual(t.sinLigar, []);
+  assert.equal(t.modulos.find((m) => m.id === 'MOD-ALM').sinSubir, 1);
+  assert.equal(detalle('MOD-ALM', { raiz, preguntas, worktrees, ligas }).auditoria.sinSubir[0].rama, 'feature/suelta');
+  ligarRama(db, 'feature/suelta', 'MOD-TES'); // volver a ligar cambia el módulo
+  assert.deepEqual(leerLigas(db), { 'feature/suelta': 'MOD-TES' });
+
+  assert.throws(() => ligarRama(db, 'x', 'MOD-XYZ'), /módulo/);
+  for (const mala of ['', '  ', 'a'.repeat(201), 'a\nb', 7, null]) assert.throws(() => ligarRama(db, mala, 'MOD-ALM'), /rama/);
+
+  // la guardia lo trata como cualquier POST que actúa en tu nombre: sin cookie no pasa
+  const req = { method: 'POST', url: '/api/planos/ligar', headers: { host: 'localhost:1', 'content-type': 'application/json' } };
+  assert.equal(autorizar(req, { hosts: new Set(['localhost:1']), token: 't'.repeat(64) }).status, 401);
+});

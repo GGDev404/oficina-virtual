@@ -53,6 +53,8 @@ CREATE TABLE IF NOT EXISTS encargos (
 );
 -- Armería: equipo de cada personaje (server/aspectos.js).
 CREATE TABLE IF NOT EXISTS aspectos (clave TEXT PRIMARY KEY, json TEXT NOT NULL, ts INTEGER NOT NULL);
+-- Planos: rama de un worktree → módulo, para ramas que ningún expediente liga (server/planos.js).
+CREATE TABLE IF NOT EXISTS planos_ligas (rama TEXT PRIMARY KEY, modulo TEXT NOT NULL, ts INTEGER NOT NULL);
 `;
 
 // Columnas agregadas después de la v1: se suman a bases que ya existían.
